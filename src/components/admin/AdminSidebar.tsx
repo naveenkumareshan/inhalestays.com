@@ -44,7 +44,8 @@ import {
   BarChart2,
   UserCheck,
   ClipboardCheck,
-  Megaphone
+  Megaphone,
+  Crown
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight } from 'lucide-react';
@@ -355,6 +356,12 @@ export function AdminSidebar() {
         icon: Megaphone,
         roles: ['admin'],
         url: '/admin/sponsored-listings'
+      },
+      {
+        title: 'Subscription Plans',
+        icon: Crown,
+        roles: ['admin'],
+        url: '/admin/subscription-plans'
       }
     );
   } else {
@@ -425,6 +432,12 @@ export function AdminSidebar() {
         icon: Megaphone,
         roles: ['vendor', 'vendor_employee'],
         url: `${routePrefix}/promotions`
+      });
+      vendorMenuItems.push({
+        title: 'My Subscriptions',
+        icon: Crown,
+        roles: ['vendor', 'vendor_employee'],
+        url: `${routePrefix}/my-subscriptions`
       });
     }
 
