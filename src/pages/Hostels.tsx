@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { hostelService } from '@/api/hostelService';
-import { MapPin, Hotel, Star, Utensils } from 'lucide-react';
+import { MapPin, Hotel, Star, Utensils, Search } from 'lucide-react';
 import { formatCurrency } from '@/utils/currency';
 
 const genderFilters = [
@@ -18,6 +18,7 @@ export default function Hostels() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [genderFilter, setGenderFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -38,7 +39,13 @@ export default function Hostels() {
   };
 
   const filteredHostels = hostels.filter(hostel => {
-    return genderFilter === 'all' || hostel.gender === genderFilter;
+    const matchesGender = genderFilter === 'all' || hostel.gender === genderFilter;
+    const query = searchQuery.toLowerCase().trim();
+    const matchesSearch = !query ||
+      hostel.name?.toLowerCase().includes(query) ||
+      hostel.areas?.name?.toLowerCase().includes(query) ||
+      hostel.cities?.name?.toLowerCase().includes(query);
+    return matchesGender && matchesSearch;
   });
 
   return (
@@ -47,6 +54,18 @@ export default function Hostels() {
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
         <div className="px-3 pt-3 pb-2 max-w-lg lg:max-w-5xl mx-auto">
           <h1 className="text-[16px] font-semibold mb-2 lg:text-xl">Hostels</h1>
+
+          {/* Search input */}
+          <div className="relative mb-2">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search hostels..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-8 pl-8 pr-3 rounded-xl border border-border bg-card text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
 
           {/* Gender filter pills */}
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
