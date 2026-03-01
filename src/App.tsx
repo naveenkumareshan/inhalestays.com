@@ -67,6 +67,7 @@ const ManageProperties = lazy(() => import("./pages/partner/ManageProperties"));
 const PartnerReviews = lazy(() => import("./pages/partner/PartnerReviews"));
 const SponsoredListings = lazy(() => import("./pages/admin/SponsoredListings"));
 const MyPromotions = lazy(() => import("./pages/partner/MyPromotions"));
+const BusinessPerformance = lazy(() => import("./pages/partner/BusinessPerformance"));
 
 // Student / public pages
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
@@ -183,6 +184,7 @@ function App() {
               <Route path="hostel-due-management" element={<HostelDueManagement />} />
               <Route path="operations" element={<OperationsHub />} />
               <Route path="sponsored-listings" element={<SponsoredListings />} />
+              <Route path="business-performance" element={<BusinessPerformance />} />
             </Route>
 
             {/* ── Partner routes (alias for vendor/host admin panel) ── */}
@@ -228,6 +230,7 @@ function App() {
               <Route path="rooms/:cabinId/seats" element={<SeatManagement />} />
               <Route path="hostels/:hostelId/beds" element={<HostelBedManagementPage />} />
               <Route path="promotions" element={<MyPromotions />} />
+              <Route path="business-performance" element={<BusinessPerformance />} />
             </Route>
 
             {/* ── Partner routes (formerly vendor/host) ── */}
