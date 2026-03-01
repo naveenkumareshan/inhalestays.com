@@ -1220,6 +1220,8 @@ export type Database = {
           payment_method: string
           receipt_type: string
           serial_number: string | null
+          settlement_id: string | null
+          settlement_status: string
           transaction_id: string | null
           user_id: string
         }
@@ -1235,6 +1237,8 @@ export type Database = {
           payment_method?: string
           receipt_type?: string
           serial_number?: string | null
+          settlement_id?: string | null
+          settlement_status?: string
           transaction_id?: string | null
           user_id: string
         }
@@ -1250,6 +1254,8 @@ export type Database = {
           payment_method?: string
           receipt_type?: string
           serial_number?: string | null
+          settlement_id?: string | null
+          settlement_status?: string
           transaction_id?: string | null
           user_id?: string
         }
@@ -1266,6 +1272,13 @@ export type Database = {
             columns: ["hostel_id"]
             isOneToOne: false
             referencedRelation: "hostels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostel_receipts_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "partner_settlements"
             referencedColumns: ["id"]
           },
           {
@@ -2087,6 +2100,8 @@ export type Database = {
           receipt_type: string
           seat_id: string | null
           serial_number: string | null
+          settlement_id: string | null
+          settlement_status: string
           transaction_id: string
           user_id: string
         }
@@ -2104,6 +2119,8 @@ export type Database = {
           receipt_type?: string
           seat_id?: string | null
           serial_number?: string | null
+          settlement_id?: string | null
+          settlement_status?: string
           transaction_id?: string
           user_id: string
         }
@@ -2121,6 +2138,8 @@ export type Database = {
           receipt_type?: string
           seat_id?: string | null
           serial_number?: string | null
+          settlement_id?: string | null
+          settlement_status?: string
           transaction_id?: string
           user_id?: string
         }
@@ -2137,6 +2156,13 @@ export type Database = {
             columns: ["due_id"]
             isOneToOne: false
             referencedRelation: "dues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "partner_settlements"
             referencedColumns: ["id"]
           },
         ]
@@ -2360,9 +2386,14 @@ export type Database = {
           food_amount: number
           gateway_fee: number
           hostel_booking_id: string | null
+          hostel_receipt_id: string | null
           id: string
           net_amount: number
+          payment_date: string | null
           property_name: string
+          receipt_id: string | null
+          receipt_serial: string
+          receipt_type: string
           room_rent: number
           settlement_id: string
           student_name: string
@@ -2376,9 +2407,14 @@ export type Database = {
           food_amount?: number
           gateway_fee?: number
           hostel_booking_id?: string | null
+          hostel_receipt_id?: string | null
           id?: string
           net_amount?: number
+          payment_date?: string | null
           property_name?: string
+          receipt_id?: string | null
+          receipt_serial?: string
+          receipt_type?: string
           room_rent?: number
           settlement_id: string
           student_name?: string
@@ -2392,15 +2428,34 @@ export type Database = {
           food_amount?: number
           gateway_fee?: number
           hostel_booking_id?: string | null
+          hostel_receipt_id?: string | null
           id?: string
           net_amount?: number
+          payment_date?: string | null
           property_name?: string
+          receipt_id?: string | null
+          receipt_serial?: string
+          receipt_type?: string
           room_rent?: number
           settlement_id?: string
           student_name?: string
           total_amount?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "settlement_items_hostel_receipt_id_fkey"
+            columns: ["hostel_receipt_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_receipts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlement_items_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "settlement_items_settlement_id_fkey"
             columns: ["settlement_id"]

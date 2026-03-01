@@ -166,129 +166,126 @@ export const settlementService = {
 
     if (!partner) return { data: null, error: { message: 'Partner not found' } };
 
-    // 3. Get unsettled reading room bookings for this partner's cabins
-    const { data: cabins } = await supabase
-      .from('cabins')
-      .select('id, name')
-      .eq('created_by', partner.user_id);
+    // 3. Get partner's cabins and hostels
+    const [cabinsRes, hostelsRes] = await Promise.all([
+      supabase.from('cabins').select('id, name').eq('created_by', partner.user_id),
+      supabase.from('hostels').select('id, name').eq('created_by', partner.user_id),
+    ]);
 
-    const cabinIds = cabins?.map(c => c.id) || [];
-    const cabinMap = Object.fromEntries((cabins || []).map(c => [c.id, c.name]));
+    const cabinIds = cabinsRes.data?.map(c => c.id) || [];
+    const cabinMap = Object.fromEntries((cabinsRes.data || []).map(c => [c.id, c.name]));
+    const hostelIds = hostelsRes.data?.map(h => h.id) || [];
+    const hostelMap = Object.fromEntries((hostelsRes.data || []).map(h => [h.id, h.name]));
 
-    let rrBookings: any[] = [];
+    // 4. Query ONLINE receipts only (Reading Room)
+    let rrReceipts: any[] = [];
     if (cabinIds.length > 0) {
       const { data } = await supabase
-        .from('bookings')
-        .select('id, user_id, cabin_id, total_price, payment_status, settlement_status, created_at, start_date, end_date')
+        .from('receipts')
+        .select('id, serial_number, user_id, cabin_id, amount, payment_method, receipt_type, transaction_id, created_at, booking_id')
         .in('cabin_id', cabinIds)
-        .eq('payment_status', 'completed')
+        .eq('payment_method', 'online')
         .eq('settlement_status', 'unsettled')
         .gte('created_at', periodStart)
         .lte('created_at', periodEnd + 'T23:59:59');
-      rrBookings = data || [];
+      rrReceipts = data || [];
     }
 
-    // 4. Get unsettled hostel bookings
-    const { data: hostels } = await supabase
-      .from('hostels')
-      .select('id, name')
-      .eq('created_by', partner.user_id);
-
-    const hostelIds = hostels?.map(h => h.id) || [];
-    const hostelMap = Object.fromEntries((hostels || []).map(h => [h.id, h.name]));
-
-    let hostelBookings: any[] = [];
+    // 5. Query ONLINE hostel receipts only
+    let hostelReceipts: any[] = [];
     if (hostelIds.length > 0) {
       const { data } = await supabase
-        .from('hostel_bookings')
-        .select('id, user_id, hostel_id, total_price, food_amount, payment_status, settlement_status, created_at, start_date, end_date')
+        .from('hostel_receipts')
+        .select('id, serial_number, user_id, hostel_id, amount, payment_method, receipt_type, transaction_id, created_at, booking_id')
         .in('hostel_id', hostelIds)
-        .eq('payment_status', 'completed')
+        .eq('payment_method', 'online')
         .eq('settlement_status', 'unsettled')
         .gte('created_at', periodStart)
         .lte('created_at', periodEnd + 'T23:59:59');
-      hostelBookings = data || [];
+      hostelReceipts = data || [];
     }
 
-    if (rrBookings.length === 0 && hostelBookings.length === 0) {
-      return { data: null, error: { message: 'No unsettled bookings found for this period' } };
+    if (rrReceipts.length === 0 && hostelReceipts.length === 0) {
+      return { data: null, error: { message: 'No unsettled online receipts found for this period' } };
     }
 
-    // 5. Get student names
-    const allUserIds = [...new Set([...rrBookings.map(b => b.user_id), ...hostelBookings.map(b => b.user_id)])];
+    // 6. Get student names
+    const allUserIds = [...new Set([...rrReceipts.map(r => r.user_id), ...hostelReceipts.map(r => r.user_id)])];
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, name')
       .in('id', allUserIds);
     const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p.name || 'Unknown']));
 
-    // 6. Build settlement items
+    // 7. Build settlement items from receipts
     const items: any[] = [];
     let totalCollected = 0;
     let totalCommission = 0;
     let totalGateway = 0;
 
-    const calcCommission = (roomRent: number, foodAmount: number, totalAmount: number) => {
-      let base = roomRent;
-      if (commOn === 'room_and_food') base = roomRent + foodAmount;
-      if (commOn === 'full_invoice') base = totalAmount;
-
-      if (commType === 'percentage') return (base * commPct) / 100;
+    const calcCommission = (amount: number) => {
+      if (commType === 'percentage') return (amount * commPct) / 100;
       if (commType === 'fixed') return commFixed;
-      return (base * commPct) / 100 + commFixed; // hybrid
+      return (amount * commPct) / 100 + commFixed; // hybrid
     };
 
-    for (const b of rrBookings) {
-      const roomRent = b.total_price || 0;
-      const commission = calcCommission(roomRent, 0, roomRent);
-      const gatewayFee = gatewayMode === 'pass_to_partner' ? roomRent * 0.02 :
-        gatewayMode === 'split' ? roomRent * 0.02 * (gatewaySplit / 100) : 0;
-      const netAmount = roomRent - commission - gatewayFee;
+    for (const r of rrReceipts) {
+      const receiptAmount = r.amount || 0;
+      const commission = calcCommission(receiptAmount);
+      const gatewayFee = gatewayMode === 'pass_to_partner' ? receiptAmount * 0.02 :
+        gatewayMode === 'split' ? receiptAmount * 0.02 * (gatewaySplit / 100) : 0;
+      const netAmount = receiptAmount - commission - gatewayFee;
 
       items.push({
         booking_type: 'reading_room',
-        booking_id: b.id,
-        student_name: profileMap[b.user_id] || 'Unknown',
-        property_name: cabinMap[b.cabin_id] || 'Reading Room',
-        room_rent: roomRent,
+        booking_id: r.booking_id,
+        receipt_id: r.id,
+        receipt_serial: r.serial_number || '',
+        receipt_type: r.receipt_type || 'booking_payment',
+        payment_date: r.created_at,
+        student_name: profileMap[r.user_id] || 'Unknown',
+        property_name: cabinMap[r.cabin_id] || 'Reading Room',
+        room_rent: receiptAmount,
         food_amount: 0,
-        total_amount: roomRent,
+        total_amount: receiptAmount,
         commission_amount: commission,
         gateway_fee: gatewayFee,
         net_amount: netAmount,
       });
-      totalCollected += roomRent;
+      totalCollected += receiptAmount;
       totalCommission += commission;
       totalGateway += gatewayFee;
     }
 
-    for (const b of hostelBookings) {
-      const roomRent = (b.total_price || 0) - (b.food_amount || 0);
-      const foodAmt = b.food_amount || 0;
-      const total = b.total_price || 0;
-      const commission = calcCommission(roomRent, foodAmt, total);
-      const gatewayFee = gatewayMode === 'pass_to_partner' ? total * 0.02 :
-        gatewayMode === 'split' ? total * 0.02 * (gatewaySplit / 100) : 0;
-      const netAmount = total - commission - gatewayFee;
+    for (const r of hostelReceipts) {
+      const receiptAmount = r.amount || 0;
+      const commission = calcCommission(receiptAmount);
+      const gatewayFee = gatewayMode === 'pass_to_partner' ? receiptAmount * 0.02 :
+        gatewayMode === 'split' ? receiptAmount * 0.02 * (gatewaySplit / 100) : 0;
+      const netAmount = receiptAmount - commission - gatewayFee;
 
       items.push({
         booking_type: 'hostel',
-        hostel_booking_id: b.id,
-        student_name: profileMap[b.user_id] || 'Unknown',
-        property_name: hostelMap[b.hostel_id] || 'Hostel',
-        room_rent: roomRent,
-        food_amount: foodAmt,
-        total_amount: total,
+        hostel_booking_id: r.booking_id,
+        hostel_receipt_id: r.id,
+        receipt_serial: r.serial_number || '',
+        receipt_type: r.receipt_type || 'booking_payment',
+        payment_date: r.created_at,
+        student_name: profileMap[r.user_id] || 'Unknown',
+        property_name: hostelMap[r.hostel_id] || 'Hostel',
+        room_rent: receiptAmount,
+        food_amount: 0,
+        total_amount: receiptAmount,
         commission_amount: commission,
         gateway_fee: gatewayFee,
         net_amount: netAmount,
       });
-      totalCollected += total;
+      totalCollected += receiptAmount;
       totalCommission += commission;
       totalGateway += gatewayFee;
     }
 
-    // 7. Get pending adjustments
+    // 8. Get pending adjustments
     const { data: adjustments } = await supabase
       .from('adjustment_entries')
       .select('*')
@@ -297,13 +294,13 @@ export const settlementService = {
 
     const adjustmentTotal = (adjustments || []).reduce((sum, a) => sum + (a.amount || 0), 0);
 
-    // 8. TDS
+    // 9. TDS & Security Hold
     const tdsAmount = tdsEnabled ? (totalCollected - totalCommission) * (tdsPct / 100) : 0;
     const securityHold = securityEnabled ? (totalCollected - totalCommission) * (securityPct / 100) : 0;
 
     const netPayable = totalCollected - totalCommission - totalGateway - adjustmentTotal - tdsAmount - securityHold;
 
-    // 9. Create settlement
+    // 10. Create settlement
     const { data: settlement, error: settError } = await supabase
       .from('partner_settlements')
       .insert({
@@ -326,21 +323,21 @@ export const settlementService = {
 
     if (settError || !settlement) return { data: null, error: settError };
 
-    // 10. Insert settlement items
+    // 11. Insert settlement items
     const itemsWithSettlement = items.map(i => ({ ...i, settlement_id: settlement.id }));
     await supabase.from('settlement_items').insert(itemsWithSettlement);
 
-    // 11. Mark bookings as included
-    const rrIds = rrBookings.map(b => b.id);
-    const hostelIds2 = hostelBookings.map(b => b.id);
-    if (rrIds.length > 0) {
-      await supabase.from('bookings').update({ settlement_status: 'included', settlement_id: settlement.id }).in('id', rrIds);
+    // 12. Mark receipts as included
+    const rrReceiptIds = rrReceipts.map(r => r.id);
+    const hostelReceiptIds = hostelReceipts.map(r => r.id);
+    if (rrReceiptIds.length > 0) {
+      await supabase.from('receipts').update({ settlement_status: 'included', settlement_id: settlement.id }).in('id', rrReceiptIds);
     }
-    if (hostelIds2.length > 0) {
-      await supabase.from('hostel_bookings').update({ settlement_status: 'included', settlement_id: settlement.id }).in('id', hostelIds2);
+    if (hostelReceiptIds.length > 0) {
+      await supabase.from('hostel_receipts').update({ settlement_status: 'included', settlement_id: settlement.id }).in('id', hostelReceiptIds);
     }
 
-    // 12. Apply adjustments
+    // 13. Apply adjustments
     if (adjustments && adjustments.length > 0) {
       const adjIds = adjustments.map(a => a.id);
       await supabase.from('adjustment_entries').update({ status: 'applied', settlement_id: settlement.id, applied_at: new Date().toISOString() }).in('id', adjIds);
@@ -414,9 +411,9 @@ export const settlementService = {
       notes: paymentData.notes || '',
     });
 
-    // Mark bookings as settled
-    await supabase.from('bookings').update({ settlement_status: 'settled' }).eq('settlement_id', settlementId);
-    await supabase.from('hostel_bookings').update({ settlement_status: 'settled' }).eq('settlement_id', settlementId);
+    // Mark receipts as settled
+    await supabase.from('receipts').update({ settlement_status: 'settled' }).eq('settlement_id', settlementId);
+    await supabase.from('hostel_receipts').update({ settlement_status: 'settled' }).eq('settlement_id', settlementId);
 
     // Create ledger entries
     await supabase.from('partner_ledger').insert([

@@ -204,7 +204,7 @@ const PartnerSettlements: React.FC = () => {
               <TableHead className="px-2 py-1.5">Settlement ID</TableHead>
               <TableHead className="px-2 py-1.5">Partner</TableHead>
               <TableHead className="px-2 py-1.5">Period</TableHead>
-              <TableHead className="px-2 py-1.5 text-right">Bookings</TableHead>
+              <TableHead className="px-2 py-1.5 text-right">Receipts</TableHead>
               <TableHead className="px-2 py-1.5 text-right">Collected</TableHead>
               <TableHead className="px-2 py-1.5 text-right">Commission</TableHead>
               <TableHead className="px-2 py-1.5 text-right">Net Payable</TableHead>

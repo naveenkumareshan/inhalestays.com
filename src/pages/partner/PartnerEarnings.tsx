@@ -129,7 +129,7 @@ const PartnerEarnings: React.FC = () => {
                   <TableHead className="px-2 py-1.5">S.No.</TableHead>
                   <TableHead className="px-2 py-1.5">Settlement ID</TableHead>
                   <TableHead className="px-2 py-1.5">Period</TableHead>
-                  <TableHead className="px-2 py-1.5 text-right">Bookings</TableHead>
+                  <TableHead className="px-2 py-1.5 text-right">Receipts</TableHead>
                   <TableHead className="px-2 py-1.5 text-right">Collected</TableHead>
                   <TableHead className="px-2 py-1.5 text-right">Commission</TableHead>
                   <TableHead className="px-2 py-1.5 text-right">Net Payable</TableHead>
@@ -220,16 +220,18 @@ const PartnerEarnings: React.FC = () => {
       {/* Items Detail Dialog */}
       <Dialog open={showItems} onOpenChange={setShowItems}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Booking Breakdown</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Receipt Breakdown</DialogTitle></DialogHeader>
           <Table>
             <TableHeader>
               <TableRow className="text-[10px]">
                 <TableHead className="px-2 py-1">S.No.</TableHead>
+                <TableHead className="px-2 py-1">Receipt ID</TableHead>
                 <TableHead className="px-2 py-1">Type</TableHead>
+                <TableHead className="px-2 py-1">Module</TableHead>
                 <TableHead className="px-2 py-1">Student</TableHead>
                 <TableHead className="px-2 py-1">Property</TableHead>
-                <TableHead className="px-2 py-1 text-right">Room Rent</TableHead>
-                <TableHead className="px-2 py-1 text-right">Food</TableHead>
+                <TableHead className="px-2 py-1">Payment Date</TableHead>
+                <TableHead className="px-2 py-1 text-right">Amount</TableHead>
                 <TableHead className="px-2 py-1 text-right">Commission</TableHead>
                 <TableHead className="px-2 py-1 text-right">Net</TableHead>
               </TableRow>
@@ -238,11 +240,13 @@ const PartnerEarnings: React.FC = () => {
               {selectedItems.map((item, idx) => (
                 <TableRow key={item.id} className="text-[10px]">
                   <TableCell className="px-2 py-1">{idx + 1}</TableCell>
+                  <TableCell className="px-2 py-1 font-mono text-[9px]">{item.receipt_serial || '-'}</TableCell>
+                  <TableCell className="px-2 py-1"><Badge variant="outline" className="text-[9px]">{item.receipt_type || '-'}</Badge></TableCell>
                   <TableCell className="px-2 py-1"><Badge variant="outline" className="text-[9px]">{item.booking_type === 'hostel' ? 'Hostel' : 'RR'}</Badge></TableCell>
                   <TableCell className="px-2 py-1">{item.student_name}</TableCell>
                   <TableCell className="px-2 py-1">{item.property_name}</TableCell>
-                  <TableCell className="px-2 py-1 text-right">₹{item.room_rent?.toLocaleString()}</TableCell>
-                  <TableCell className="px-2 py-1 text-right">₹{item.food_amount?.toLocaleString()}</TableCell>
+                  <TableCell className="px-2 py-1 whitespace-nowrap">{item.payment_date ? new Date(item.payment_date).toLocaleDateString() : '-'}</TableCell>
+                  <TableCell className="px-2 py-1 text-right">₹{item.total_amount?.toLocaleString()}</TableCell>
                   <TableCell className="px-2 py-1 text-right text-red-600">-₹{item.commission_amount?.toLocaleString()}</TableCell>
                   <TableCell className="px-2 py-1 text-right font-medium">₹{item.net_amount?.toLocaleString()}</TableCell>
                 </TableRow>
