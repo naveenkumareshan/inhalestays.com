@@ -193,9 +193,11 @@ export const BookingsList = ({
                     {booking.bookingStatus === 'transferred' && (
                       <Badge variant="outline" className="border-amber-500 text-amber-500 text-[10px] px-1.5 py-0.5">Transferred</Badge>
                     )}
-                    {(booking.dueAmount ?? 0) > 0 && (
+                    {(booking.dueAmount ?? 0) > 0 ? (
                       <Badge variant="outline" className="border-red-500 text-red-600 text-[10px] px-1.5 py-0.5">Due: ₹{booking.dueAmount?.toLocaleString()}</Badge>
-                    )}
+                    ) : ['completed', 'advance_paid'].includes(booking.paymentStatus) ? (
+                      <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] px-1.5 py-0.5">Fully Paid</Badge>
+                    ) : null}
                   </div>
                 </div>
               </div>
