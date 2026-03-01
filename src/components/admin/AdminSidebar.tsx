@@ -93,6 +93,13 @@ export function AdminSidebar() {
       icon: ClipboardCheck,
       roles: ['admin', 'vendor', 'vendor_employee'],
       permissions: ['view_operations']
+    },
+    {
+      title: 'Business Performance',
+      url: `${routePrefix}/business-performance`,
+      icon: BarChart2,
+      roles: ['admin', 'vendor', 'vendor_employee'],
+      permissions: ['view_reports']
     }
   ];
 
