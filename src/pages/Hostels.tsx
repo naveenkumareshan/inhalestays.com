@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { hostelService } from '@/api/hostelService';
@@ -8,6 +8,7 @@ import { formatCurrency } from '@/utils/currency';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useSponsoredListings } from '@/hooks/useSponsoredListings';
 
 const genderFilters = [
   { id: 'all', label: 'All' },
@@ -26,6 +27,18 @@ export default function Hostels() {
   const [draftGenderFilter, setDraftGenderFilter] = useState('all');
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Determine dominant city from loaded hostels for sponsored targeting
+  const dominantCityId = React.useMemo(() => {
+    const cityCount: Record<string, number> = {};
+    hostels.forEach(h => { if (h.city_id) cityCount[h.city_id] = (cityCount[h.city_id] || 0) + 1; });
+    return Object.entries(cityCount).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+  }, [hostels]);
+
+  const { mergeListings, trackImpression, trackClick } = useSponsoredListings({
+    propertyType: 'hostel',
+    cityId: dominantCityId,
+  });
 
   useEffect(() => {
     fetchHostels();
@@ -52,6 +65,9 @@ export default function Hostels() {
       hostel.cities?.name?.toLowerCase().includes(query);
     return matchesGender && matchesSearch;
   });
+
+  // Merge sponsored listings into filtered results
+  const displayHostels = mergeListings(filteredHostels);
 
   const activeFiltersCount = genderFilter !== 'all' ? 1 : 0;
 
@@ -139,7 +155,7 @@ export default function Hostels() {
             <p className="text-[14px] font-medium text-foreground mb-1">No Hostels Available</p>
             <p className="text-[12px] text-muted-foreground">Check back later for new listings.</p>
           </div>
-        ) : filteredHostels.length === 0 ? (
+        ) : displayHostels.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-[14px] font-medium text-foreground mb-1">No hostels found</p>
             <p className="text-[12px] text-muted-foreground">
@@ -148,14 +164,36 @@ export default function Hostels() {
           </div>
         ) : (
           <div>
-            <p className="text-[11px] text-muted-foreground mb-2.5">{filteredHostels.length} hostels found</p>
+            <p className="text-[11px] text-muted-foreground mb-2.5">{displayHostels.length} hostels found</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-            {filteredHostels.map((hostel) => (
+            {displayHostels.map((hostel: any, idx: number) => (
               <div
-                key={hostel.id}
-                onClick={() => navigate(`/hostels/${hostel.serial_number || hostel.id}`)}
-                className="flex gap-3 p-3 bg-card rounded-2xl border border-border hover:border-primary/30 hover:shadow-sm transition-all active:scale-[0.99] cursor-pointer"
+                key={`${hostel.id}-${idx}`}
+                onClick={() => {
+                  if (hostel.sponsoredListingId) trackClick(hostel.sponsoredListingId);
+                  navigate(`/hostels/${hostel.serial_number || hostel.id}`);
+                }}
+                className={`relative flex gap-3 p-3 bg-card rounded-2xl border hover:shadow-sm transition-all active:scale-[0.99] cursor-pointer ${
+                  hostel.sponsoredTier === 'featured' ? 'border-amber-300 bg-amber-50/30' :
+                  hostel.sponsoredTier === 'inline_sponsored' ? 'border-blue-300 bg-blue-50/20' :
+                  'border-border hover:border-primary/30'
+                }`}
+                ref={hostel.sponsoredListingId ? (el: HTMLDivElement | null) => {
+                  if (el) {
+                    const observer = new IntersectionObserver(([entry]) => {
+                      if (entry.isIntersecting) { trackImpression(hostel.sponsoredListingId!); observer.disconnect(); }
+                    }, { threshold: 0.5 });
+                    observer.observe(el);
+                  }
+                } : undefined}
               >
+                {/* Sponsored badge */}
+                {hostel.sponsoredTier === 'featured' && (
+                  <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded-md z-10">Featured</span>
+                )}
+                {hostel.sponsoredTier === 'inline_sponsored' && (
+                  <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-blue-500 text-white px-1.5 py-0.5 rounded-md z-10">Sponsored</span>
+                )}
                 {/* Thumbnail */}
                 <div className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-muted">
                   {hostel.logo_image ? (

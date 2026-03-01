@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LocationSelector } from '@/components/forms/LocationSelector';
 import { Label } from '@/components/ui/label';
+import { useSponsoredListings } from '@/hooks/useSponsoredListings';
 
 const CabinSearchResults = lazy(() =>
   import("@/components/search/CabinSearchResults").then((m) => ({ default: m.CabinSearchResults }))
@@ -75,6 +76,15 @@ const CabinSearch = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState<SearchFilters>(defaultFilters);
   const [activeFilters, setActiveFilters] = useState<SearchFilters>(defaultFilters);
+
+  const { mergeListings, trackImpression, trackClick } = useSponsoredListings({
+    propertyType: 'reading_room',
+    cityId: activeFilters.cityId || undefined,
+    areaId: activeFilters.areaId || undefined,
+  });
+
+  // Merge sponsored into search results
+  const displayResults = mergeListings(searchResults);
 
   const activeFilterCount = [
     activeFilters.stateId,
@@ -250,7 +260,7 @@ const CabinSearch = () => {
       <div className="px-3 py-3 max-w-lg mx-auto">
         <Suspense fallback={<div className="p-4 text-[13px] text-muted-foreground">Loading results...</div>}>
           <CabinSearchResults
-            cabins={searchResults}
+            cabins={displayResults}
             loading={loading}
             limit={limit}
             hasMore={hasMore}
@@ -258,6 +268,8 @@ const CabinSearch = () => {
             totalPages={totalPages}
             onLoadMore={handleLoadMore}
             loadingMore={loadingMore}
+            onTrackImpression={trackImpression}
+            onTrackClick={trackClick}
           />
         </Suspense>
       </div>

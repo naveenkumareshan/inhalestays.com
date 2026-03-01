@@ -43,7 +43,8 @@ import {
   Star,
   BarChart2,
   UserCheck,
-  ClipboardCheck
+  ClipboardCheck,
+  Megaphone
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight } from 'lucide-react';
@@ -341,6 +342,12 @@ export function AdminSidebar() {
         icon: Mail,
         roles: ['admin'],
         url: '/admin/support-tickets'
+      },
+      {
+        title: 'Sponsored Listings',
+        icon: Megaphone,
+        roles: ['admin'],
+        url: '/admin/sponsored-listings'
       }
     );
   } else {
@@ -405,6 +412,12 @@ export function AdminSidebar() {
         icon: User,
         roles: ['vendor', 'vendor_employee'],
         url: `${routePrefix}/profile`
+      });
+      vendorMenuItems.push({
+        title: 'My Promotions',
+        icon: Megaphone,
+        roles: ['vendor', 'vendor_employee'],
+        url: `${routePrefix}/promotions`
       });
     }
 

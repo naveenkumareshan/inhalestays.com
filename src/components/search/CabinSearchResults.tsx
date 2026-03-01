@@ -32,7 +32,7 @@ interface CabinResult {
 }
 
 interface CabinSearchResultsProps {
-  cabins: CabinResult[];
+  cabins: (CabinResult & { sponsoredTier?: string; sponsoredListingId?: string })[];
   loading?: boolean;
   hasMore?: boolean;
   currentPage?: number;
@@ -40,6 +40,8 @@ interface CabinSearchResultsProps {
   limit?: number;
   onLoadMore?: () => void;
   loadingMore?: boolean;
+  onTrackImpression?: (listingId: string) => void;
+  onTrackClick?: (listingId: string) => void;
 }
 
 const getCategoryColor = (category: string) => {
@@ -59,6 +61,8 @@ export const CabinSearchResults = ({
   limit = 10,
   onLoadMore,
   loadingMore = false,
+  onTrackImpression,
+  onTrackClick,
 }: CabinSearchResultsProps) => {
 
   if (loading) {
@@ -93,13 +97,39 @@ export const CabinSearchResults = ({
       <p className="text-[11px] text-muted-foreground">{cabins.length} rooms found</p>
 
       <div className="space-y-2.5">
-        {cabins.map((cabin) => {
+        {cabins.map((cabin, idx) => {
           const cabinId = cabin.id || cabin._id;
           const cabinSlug = (cabin as any).serial_number || cabinId;
           const imgSrc = cabin.imageSrc || cabin.image_url || '/placeholder.svg';
           return (
-          <Link to={`/book-seat/${cabinSlug}`} key={cabinId} className="block">
-            <div className="flex gap-3 p-3 bg-card rounded-2xl border border-border hover:border-primary/30 hover:shadow-sm transition-all active:scale-[0.99]">
+          <Link
+            to={`/book-seat/${cabinSlug}`}
+            key={`${cabinId}-${idx}`}
+            className="block"
+            onClick={() => { if (cabin.sponsoredListingId && onTrackClick) onTrackClick(cabin.sponsoredListingId); }}
+          >
+            <div
+              className={`relative flex gap-3 p-3 bg-card rounded-2xl border hover:shadow-sm transition-all active:scale-[0.99] ${
+                cabin.sponsoredTier === 'featured' ? 'border-amber-300 bg-amber-50/30' :
+                cabin.sponsoredTier === 'inline_sponsored' ? 'border-blue-300 bg-blue-50/20' :
+                'border-border hover:border-primary/30'
+              }`}
+              ref={cabin.sponsoredListingId ? (el: HTMLDivElement | null) => {
+                if (el && onTrackImpression) {
+                  const observer = new IntersectionObserver(([entry]) => {
+                    if (entry.isIntersecting) { onTrackImpression(cabin.sponsoredListingId!); observer.disconnect(); }
+                  }, { threshold: 0.5 });
+                  observer.observe(el);
+                }
+              } : undefined}
+            >
+              {/* Sponsored badges */}
+              {cabin.sponsoredTier === 'featured' && (
+                <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded-md z-10">Featured</span>
+              )}
+              {cabin.sponsoredTier === 'inline_sponsored' && (
+                <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-blue-500 text-white px-1.5 py-0.5 rounded-md z-10">Sponsored</span>
+              )}
               {/* Image */}
               <div className="relative flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-muted">
                 <img

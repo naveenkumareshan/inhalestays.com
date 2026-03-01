@@ -2596,6 +2596,104 @@ export type Database = {
           },
         ]
       }
+      sponsored_listing_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          sponsored_listing_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          sponsored_listing_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          sponsored_listing_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sponsored_listing_events_sponsored_listing_id_fkey"
+            columns: ["sponsored_listing_id"]
+            isOneToOne: false
+            referencedRelation: "sponsored_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sponsored_listings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          end_date: string
+          id: string
+          partner_id: string
+          priority_rank: number
+          property_id: string
+          property_type: string
+          start_date: string
+          status: string
+          target_area_ids: string[] | null
+          target_city_id: string
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          end_date: string
+          id?: string
+          partner_id: string
+          priority_rank?: number
+          property_id: string
+          property_type?: string
+          start_date: string
+          status?: string
+          target_area_ids?: string[] | null
+          target_city_id: string
+          tier?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          end_date?: string
+          id?: string
+          partner_id?: string
+          priority_rank?: number
+          property_id?: string
+          property_type?: string
+          start_date?: string
+          status?: string
+          target_area_ids?: string[] | null
+          target_city_id?: string
+          tier?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sponsored_listings_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sponsored_listings_target_city_id_fkey"
+            columns: ["target_city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       states: {
         Row: {
           code: string | null
