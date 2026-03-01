@@ -1,110 +1,128 @@
 
+# Partner Business Performance Dashboard
 
-# Sponsored Listings Enhancement -- UI Standardization, Packages, Area Display, and User Creation Fix
+## Overview
+Create a dedicated, premium Business Intelligence dashboard page for partners at `/partner/business-performance`. This page will aggregate data from all existing tables (bookings, receipts, dues, settlements, seats, beds, hostels, cabins) into a single comprehensive analytics view that demonstrates clear platform value.
 
-## 3 Changes Requested
+## Architecture
 
-### 1. Standardize UI to Match Receipts Pattern (Admin + Partner)
+The dashboard will be a single new page component with a dedicated data-fetching hook. All data comes from existing database tables -- no new tables needed. The hook will run aggregated queries against existing Supabase tables using the partner's properties.
 
-**Problem:** Current Sponsored Listings admin page and Partner My Promotions page don't follow the standardized admin UI pattern used by Receipts, Dues, etc (S.No, serial numbers, pagination, filters, search, compact density).
-
-**Changes:**
-
-**Database Migration:**
-- Add `serial_number` column to `sponsored_listings` table
-- Create trigger `set_serial_sponsored_listings` using prefix `SPAD` (Sponsored Ad)
-- Display area names alongside city in both admin table and partner view
-
-**Admin Page (`src/pages/admin/SponsoredListings.tsx`) -- Full Rewrite to Match Receipts UI:**
-- Add summary bar at top (Total Listings, Active, Paused, Expired counts)
-- Add compact single-line filter row: Search input + Property Type filter + Tier filter + Status filter + Date range (From/To) + Clear button
-- Table with S.No column (cross-page continuity via `getSerialNumber`)
-- Add serial_number column (font-mono display like receipts)
-- Add Area Names column (resolve `target_area_ids` to names, show as comma-separated)
-- Add `AdminTablePagination` component with page size selector
-- Import and use existing `AdminTablePagination` and `getSerialNumber` from `@/components/admin/AdminTablePagination`
-- Add Refresh and Export buttons in header
-- Keep existing Create/Edit dialog and action buttons
-
-**Partner Page (`src/pages/partner/MyPromotions.tsx`) -- Upgrade to Table View:**
-- Switch from card layout to standardized table layout matching admin pattern
-- Add S.No, Serial Number, Property, Tier, City, Areas, Dates, Days Left, Status, Stats columns
-- Add search + status filter + pagination
-- Keep read-only (no edit/delete actions)
-- Show area names resolved from `target_area_ids`
-
----
-
-### 2. Sponsored Listing Packages -- Partner Self-Service Booking
-
-**Concept:** Admin creates reusable "Ad Packages" (e.g., "7-Day Featured Boost -- Rs 999", "30-Day Inline Sponsor -- Rs 2499"). Partners can browse available packages and book them for their properties (creating a sponsored listing tied to a package).
-
-**Database Migration:**
-- Create `sponsored_packages` table:
-  - `id` (uuid, PK)
-  - `name` (text) -- e.g. "7-Day Featured Boost"
-  - `description` (text)
-  - `tier` (text: featured / inline_sponsored / boost_ranking)
-  - `duration_days` (integer) -- auto-calculates end_date from start
-  - `price` (numeric) -- package cost
-  - `is_active` (boolean, default true)
-  - `serial_number` (text, auto-generated with prefix `SPKG`)
-  - `created_by` (uuid)
-  - `created_at` (timestamptz)
-- Add `package_id` column (uuid, nullable, FK) to `sponsored_listings` table
-- Add `payment_status` column (text: 'pending' | 'paid' | 'admin_created', default 'admin_created') to `sponsored_listings`
-- RLS: Admins full CRUD; Partners + Public can SELECT active packages
-
-**Admin -- Package Manager Section:**
-- Add a "Packages" tab or section within the Sponsored Listings page
-- CRUD for packages: Name, Description, Tier, Duration (days), Price, Status
-- Table with S.No, Serial Number, Name, Tier, Duration, Price, Status, Actions
-
-**Partner -- Book a Package (in My Promotions page):**
-- "Book Ad Package" button at top
-- Dialog/sheet showing available packages as cards (name, tier badge, duration, price)
-- Partner selects package, then selects:
-  - Property (from their own properties only)
-  - Target City + Areas
-  - Start Date (end date auto-calculated from package duration)
-- On submit: creates a `sponsored_listings` row with `status = 'pending'`, `payment_status = 'pending'`, `package_id` set
-- Admin must then approve (change status to 'active') -- keeps admin control intact
-- Future: integrate with payment gateway (for now, partner submits request, admin approves after offline payment confirmation)
-
----
-
-### 3. Remove Employee Option from Partner User Creation
-
-**Problem:** The CreateStudentForm allows partners (role = 'vendor') to create users with role 'vendor_employee'. There is already a separate dedicated Employee management section, so the employee option in the user creation form is redundant for partners.
-
-**File:** `src/components/admin/CreateStudentForm.tsx`
-
-**Change:** When user role is 'vendor', filter out `vendor_employee` from the role options. Partners should only be able to create Students from the user creation form. Employee creation is handled separately via the dedicated employee management module.
-
-Current code (line 37-39):
-```typescript
-if (user?.role === 'vendor') {
-  return ROLE_OPTIONS.filter(r => r.value === 'student' || r.value === 'vendor_employee');
-}
-```
-
-Change to:
-```typescript
-if (user?.role === 'vendor') {
-  return ROLE_OPTIONS.filter(r => r.value === 'student');
-}
+```text
+src/pages/partner/BusinessPerformance.tsx  (new page)
+src/hooks/usePartnerPerformance.ts         (new data hook)
+src/components/admin/AdminSidebar.tsx       (add menu item)
+src/App.tsx                                 (add route)
 ```
 
 ---
 
-## Technical Summary
+## 1. Data Hook (`usePartnerPerformance.ts`)
 
-| Action | File / Resource |
-|--------|----------------|
-| DB Migration | Add `serial_number` to `sponsored_listings`, create trigger |
-| DB Migration | Create `sponsored_packages` table with serial number trigger |
-| DB Migration | Add `package_id`, `payment_status` columns to `sponsored_listings` |
-| Rewrite | `src/pages/admin/SponsoredListings.tsx` (receipts-style UI + packages tab) |
-| Rewrite | `src/pages/partner/MyPromotions.tsx` (table UI + book package flow) |
-| Edit | `src/components/admin/CreateStudentForm.tsx` (remove employee from partner role options) |
+A single hook that fetches all metrics for the logged-in partner's properties. Queries existing tables:
 
+**Reading Room metrics** (from `cabins`, `seats`, `bookings`, `receipts`, `dues`):
+- Total seats, occupied seats, occupancy %
+- Collections (fees, deposits, total)
+- Pending dues, overdue counts
+- Monthly revenue trends (last 12 months from receipts)
+
+**Hostel metrics** (from `hostels`, `hostel_rooms`, `hostel_beds`, `hostel_bookings`, `hostel_receipts`, `hostel_dues`):
+- Total beds, occupied beds, occupancy %
+- Room/floor-wise occupancy breakdown
+- Collections and dues
+- Monthly trends
+
+**Settlement metrics** (from `partner_settlements`, `partner_ledger`):
+- Gross collection, commission, net earnings
+- Paid vs pending settlements
+
+**Student metrics** (from bookings + hostel_bookings):
+- Active students, new this month, renewals, dropouts
+- Average stay duration
+
+**Filters**: Month, Year, Custom Date Range, Property selector (if partner has multiple properties). Default: current month.
+
+---
+
+## 2. Page Layout (`BusinessPerformance.tsx`)
+
+### Header
+- Title: "Business Performance"
+- Filters row: Month/Year picker, Property selector, Date range
+
+### Section A: Top Summary Cards (3 rows of cards)
+Row 1: Total Seats/Beds | Occupied | Occupancy % | Net Earnings
+Row 2: Total Collections | Fees Collected | Deposits Collected | Pending Dues
+Row 3: Pending Refunds | New Admissions | Renewals | Dropouts
+
+Each card shows the value + comparison with previous month (green/red arrow + % change).
+
+### Section B: Revenue Breakdown
+Table/card showing:
+- Room Fees, Food Collection, Deposits, Other Charges, Total
+- Columns: This Month | Last Month | % Growth
+- Green/red color coding for growth indicators
+
+### Section C: Dues and Refund Overview
+Card grid: Total Students with Dues | Total Dues Amount | Overdue >7 days | Overdue >30 days | Refunds Pending | Refunds Processed
+
+### Section D: Trend Charts (using Recharts -- already installed)
+- Monthly Occupancy line chart (12 months)
+- Monthly Revenue bar chart (12 months)
+- Deposit Collection trend line
+- Dues trend line
+- Highlight badges: "Highest Revenue Month: March 2026", "Best Occupancy Month: Feb 2026"
+
+### Section E: Room/Floor Performance
+- Table: Floor name | Occupancy % | Revenue | Performance bar
+- Highlight: Most profitable room, Lowest performing room
+
+### Section F: Reading Room Specific (conditional, only if partner has reading rooms)
+- Active members, slot-wise occupancy, peak time usage %, advance bookings count, due members
+
+### Section G: Settlement and Earnings Overview
+- Card grid: Gross Collection | Platform Commission | Net Earnings | Paid Settlements | Pending Amount
+
+### Section H: Student Insights
+- Active students | New admissions this month | Renewals | Dropouts | Average stay duration
+
+### Section I: Insight Cards (Psychological Value)
+Smart auto-generated text insights:
+- "Your occupancy improved by X% compared to last month."
+- "You earned Rs X more than last month."
+- "Room Y generates highest income."
+- Displayed as gradient cards with relevant icons.
+
+---
+
+## 3. Sidebar and Routing
+
+**AdminSidebar.tsx**: Add "Business Performance" menu item with `BarChart2` icon under partner-visible items, positioned near Dashboard.
+
+**App.tsx**: Add route `<Route path="business-performance" element={<BusinessPerformance />} />` under both `/admin` and `/partner` route groups.
+
+---
+
+## 4. UI Design Approach
+
+- Uses existing Card, Badge, Table, Tabs components
+- Recharts for all charts (already installed: `recharts ^2.12.7`)
+- Responsive: cards stack on mobile (grid-cols-2 -> grid-cols-4)
+- Green/red indicators via Tailwind classes (text-emerald-600, text-red-500)
+- Compact density matching existing admin panel style (text-xs, text-[11px])
+- No new dependencies needed
+
+---
+
+## 5. Query Strategy
+
+All queries use the existing Supabase client with RLS. Partners automatically only see their own data due to existing RLS policies on cabins, hostels, bookings, etc. Key queries:
+
+- Occupancy: count bookings where `start_date <= today AND end_date >= today` grouped by property
+- Revenue: aggregate receipts by month with `created_at` filtering
+- Dues: count/sum from dues and hostel_dues tables filtered by status
+- Settlements: aggregate from partner_settlements
+- Trends: 12-month lookback using `created_at >= 12 months ago` with month grouping in JS
+
+No database migrations required -- all data already exists in current tables.
