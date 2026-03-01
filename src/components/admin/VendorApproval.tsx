@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Eye, Check, X, AlertTriangle, User, Download, Search, RefreshCw, Power, Link2, Copy } from 'lucide-react';
+import { Eye, Check, X, AlertTriangle, User, Download, Search, RefreshCw, Power, Link2, Copy, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { vendorApprovalService, Vendor, VendorFilters, VendorsResponse } from '@/api/vendorApprovalService';
 import { VendorDetailsDialog } from './VendorDetailsDialog';
@@ -17,6 +17,7 @@ import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminT
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { getPublicAppUrl } from '@/utils/appUrl';
+import { PartnerPayoutSettingsDialog } from './PartnerPayoutSettingsDialog';
 
 const VendorApproval: React.FC = () => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -28,6 +29,7 @@ const VendorApproval: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterBusinessType, setFilterBusinessType] = useState('all');
+  const [showPayoutSettings, setShowPayoutSettings] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const { toast } = useToast();
@@ -221,6 +223,9 @@ const VendorApproval: React.FC = () => {
                   <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => { setSelectedVendor(v); setShowDetailsDialog(true); }}>
                     <Eye className="h-3 w-3 mr-1" /> View
                   </Button>
+                  <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setShowPayoutSettings(v.id)} title="Payout Settings">
+                    <Settings className="h-3 w-3 mr-1" /> Payout
+                  </Button>
                   {v.status === 'pending' && (
                     <>
                       <Button variant="outline" size="sm" className="h-6 text-[10px] text-emerald-600" onClick={() => handleStatusUpdate(v.id, 'approve')}>
@@ -284,6 +289,9 @@ const VendorApproval: React.FC = () => {
                       <Button variant="outline" size="sm" className="h-6 w-6 p-0" onClick={() => { setSelectedVendor(v); setShowDetailsDialog(true); }}>
                         <Eye className="h-3 w-3" />
                       </Button>
+                      <Button variant="outline" size="sm" className="h-6 w-6 p-0" onClick={() => setShowPayoutSettings(v.id)} title="Payout Settings">
+                        <Settings className="h-3 w-3" />
+                      </Button>
                       {v.status === 'pending' && (
                         <>
                           <Button variant="outline" size="sm" className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700" onClick={() => handleStatusUpdate(v.id, 'approve')}>
@@ -344,6 +352,12 @@ const VendorApproval: React.FC = () => {
           onVendorUpdate={handleVendorUpdate}
         />
       )}
+
+      <PartnerPayoutSettingsDialog
+        partnerId={showPayoutSettings || ''}
+        open={!!showPayoutSettings}
+        onClose={() => setShowPayoutSettings(null)}
+      />
     </div>
   );
 };
