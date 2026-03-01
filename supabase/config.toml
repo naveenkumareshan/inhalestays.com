@@ -18,3 +18,9 @@ verify_jwt = false
 
 [functions.toggle-user-status]
 verify_jwt = false
+
+[functions.subscription-create-order]
+verify_jwt = false
+
+[functions.subscription-verify-payment]
+verify_jwt = false

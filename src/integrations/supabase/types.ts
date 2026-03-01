@@ -2183,6 +2183,91 @@ export type Database = {
         }
         Relationships: []
       }
+      property_subscriptions: {
+        Row: {
+          amount_paid: number
+          capacity_upgrade_amount: number
+          capacity_upgrades: number
+          created_at: string
+          end_date: string | null
+          id: string
+          partner_id: string
+          payment_status: string
+          plan_id: string
+          previous_plan_id: string | null
+          property_id: string
+          property_type: string
+          razorpay_order_id: string
+          razorpay_payment_id: string
+          serial_number: string | null
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_paid?: number
+          capacity_upgrade_amount?: number
+          capacity_upgrades?: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          partner_id: string
+          payment_status?: string
+          plan_id: string
+          previous_plan_id?: string | null
+          property_id: string
+          property_type?: string
+          razorpay_order_id?: string
+          razorpay_payment_id?: string
+          serial_number?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_paid?: number
+          capacity_upgrade_amount?: number
+          capacity_upgrades?: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          partner_id?: string
+          payment_status?: string
+          plan_id?: string
+          previous_plan_id?: string | null
+          property_id?: string
+          property_type?: string
+          razorpay_order_id?: string
+          razorpay_payment_id?: string
+          serial_number?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_subscriptions_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_subscriptions_previous_plan_id_fkey"
+            columns: ["previous_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       receipts: {
         Row: {
           amount: number
@@ -2770,6 +2855,69 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+        }
+        Relationships: []
+      }
+      subscription_plans: {
+        Row: {
+          capacity_upgrade_enabled: boolean
+          capacity_upgrade_price: number
+          capacity_upgrade_slab_beds: number
+          capacity_upgrade_slab_seats: number
+          created_at: string
+          description: string
+          display_order: number
+          features: Json
+          hostel_bed_limit: number
+          id: string
+          is_active: boolean
+          name: string
+          price_monthly_display: number
+          price_yearly: number
+          reading_room_seat_limit: number
+          serial_number: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          capacity_upgrade_enabled?: boolean
+          capacity_upgrade_price?: number
+          capacity_upgrade_slab_beds?: number
+          capacity_upgrade_slab_seats?: number
+          created_at?: string
+          description?: string
+          display_order?: number
+          features?: Json
+          hostel_bed_limit?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price_monthly_display?: number
+          price_yearly?: number
+          reading_room_seat_limit?: number
+          serial_number?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          capacity_upgrade_enabled?: boolean
+          capacity_upgrade_price?: number
+          capacity_upgrade_slab_beds?: number
+          capacity_upgrade_slab_seats?: number
+          created_at?: string
+          description?: string
+          display_order?: number
+          features?: Json
+          hostel_bed_limit?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_monthly_display?: number
+          price_yearly?: number
+          reading_room_seat_limit?: number
+          serial_number?: string | null
+          slug?: string
+          updated_at?: string
         }
         Relationships: []
       }
