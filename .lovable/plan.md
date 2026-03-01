@@ -1,21 +1,28 @@
 
-
-# Remove Timings from Booking Cards
+# Show "Fully Paid" Badge on Booking Cards
 
 ## What's Changing
 
-Strip all time-of-day text (9:00 AM, 6:00 PM) from the `formatBookingPeriod` function in `src/utils/currency.ts`. This applies to both Hostel and Reading Room booking cards since they all use this same utility function.
+On the student bookings list (`BookingsList.tsx`), when a booking has `paymentStatus` of `completed` (or `advance_paid`) and the due amount is zero, display a green "Fully Paid" badge instead of showing nothing. The existing orange/red "Due: ₹X" badge continues to appear when there is an outstanding balance.
 
-## Before vs After
+## Change
 
-| Scenario | Current | New |
-|----------|---------|-----|
-| Date range | 28 Feb 2026 9:00 AM to 27 Aug 2026 6:00 PM | 28 Feb 2026 to 27 Aug 2026 |
-| Same day | 28 Feb 2026 (9:00 AM - 6:00 PM) | 28 Feb 2026 |
-| Start only | 28 Feb 2026 9:00 AM onwards | From 28 Feb 2026 |
-| End only | Till 27 Aug 2026 6:00 PM | Till 27 Aug 2026 |
+**File**: `src/components/booking/BookingsList.tsx` (lines 196-198)
 
-## File to Modify
+Current logic only shows a badge when there's a due:
+```tsx
+{(booking.dueAmount ?? 0) > 0 && (
+  <Badge ...>Due: ₹{booking.dueAmount}</Badge>
+)}
+```
 
-**`src/utils/currency.ts`** -- update `formatBookingPeriod` function only (lines 23-45). Remove all time strings from the return values. No other files need changes since all booking cards (hostel + reading room) already use this shared utility.
+Updated logic adds a "Fully Paid" badge for the zero-due case:
+```tsx
+{(booking.dueAmount ?? 0) > 0 ? (
+  <Badge className="border-red-500 text-red-600 ...">Due: ₹{booking.dueAmount}</Badge>
+) : booking.paymentStatus === 'completed' ? (
+  <Badge className="bg-green-100 text-green-700 ...">Fully Paid</Badge>
+) : null}
+```
 
+This applies to both hostel and reading room bookings since they share the same `BookingsList` component. Single-file change only.
