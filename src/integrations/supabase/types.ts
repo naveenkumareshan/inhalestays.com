@@ -2634,10 +2634,13 @@ export type Database = {
           created_by: string | null
           end_date: string
           id: string
+          package_id: string | null
           partner_id: string
+          payment_status: string
           priority_rank: number
           property_id: string
           property_type: string
+          serial_number: string | null
           start_date: string
           status: string
           target_area_ids: string[] | null
@@ -2650,10 +2653,13 @@ export type Database = {
           created_by?: string | null
           end_date: string
           id?: string
+          package_id?: string | null
           partner_id: string
+          payment_status?: string
           priority_rank?: number
           property_id: string
           property_type?: string
+          serial_number?: string | null
           start_date: string
           status?: string
           target_area_ids?: string[] | null
@@ -2666,10 +2672,13 @@ export type Database = {
           created_by?: string | null
           end_date?: string
           id?: string
+          package_id?: string | null
           partner_id?: string
+          payment_status?: string
           priority_rank?: number
           property_id?: string
           property_type?: string
+          serial_number?: string | null
           start_date?: string
           status?: string
           target_area_ids?: string[] | null
@@ -2678,6 +2687,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sponsored_listings_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "sponsored_packages"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sponsored_listings_partner_id_fkey"
             columns: ["partner_id"]
@@ -2693,6 +2709,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sponsored_packages: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          duration_days: number
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          serial_number: string | null
+          tier: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          duration_days?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price?: number
+          serial_number?: string | null
+          tier?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          duration_days?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          serial_number?: string | null
+          tier?: string
+        }
+        Relationships: []
       }
       states: {
         Row: {

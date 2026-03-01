@@ -35,7 +35,7 @@ const CreateStudentForm: React.FC<CreateStudentFormProps> = ({ onStudentCreated 
   
   const filteredRoleOptions = useMemo(() => {
     if (user?.role === 'vendor') {
-      return ROLE_OPTIONS.filter(r => r.value === 'student' || r.value === 'vendor_employee');
+      return ROLE_OPTIONS.filter(r => r.value === 'student');
     }
     return ROLE_OPTIONS;
   }, [user?.role]);
