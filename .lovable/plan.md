@@ -1,92 +1,122 @@
 
 
-# Fix Coupon Management -- Migrate from Legacy Backend to Database
+# Add Share Button -- Hostel & Reading Room Detail Pages
 
-## Problem
+## Overview
 
-The Coupon Management page (`/admin/coupons`) shows "Failed to fetch" because it relies on `axiosConfig.ts` which calls `http://localhost:5000/api` (the old Express/MongoDB backend). There is no running backend to respond, so every API call fails.
-
-## Solution
-
-Migrate the entire coupon system to the database (same pattern as the rest of the app). This is a permanent fix -- no more dependency on the legacy backend.
-
-## Regarding Settlement Logic (Question 2)
-
-Yes, the current settlement logic is correct: when you generate a settlement for a partner + date range, ALL unsettled online receipts (both Reading Room and Hostel) within that period are grouped into ONE settlement. Each receipt becomes a line item (`settlement_items`) inside that single settlement. This is the intended "statement-based" approach (like Swiggy/Zomato weekly payouts).
+Add a universal share feature to both the Hostel Detail page (`HostelRoomDetails.tsx`) and Reading Room Detail page (`BookSeat.tsx`). On mobile, it uses the native share sheet; on web, it shows a share popup with Copy Link, WhatsApp, Telegram, and Email options. Shared links include a `?ref=userId` parameter for referral tracking.
 
 ---
 
-## Database Changes
+## 1. Create Reusable ShareButton Component
 
-### New Table: `coupons`
+**New file**: `src/components/ShareButton.tsx`
+
+A single reusable component that handles both mobile and web sharing:
+
+- **Props**: `title`, `description`, `url`, `shareText` (pre-formatted message)
+- **Mobile detection**: Uses `navigator.share` API availability
+- **Mobile**: Calls `navigator.share({ title, text, url })` to open the native share sheet (WhatsApp, Instagram, Telegram, SMS, etc.)
+- **Web fallback**: Opens a Dialog/Popover with buttons for:
+  - **Copy Link** -- copies URL to clipboard with toast confirmation
+  - **WhatsApp** -- opens `https://wa.me/?text={encodedMessage}`
+  - **Telegram** -- opens `https://t.me/share/url?url={url}&text={text}`
+  - **Email** -- opens `mailto:?subject={title}&body={message}`
+- **Icon**: Uses `Share2` from lucide-react, styled as a round semi-transparent button (matching the existing back button style on detail pages)
+
+## 2. Share Message Generators
+
+**New file**: `src/utils/shareUtils.ts`
+
+Two helper functions that build the share text:
+
+- `generateCabinShareText(cabin)` -- produces:
+  ```
+  Check out this Reading Room on InhaleStays!
+  [Cabin Name]
+  Location: [fullAddress or area]
+  Price: [price]/month
+  Rating: [X.X] (if > 0)
+  Book here: [link]
+  ```
+
+- `generateHostelShareText(hostel, lowestPrice)` -- produces:
+  ```
+  Check out this Hostel on InhaleStays!
+  [Hostel Name]
+  [Gender] | [Stay Type]
+  Food Available (if food_enabled)
+  Starting from [lowestPrice]
+  View details: [link]
+  ```
+
+Both functions accept an optional `userId` to append `?ref={userId}` to the link. The base URL uses `getPublicAppUrl()`.
+
+## 3. Add Share Button to Hostel Detail Page
+
+**File**: `src/pages/HostelRoomDetails.tsx`
+
+- Import `ShareButton` component
+- Place the share button in the hero image overlay area, next to the existing gender badge (top-right). Move badge slightly left to make room, or place share button just below it.
+- Pass hostel data + user ID for referral link generation
+
+## 4. Add Share Button to Reading Room Detail Page
+
+**File**: `src/pages/BookSeat.tsx`
+
+- Import `ShareButton` component
+- Place the share button in the hero image overlay area, next to the existing category badge (top-right). Same positioning pattern as hostel page.
+- Pass cabin data + user ID for referral link generation
+
+## 5. Referral Tracking Database
+
+**Database migration**: Create a `referral_clicks` table to track shared link usage:
 
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid, PK | |
-| code | text, unique, not null | Uppercase coupon code |
-| name | text, not null | Display name |
-| description | text | |
-| type | text, not null | 'percentage' or 'fixed' |
-| value | numeric, not null | Discount value |
-| max_discount_amount | numeric | Cap for percentage discounts |
-| min_order_amount | numeric, default 0 | Minimum order to apply |
-| applicable_for | text[], default '{all}' | 'cabin', 'hostel', 'all' |
-| scope | text, default 'global' | 'global', 'vendor', 'user_referral' |
-| partner_id | uuid, nullable, FK -> partners | For vendor-scoped coupons |
-| is_referral_coupon | boolean, default false | |
-| referral_type | text, nullable | 'user_generated', 'welcome_bonus', 'friend_referral' |
-| generated_by | uuid, nullable | User who generated referral |
-| usage_limit | integer, nullable | null = unlimited |
-| usage_count | integer, default 0 | |
-| user_usage_limit | integer, default 1 | Per-user cap |
-| used_by | jsonb, default '[]' | Array of {userId, usageCount, usedAt, bookingId} |
-| start_date | timestamptz, not null | |
-| end_date | timestamptz, not null | |
-| is_active | boolean, default true | |
-| first_time_user_only | boolean, default false | |
-| specific_users | uuid[], default '{}' | Only these users can use |
-| exclude_users | uuid[], default '{}' | These users cannot use |
-| created_by | uuid | |
-| created_at | timestamptz | |
-| updated_at | timestamptz | |
+| referrer_user_id | uuid | User who shared the link |
+| referred_user_id | uuid, nullable | User who signed up via the link |
+| property_type | text | 'hostel' or 'cabin' |
+| property_id | uuid | The hostel/cabin ID |
+| clicked_at | timestamptz | When the link was clicked |
+| signed_up | boolean, default false | Whether the click led to a signup |
+| booking_id | uuid, nullable | If a booking resulted |
 
-### RLS Policies
-- Admin: full CRUD
-- Partners: SELECT on their own vendor-scoped coupons + global coupons (read-only)
-- Authenticated users: SELECT on active coupons for validation/available coupons
+RLS: Admins full access, users can view their own referral data.
 
-### Serial Number
-- Add 'CPNX' prefix to serial_counters (optional, coupons use `code` as identifier)
+## 6. Referral Capture Logic
+
+**File**: `src/App.tsx` or a new `src/hooks/useReferralCapture.ts`
+
+- On app load, check URL for `?ref=` parameter
+- Store the referrer user ID in `localStorage` (key: `inhale_referrer`)
+- On successful signup (in the auth flow), insert a row into `referral_clicks` with the referrer ID
+- On successful booking, update the `referral_clicks` row with the `booking_id`
 
 ---
 
-## Service Layer
+## Technical Details
 
-### Rewrite: `src/api/couponService.ts`
-- Remove all axios imports
-- Replace with Supabase queries against the new `coupons` table
-- Map snake_case DB columns to camelCase interface (or update interface to snake_case)
-- All existing methods: getCoupons, getCoupon, createCoupon, updateCoupon, deleteCoupon, validateCoupon, applyCoupon, getAvailableCoupons, generateReferralCoupon
+- The `navigator.share` API is the standard Web Share API -- works on all modern mobile browsers (iOS Safari, Chrome Android). Falls back to the dialog on desktop.
+- Share button is a `Share2` icon from lucide-react in a rounded semi-transparent button matching the existing back button style (`bg-black/40 backdrop-blur-md text-white`).
+- The referral parameter uses the user's auth ID (UUID). If the user is not logged in, the share link is generated without `?ref=`.
 
-### Update: `src/components/admin/CouponManagement.tsx`
-- Remove `vendorService` import (used for fetching vendor list from legacy API)
-- Fetch partners from Supabase `partners` table instead
-- Update field name mappings (e.g., `_id` -> `id`, `vendorId` -> `partner_id`)
-- Remove MongoDB-specific patterns
+## Files Summary
 
----
-
-## Files to Create/Modify
-
-| File | Change |
+| File | Action |
 |------|--------|
-| Migration SQL | Create `coupons` table with RLS |
-| `src/api/couponService.ts` | Complete rewrite -- Supabase instead of axios |
-| `src/components/admin/CouponManagement.tsx` | Update to use new field names, fetch partners from DB |
+| `src/components/ShareButton.tsx` | Create -- reusable share component |
+| `src/utils/shareUtils.ts` | Create -- message generators |
+| `src/pages/HostelRoomDetails.tsx` | Edit -- add ShareButton to hero |
+| `src/pages/BookSeat.tsx` | Edit -- add ShareButton to hero |
+| `src/hooks/useReferralCapture.ts` | Create -- capture ref param |
+| Migration SQL | Create -- `referral_clicks` table |
 
 ## Implementation Order
 
-1. Database migration (create `coupons` table + RLS + indexes)
-2. Rewrite `couponService.ts` with Supabase queries
-3. Update `CouponManagement.tsx` to work with the new service
+1. Create `shareUtils.ts` and `ShareButton.tsx`
+2. Add ShareButton to both detail pages
+3. Database migration for `referral_clicks`
+4. Create referral capture hook and integrate into app
 
