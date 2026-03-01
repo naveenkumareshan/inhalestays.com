@@ -244,6 +244,22 @@ export const adminCabinsService = {
     }
   },
 
+  approveCabin: async (cabinId: string, approved: boolean) => {
+    try {
+      const { data, error } = await supabase
+        .from('cabins')
+        .update({ is_approved: approved })
+        .eq('id', cabinId)
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error approving cabin:', error);
+      return { success: false, data: null, message: error instanceof Error ? error.message : 'Failed to approve cabin' };
+    }
+  },
+
   uploadCabinImage: async (cabinId: string, file: File) => {
     const { uploadService } = await import('./uploadService');
     return uploadService.uploadCabinImage(cabinId, file);

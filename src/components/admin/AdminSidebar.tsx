@@ -230,14 +230,7 @@ export function AdminSidebar() {
       }] : []) as MenuItem[],
     ];
 
-    if (user?.role === 'admin') {
-      hostelSubItems.splice(1, 0, {
-        title: 'Approvals',
-        url: '/admin/hostel-approvals',
-        icon: UserCheck,
-        roles: ['admin'],
-      });
-    }
+    // Approvals moved to Partners section
 
     menuItems.push({
       title: 'Hostels',
@@ -299,9 +292,12 @@ export function AdminSidebar() {
       },
       {
       title: 'Partners',
-      url: '/admin/vendors',
       icon: UserCheck,
-      roles: ['admin']
+      roles: ['admin'],
+      subItems: [
+        { title: 'All Partners', url: '/admin/vendors', icon: UserCheck, roles: ['admin'] },
+        { title: 'Property Approvals', url: '/admin/property-approvals', icon: ClipboardCheck, roles: ['admin'] },
+      ],
       },
       {
         title: 'Reports',

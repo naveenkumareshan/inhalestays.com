@@ -6,13 +6,16 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { 
   User, Building, MapPin, CreditCard, FileText, Phone, Mail,
-  Calendar, CheckCircle, Clock, XCircle, AlertCircle, Upload, Trash2, FileIcon, Home
+  Calendar, CheckCircle, Clock, XCircle, AlertCircle, Upload, Trash2, FileIcon, Home, Plus
 } from 'lucide-react';
 import { vendorProfileService, VendorProfileData, VendorProfileUpdateData } from '@/api/vendorProfileService';
 import { supabase } from '@/integrations/supabase/client';
+import { adminCabinsService } from '@/api/adminCabinsService';
 
 interface PropertyInfo {
   id: string;
@@ -20,7 +23,10 @@ interface PropertyInfo {
   type: 'Reading Room' | 'Hostel';
   capacity: number;
   is_active: boolean;
+  is_approved: boolean;
 }
+
+type NewPropertyType = 'reading_room' | 'hostel';
 
 export const VendorProfile: React.FC = () => {
   const { toast } = useToast();
@@ -33,6 +39,13 @@ export const VendorProfile: React.FC = () => {
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [properties, setProperties] = useState<PropertyInfo[]>([]);
   const [docApprovals, setDocApprovals] = useState<Record<string, string>>({});
+  const [showAddProperty, setShowAddProperty] = useState(false);
+  const [newPropertyType, setNewPropertyType] = useState<NewPropertyType>('reading_room');
+  const [newPropertyName, setNewPropertyName] = useState('');
+  const [newPropertyCity, setNewPropertyCity] = useState('');
+  const [newPropertyState, setNewPropertyState] = useState('');
+  const [newPropertyGender, setNewPropertyGender] = useState('Co-ed');
+  const [addingProperty, setAddingProperty] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasFetched = useRef(false);
 
@@ -91,12 +104,12 @@ export const VendorProfile: React.FC = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const [cabinsRes, hostelsRes] = await Promise.all([
-        supabase.from('cabins').select('id, name, capacity, is_active').eq('created_by', user.id),
-        supabase.from('hostels').select('id, name, is_active').eq('created_by', user.id),
+        supabase.from('cabins').select('id, name, capacity, is_active, is_approved').eq('created_by', user.id),
+        supabase.from('hostels').select('id, name, is_active, is_approved').eq('created_by', user.id),
       ]);
       const props: PropertyInfo[] = [
-        ...(cabinsRes.data || []).map(c => ({ id: c.id, name: c.name, type: 'Reading Room' as const, capacity: c.capacity || 0, is_active: c.is_active !== false })),
-        ...(hostelsRes.data || []).map(h => ({ id: h.id, name: h.name, type: 'Hostel' as const, capacity: 0, is_active: h.is_active !== false })),
+        ...(cabinsRes.data || []).map(c => ({ id: c.id, name: c.name, type: 'Reading Room' as const, capacity: c.capacity || 0, is_active: c.is_active !== false, is_approved: (c as any).is_approved ?? true })),
+        ...(hostelsRes.data || []).map(h => ({ id: h.id, name: h.name, type: 'Hostel' as const, capacity: 0, is_active: h.is_active !== false, is_approved: h.is_approved })),
       ];
       setProperties(props);
     } catch {}
@@ -157,6 +170,54 @@ export const VendorProfile: React.FC = () => {
       toast({ title: "Error", description: "Failed to update profile", variant: "destructive" });
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleAddProperty = async () => {
+    if (!newPropertyName.trim()) {
+      toast({ title: "Error", description: "Property name is required", variant: "destructive" });
+      return;
+    }
+    setAddingProperty(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      if (newPropertyType === 'reading_room') {
+        const result = await adminCabinsService.createCabin({
+          name: newPropertyName,
+          city: newPropertyCity || null,
+          state: newPropertyState || null,
+          is_active: false,
+          isActive: false,
+          created_by: user.id,
+        });
+        if (!result.success) throw new Error(result.message || 'Failed to create reading room');
+        if (result.data?.id) {
+          await supabase.from('cabins').update({ is_approved: false, is_active: false }).eq('id', result.data.id);
+        }
+      } else {
+        const { error } = await supabase.from('hostels').insert({
+          name: newPropertyName,
+          location: [newPropertyCity, newPropertyState].filter(Boolean).join(', '),
+          gender: newPropertyGender,
+          is_active: false,
+          is_approved: false,
+          created_by: user.id,
+        });
+        if (error) throw error;
+      }
+
+      toast({ title: "Success", description: "Property submitted for approval!" });
+      setShowAddProperty(false);
+      setNewPropertyName('');
+      setNewPropertyCity('');
+      setNewPropertyState('');
+      fetchProperties();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to add property", variant: "destructive" });
+    } finally {
+      setAddingProperty(false);
     }
   };
 
@@ -462,13 +523,21 @@ export const VendorProfile: React.FC = () => {
         <TabsContent value="properties" className="space-y-3">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2"><Home className="h-4 w-4" />My Properties</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2"><Home className="h-4 w-4" />My Properties</CardTitle>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowAddProperty(true)}>
+                  <Plus className="h-3 w-3 mr-1" /> Add New Property
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {properties.length === 0 ? (
                 <div className="text-center py-8">
                   <Building className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
                   <p className="text-xs text-muted-foreground">No properties linked yet</p>
+                  <Button size="sm" variant="outline" className="mt-3 text-xs" onClick={() => setShowAddProperty(true)}>
+                    <Plus className="h-3 w-3 mr-1" /> Add Your First Property
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -482,9 +551,16 @@ export const VendorProfile: React.FC = () => {
                         {p.type === 'Reading Room' && p.capacity > 0 && (
                           <span className="text-xs text-muted-foreground">{p.capacity} seats</span>
                         )}
-                        <Badge className={p.is_active ? 'bg-emerald-100 text-emerald-700 text-[10px]' : 'bg-red-100 text-red-700 text-[10px]'}>
-                          {p.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
+                        {!p.is_approved && (
+                          <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px]">
+                            <Clock className="h-3 w-3 mr-1" />Pending Approval
+                          </Badge>
+                        )}
+                        {p.is_approved && (
+                          <Badge className={p.is_active ? 'bg-emerald-100 text-emerald-700 text-[10px]' : 'bg-red-100 text-red-700 text-[10px]'}>
+                            {p.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -492,6 +568,63 @@ export const VendorProfile: React.FC = () => {
               )}
             </CardContent>
           </Card>
+
+          {/* Add New Property Dialog */}
+          <Dialog open={showAddProperty} onOpenChange={setShowAddProperty}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="text-sm">Add New Property</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">Property Type</Label>
+                  <Select value={newPropertyType} onValueChange={(v) => setNewPropertyType(v as NewPropertyType)}>
+                    <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="reading_room" className="text-xs">Reading Room</SelectItem>
+                      <SelectItem value="hostel" className="text-xs">Hostel</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Property Name *</Label>
+                  <Input className="h-8 text-xs mt-1" value={newPropertyName} onChange={e => setNewPropertyName(e.target.value)} placeholder="Enter property name" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">City</Label>
+                    <Input className="h-8 text-xs mt-1" value={newPropertyCity} onChange={e => setNewPropertyCity(e.target.value)} placeholder="City" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">State</Label>
+                    <Input className="h-8 text-xs mt-1" value={newPropertyState} onChange={e => setNewPropertyState(e.target.value)} placeholder="State" />
+                  </div>
+                </div>
+                {newPropertyType === 'hostel' && (
+                  <div>
+                    <Label className="text-xs">Gender</Label>
+                    <Select value={newPropertyGender} onValueChange={setNewPropertyGender}>
+                      <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Co-ed" className="text-xs">Co-ed</SelectItem>
+                        <SelectItem value="Male" className="text-xs">Male Only</SelectItem>
+                        <SelectItem value="Female" className="text-xs">Female Only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <p className="text-[10px] text-muted-foreground">
+                  Property will be created in "Pending Approval" state. Admin will review and approve it before it goes live.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" size="sm" className="text-xs" onClick={() => setShowAddProperty(false)}>Cancel</Button>
+                <Button size="sm" className="text-xs" onClick={handleAddProperty} disabled={addingProperty}>
+                  {addingProperty ? 'Submitting...' : 'Submit for Approval'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
       </Tabs>
     </div>

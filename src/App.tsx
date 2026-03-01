@@ -54,6 +54,7 @@ const SupportTicketsManagement = lazy(() => import("./components/admin/SupportTi
 const DueManagement = lazy(() => import("./pages/admin/DueManagement"));
 const Receipts = lazy(() => import("./pages/admin/Receipts"));
 const HostelApprovals = lazy(() => import("./pages/admin/HostelApprovals"));
+const PropertyApprovals = lazy(() => import("./pages/admin/PropertyApprovals"));
 const HostelReceipts = lazy(() => import("./pages/admin/HostelReceipts"));
 const HostelDeposits = lazy(() => import("./pages/admin/HostelDeposits"));
 const HostelBedManagementPage = lazy(() => import("./pages/admin/HostelBedManagementPage"));
@@ -164,7 +165,8 @@ function App() {
               <Route path="support-tickets" element={<SupportTicketsManagement />} />
               <Route path="due-management" element={<DueManagement />} />
               <Route path="receipts" element={<Receipts />} />
-              <Route path="hostel-approvals" element={<HostelApprovals />} />
+              <Route path="hostel-approvals" element={<PropertyApprovals />} />
+              <Route path="property-approvals" element={<PropertyApprovals />} />
               <Route path="hostel-receipts" element={<HostelReceipts />} />
               <Route path="hostel-deposits" element={<HostelDeposits />} />
               <Route path="hostels/:hostelId/beds" element={<HostelBedManagementPage />} />

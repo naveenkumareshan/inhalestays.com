@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Eye, Check, X, AlertTriangle, User, Download, Search, RefreshCw, Power } from 'lucide-react';
+import { Eye, Check, X, AlertTriangle, User, Download, Search, RefreshCw, Power, Link2, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { vendorApprovalService, Vendor, VendorFilters, VendorsResponse } from '@/api/vendorApprovalService';
 import { VendorDetailsDialog } from './VendorDetailsDialog';
@@ -16,6 +16,7 @@ import { VendorStatsCards } from './VendorStatsCards';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
+import { getPublicAppUrl } from '@/utils/appUrl';
 
 const VendorApproval: React.FC = () => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -129,12 +130,23 @@ const VendorApproval: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-lg font-semibold">Partner Management</h1>
           <p className="text-xs text-muted-foreground">Review and manage partner applications</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="outline" size="sm" className="h-8 text-xs gap-1"
+            onClick={() => {
+              const url = `${getPublicAppUrl()}/partner/register`;
+              navigator.clipboard.writeText(url);
+              toast({ title: "Copied!", description: "Partner onboarding link copied to clipboard" });
+            }}
+          >
+            <Link2 className="h-3 w-3" /> Onboarding Link
+            <Copy className="h-3 w-3 ml-0.5" />
+          </Button>
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={fetchVendors}>
             <RefreshCw className="h-3 w-3" /> Refresh
           </Button>

@@ -308,6 +308,7 @@ export type Database = {
           images: string[] | null
           is_24_hours: boolean
           is_active: boolean | null
+          is_approved: boolean
           is_booking_active: boolean
           layout_image: string | null
           locker_available: boolean
@@ -352,6 +353,7 @@ export type Database = {
           images?: string[] | null
           is_24_hours?: boolean
           is_active?: boolean | null
+          is_approved?: boolean
           is_booking_active?: boolean
           layout_image?: string | null
           locker_available?: boolean
@@ -396,6 +398,7 @@ export type Database = {
           images?: string[] | null
           is_24_hours?: boolean
           is_active?: boolean | null
+          is_approved?: boolean
           is_booking_active?: boolean
           layout_image?: string | null
           locker_available?: boolean
