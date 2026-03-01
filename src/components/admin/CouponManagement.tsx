@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,20 +14,19 @@ import { Plus, Edit, Trash2, Search, TicketPercent, Users } from 'lucide-react';
 import { couponService, CouponData } from '@/api/couponService';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { vendorService } from '@/api/vendorService';
+import { supabase } from '@/integrations/supabase/client';
 import { UserSelectionDialog } from './UserSelectionDialog';
 import { AdminTablePagination, getSerialNumber } from './AdminTablePagination';
 
-interface VendorOption {
-  _id: string;
-  businessName: string;
-  vendorId: string;
+interface PartnerOption {
+  id: string;
+  business_name: string;
 }
 
 export function CouponManagement() {
   const { user } = useAuth();
   const [coupons, setCoupons] = useState<CouponData[]>([]);
-  const [vendors, setVendors] = useState<VendorOption[]>([]);
+  const [partners, setPartners] = useState<PartnerOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -42,38 +42,42 @@ export function CouponManagement() {
     description: '',
     type: 'percentage',
     value: 0,
-    maxDiscountAmount: 0,
-    minOrderAmount: 0,
-    applicableFor: ['cabin'],
+    max_discount_amount: 0,
+    min_order_amount: 0,
+    applicable_for: ['cabin'],
     scope: user?.role === 'admin' ? 'global' : 'vendor',
-    vendorId: user?.role === 'vendor' ? user.vendorId || user.vendorIds?.[0] : '',
-    usageLimit: undefined,
-    userUsageLimit: 1,
-    startDate: '',
-    endDate: '',
-    isActive: true,
-    firstTimeUserOnly: false,
-    isReferralCoupon: false,
-    referralType: undefined,
-    specificUsers: [],
-    excludeUsers: []
+    partner_id: '',
+    usage_limit: undefined,
+    user_usage_limit: 1,
+    start_date: '',
+    end_date: '',
+    is_active: true,
+    first_time_user_only: false,
+    is_referral_coupon: false,
+    referral_type: undefined,
+    specific_users: [],
+    exclude_users: []
   });
 
   useEffect(() => {
     fetchCoupons();
     if (user?.role === 'admin') {
-      fetchVendors();
+      fetchPartners();
     }
   }, [searchTerm, filterType, filterScope]);
 
-  const fetchVendors = async () => {
+  const fetchPartners = async () => {
     try {
-      const response = await vendorService.getAllVendors();
-      if (response.success) {
-        setVendors(response.data || []);
+      const { data, error } = await supabase
+        .from('partners')
+        .select('id, business_name')
+        .eq('is_active', true)
+        .order('business_name');
+      if (!error && data) {
+        setPartners(data);
       }
     } catch (error) {
-      console.error('Error fetching vendors:', error);
+      console.error('Error fetching partners:', error);
     }
   };
 
@@ -86,7 +90,7 @@ export function CouponManagement() {
         scope: filterScope || undefined,
       });
       if (response.success) {
-        setCoupons(response.data || []);
+        setCoupons((response.data || []) as CouponData[]);
       } else {
         toast({ title: "Error", description: "Failed to fetch coupons", variant: "destructive" });
       }
@@ -98,22 +102,14 @@ export function CouponManagement() {
     }
   };
 
-  // Client-side filtering by tab (applicableFor)
+  // Client-side filtering by tab (applicable_for)
   const filteredCoupons = useMemo(() => {
     let filtered = coupons;
-    // Partner-scoped filtering: partners only see their own vendor coupons + global (read-only)
-    if (user?.role === 'vendor') {
-      const partnerId = user.vendorId || user.vendorIds?.[0];
-      filtered = filtered.filter(c => 
-        c.scope === 'global' || 
-        (c.scope === 'vendor' && c.vendorId === partnerId)
-      );
-    }
     if (activeTab !== 'all') {
-      filtered = filtered.filter(c => c.applicableFor?.includes(activeTab));
+      filtered = filtered.filter(c => c.applicable_for?.includes(activeTab));
     }
     return filtered;
-  }, [coupons, activeTab, user]);
+  }, [coupons, activeTab]);
 
   const paginatedCoupons = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -125,12 +121,12 @@ export function CouponManagement() {
 
   const handleCreateCoupon = async () => {
     try {
-      if (!formData.code || !formData.name || !formData.startDate || !formData.endDate) {
+      if (!formData.code || !formData.name || !formData.start_date || !formData.end_date) {
         toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" });
         return;
       }
-      if (formData.scope === 'vendor' && user?.role === 'admin' && !formData.vendorId) {
-        toast({ title: "Error", description: "Please select a vendor for vendor-specific coupons", variant: "destructive" });
+      if (formData.scope === 'vendor' && user?.role === 'admin' && !formData.partner_id) {
+        toast({ title: "Error", description: "Please select a partner for partner-specific coupons", variant: "destructive" });
         return;
       }
       const response = await couponService.createCoupon(formData as any);
@@ -151,7 +147,7 @@ export function CouponManagement() {
   const handleUpdateCoupon = async () => {
     try {
       if (!editingCoupon) return;
-      const response = await couponService.updateCoupon(editingCoupon._id!, formData);
+      const response = await couponService.updateCoupon(editingCoupon.id!, formData);
       if (response.success) {
         toast({ title: "Success", description: "Coupon updated successfully" });
         setIsDialogOpen(false);
@@ -186,12 +182,12 @@ export function CouponManagement() {
   const resetForm = () => {
     setFormData({
       code: '', name: '', description: '', type: 'percentage', value: 0,
-      maxDiscountAmount: 0, minOrderAmount: 0, applicableFor: ['cabin'],
+      max_discount_amount: 0, min_order_amount: 0, applicable_for: ['cabin'],
       scope: user?.role === 'admin' ? 'global' : 'vendor',
-      vendorId: user?.role === 'vendor' ? user.vendorId || user.vendorIds?.[0] : '',
-      usageLimit: undefined, userUsageLimit: 1, startDate: '', endDate: '',
-      isActive: true, firstTimeUserOnly: false, isReferralCoupon: false,
-      referralType: undefined, specificUsers: [], excludeUsers: []
+      partner_id: '',
+      usage_limit: undefined, user_usage_limit: 1, start_date: '', end_date: '',
+      is_active: true, first_time_user_only: false, is_referral_coupon: false,
+      referral_type: undefined, specific_users: [], exclude_users: []
     });
   };
 
@@ -199,23 +195,23 @@ export function CouponManagement() {
     setEditingCoupon(coupon);
     setFormData({
       code: coupon.code, name: coupon.name, description: coupon.description,
-      type: coupon.type, value: coupon.value, maxDiscountAmount: coupon.maxDiscountAmount,
-      minOrderAmount: coupon.minOrderAmount, applicableFor: coupon.applicableFor,
-      scope: coupon.scope, vendorId: coupon.vendorId, usageLimit: coupon.usageLimit,
-      userUsageLimit: coupon.userUsageLimit, startDate: coupon.startDate?.split('T')[0],
-      endDate: coupon.endDate?.split('T')[0], isActive: coupon.isActive,
-      firstTimeUserOnly: coupon.firstTimeUserOnly, isReferralCoupon: coupon.isReferralCoupon,
-      referralType: coupon.referralType, specificUsers: coupon.specificUsers,
-      excludeUsers: coupon.excludeUsers
+      type: coupon.type, value: coupon.value, max_discount_amount: coupon.max_discount_amount,
+      min_order_amount: coupon.min_order_amount, applicable_for: coupon.applicable_for,
+      scope: coupon.scope, partner_id: coupon.partner_id, usage_limit: coupon.usage_limit,
+      user_usage_limit: coupon.user_usage_limit, start_date: coupon.start_date?.split('T')[0],
+      end_date: coupon.end_date?.split('T')[0], is_active: coupon.is_active,
+      first_time_user_only: coupon.first_time_user_only, is_referral_coupon: coupon.is_referral_coupon,
+      referral_type: coupon.referral_type, specific_users: coupon.specific_users,
+      exclude_users: coupon.exclude_users
     });
     setIsDialogOpen(true);
   };
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString();
 
-  const getVendorName = (vendor: VendorOption | string) => {
-    if (typeof vendor === 'string') return vendor;
-    return vendor ? `${vendor.businessName} (${vendor.vendorId})` : 'Unknown';
+  const getPartnerName = (partnerId: string) => {
+    const partner = partners.find(p => p.id === partnerId);
+    return partner ? partner.business_name : partnerId;
   };
 
   return (
@@ -263,11 +259,11 @@ export function CouponManagement() {
               {user?.role === 'admin' && formData.scope === 'vendor' && (
                 <div>
                   <Label className="text-xs">Select Partner *</Label>
-                  <Select value={formData.vendorId} onValueChange={(v) => setFormData({ ...formData, vendorId: v })}>
+                  <Select value={formData.partner_id} onValueChange={(v) => setFormData({ ...formData, partner_id: v })}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a partner" /></SelectTrigger>
                     <SelectContent>
-                      {vendors.map((v) => (
-                        <SelectItem key={v._id} value={v._id} className="text-xs">{v.businessName} ({v.vendorId})</SelectItem>
+                      {partners.map((p) => (
+                        <SelectItem key={p.id} value={p.id} className="text-xs">{p.business_name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -290,16 +286,16 @@ export function CouponManagement() {
               {formData.type === 'percentage' && (
                 <div>
                   <Label className="text-xs">Max Discount (₹)</Label>
-                  <Input className="h-8 text-xs" type="number" min="0" value={formData.maxDiscountAmount} onChange={(e) => setFormData({ ...formData, maxDiscountAmount: parseFloat(e.target.value) || 0 })} />
+                  <Input className="h-8 text-xs" type="number" min="0" value={formData.max_discount_amount} onChange={(e) => setFormData({ ...formData, max_discount_amount: parseFloat(e.target.value) || 0 })} />
                 </div>
               )}
               <div>
                 <Label className="text-xs">Min Order Amount (₹)</Label>
-                <Input className="h-8 text-xs" type="number" min="0" value={formData.minOrderAmount} onChange={(e) => setFormData({ ...formData, minOrderAmount: parseFloat(e.target.value) || 0 })} />
+                <Input className="h-8 text-xs" type="number" min="0" value={formData.min_order_amount} onChange={(e) => setFormData({ ...formData, min_order_amount: parseFloat(e.target.value) || 0 })} />
               </div>
               <div>
                 <Label className="text-xs">Applicable For *</Label>
-                <Select value={formData.applicableFor?.[0]} onValueChange={(v) => setFormData({ ...formData, applicableFor: [v] })}>
+                <Select value={formData.applicable_for?.[0]} onValueChange={(v) => setFormData({ ...formData, applicable_for: [v] })}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all" className="text-xs">All (Reading Room + Hostel)</SelectItem>
@@ -310,19 +306,19 @@ export function CouponManagement() {
               </div>
               <div>
                 <Label className="text-xs">Total Usage Limit</Label>
-                <Input className="h-8 text-xs" type="number" min="0" value={formData.usageLimit || ''} onChange={(e) => setFormData({ ...formData, usageLimit: e.target.value ? parseInt(e.target.value) : undefined })} placeholder="Unlimited" />
+                <Input className="h-8 text-xs" type="number" min="0" value={formData.usage_limit || ''} onChange={(e) => setFormData({ ...formData, usage_limit: e.target.value ? parseInt(e.target.value) : undefined })} placeholder="Unlimited" />
               </div>
               <div>
                 <Label className="text-xs">Per User Limit</Label>
-                <Input className="h-8 text-xs" type="number" min="1" value={formData.userUsageLimit} onChange={(e) => setFormData({ ...formData, userUsageLimit: parseInt(e.target.value) || 1 })} />
+                <Input className="h-8 text-xs" type="number" min="1" value={formData.user_usage_limit} onChange={(e) => setFormData({ ...formData, user_usage_limit: parseInt(e.target.value) || 1 })} />
               </div>
               <div>
                 <Label className="text-xs">Start Date *</Label>
-                <Input className="h-8 text-xs" type="date" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} />
+                <Input className="h-8 text-xs" type="date" value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} />
               </div>
               <div>
                 <Label className="text-xs">End Date *</Label>
-                <Input className="h-8 text-xs" type="date" value={formData.endDate} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} />
+                <Input className="h-8 text-xs" type="date" value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} />
               </div>
 
               {/* User Assignment */}
@@ -332,22 +328,12 @@ export function CouponManagement() {
                   <div>
                     <Label className="text-xs">Specific Users Only</Label>
                     <p className="text-[10px] text-muted-foreground mb-1">Only selected users can use this coupon</p>
-                    {editingCoupon?.specificUsers && editingCoupon.specificUsers.length > 0 && (
-                      <div className="h-32 overflow-y-auto border p-1.5 rounded mb-1.5 text-[10px]">
-                        {editingCoupon.specificUsers.map((u: any, i: number) => (
-                          <div key={i} className="mb-1 p-1 border rounded">
-                            <div><strong>Name:</strong> {typeof u === 'string' ? u : (u?.name || "Unknown")}</div>
-                            <div><strong>Email:</strong> {typeof u === 'string' ? '' : (u?.email || "-")}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                     <UserSelectionDialog
-                      selectedUsers={formData.specificUsers || []}
-                      onUsersChange={(ids) => setFormData({ ...formData, specificUsers: ids })}
+                      selectedUsers={formData.specific_users || []}
+                      onUsersChange={(ids) => setFormData({ ...formData, specific_users: ids })}
                       trigger={
                         <Button variant="outline" type="button" size="sm" className="w-full h-7 text-xs">
-                          <Users className="h-3 w-3 mr-1" /> Select Users ({(formData.specificUsers || []).length})
+                          <Users className="h-3 w-3 mr-1" /> Select Users ({(formData.specific_users || []).length})
                         </Button>
                       }
                       title="Select Specific Users"
@@ -358,11 +344,11 @@ export function CouponManagement() {
                     <Label className="text-xs">Exclude Users</Label>
                     <p className="text-[10px] text-muted-foreground mb-1">Selected users cannot use this coupon</p>
                     <UserSelectionDialog
-                      selectedUsers={formData.excludeUsers || []}
-                      onUsersChange={(ids) => setFormData({ ...formData, excludeUsers: ids })}
+                      selectedUsers={formData.exclude_users || []}
+                      onUsersChange={(ids) => setFormData({ ...formData, exclude_users: ids })}
                       trigger={
                         <Button variant="outline" type="button" size="sm" className="w-full h-7 text-xs">
-                          <Users className="h-3 w-3 mr-1" /> Exclude Users ({(formData.excludeUsers || []).length})
+                          <Users className="h-3 w-3 mr-1" /> Exclude Users ({(formData.exclude_users || []).length})
                         </Button>
                       }
                       title="Exclude Users"
@@ -374,11 +360,11 @@ export function CouponManagement() {
 
               {/* Toggles */}
               <div className="flex items-center gap-2">
-                <Switch id="isActive" checked={formData.isActive} onCheckedChange={(c) => setFormData({ ...formData, isActive: c })} />
+                <Switch id="isActive" checked={formData.is_active} onCheckedChange={(c) => setFormData({ ...formData, is_active: c })} />
                 <Label htmlFor="isActive" className="text-xs">Active</Label>
               </div>
               <div className="flex items-center gap-2">
-                <Switch id="firstTimeUserOnly" checked={formData.firstTimeUserOnly} onCheckedChange={(c) => setFormData({ ...formData, firstTimeUserOnly: c })} />
+                <Switch id="firstTimeUserOnly" checked={formData.first_time_user_only} onCheckedChange={(c) => setFormData({ ...formData, first_time_user_only: c })} />
                 <Label htmlFor="firstTimeUserOnly" className="text-xs">First-time users only</Label>
               </div>
             </div>
@@ -459,11 +445,11 @@ export function CouponManagement() {
               </TableHeader>
               <TableBody>
                 {paginatedCoupons.map((coupon, idx) => (
-                  <TableRow key={coupon._id} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
+                  <TableRow key={coupon.id} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
                     <TableCell className="text-[11px] py-1.5 px-3 text-muted-foreground">{getSerialNumber(idx, currentPage, pageSize)}</TableCell>
                     <TableCell className="py-1.5 px-3">
                       <span className="font-mono font-semibold text-[11px]">{coupon.code}</span>
-                      {coupon.isReferralCoupon && (
+                      {coupon.is_referral_coupon && (
                         <Badge variant="secondary" className="ml-1 text-[9px] h-4 px-1">Ref</Badge>
                       )}
                     </TableCell>
@@ -475,7 +461,7 @@ export function CouponManagement() {
                     </TableCell>
                     {user?.role === 'admin' && (
                       <TableCell className="text-[11px] py-1.5 px-3 text-muted-foreground max-w-[100px] truncate">
-                        {coupon.scope === 'vendor' && coupon.vendorId ? getVendorName(coupon.vendorId) : '-'}
+                        {coupon.scope === 'vendor' && coupon.partner_id ? getPartnerName(coupon.partner_id) : '-'}
                       </TableCell>
                     )}
                     <TableCell className="py-1.5 px-3">
@@ -483,36 +469,32 @@ export function CouponManagement() {
                     </TableCell>
                     <TableCell className="text-[11px] py-1.5 px-3">
                       {coupon.type === 'percentage' ? `${coupon.value}%` : `₹${coupon.value}`}
-                      {coupon.type === 'percentage' && coupon.maxDiscountAmount ? (
-                        <span className="text-[9px] text-muted-foreground block">max ₹{coupon.maxDiscountAmount}</span>
+                      {coupon.type === 'percentage' && coupon.max_discount_amount ? (
+                        <span className="text-[9px] text-muted-foreground block">max ₹{coupon.max_discount_amount}</span>
                       ) : null}
                     </TableCell>
                     <TableCell className="py-1.5 px-3">
                       <Badge variant="outline" className="text-[9px] h-4 px-1.5">
-                        {coupon.applicableFor?.includes('all') ? 'All' : coupon.applicableFor?.includes('hostel') ? 'Hostel' : 'Room'}
+                        {coupon.applicable_for?.includes('all') ? 'All' : coupon.applicable_for?.includes('hostel') ? 'Hostel' : 'Room'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-[11px] py-1.5 px-3">
-                      {coupon.usageCount || 0}{coupon.usageLimit ? `/${coupon.usageLimit}` : ''}
+                      {coupon.usage_count || 0}{coupon.usage_limit ? `/${coupon.usage_limit}` : ''}
                     </TableCell>
-                    <TableCell className="text-[11px] py-1.5 px-3 text-muted-foreground">{formatDate(coupon.endDate!)}</TableCell>
+                    <TableCell className="text-[11px] py-1.5 px-3 text-muted-foreground">{formatDate(coupon.end_date!)}</TableCell>
                     <TableCell className="py-1.5 px-3">
-                      <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium border ${coupon.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800'}`}>
-                        {coupon.isActive ? 'Active' : 'Inactive'}
+                      <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium border ${coupon.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800'}`}>
+                        {coupon.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </TableCell>
                     <TableCell className="py-1.5 px-3">
                       <div className="flex gap-1">
-                        {(user?.role === 'admin' || (coupon.scope === 'vendor' && coupon.vendorId === (user?.vendorId || user?.vendorIds?.[0]))) && (
-                          <>
-                            <Button variant="outline" size="sm" className="h-6 w-6 p-0" onClick={() => openEditDialog(coupon)}>
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button variant="destructive" size="sm" className="h-6 w-6 p-0" onClick={() => handleDeleteCoupon(coupon._id!)}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </>
-                        )}
+                        <Button variant="outline" size="sm" className="h-6 w-6 p-0" onClick={() => openEditDialog(coupon)}>
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button variant="destructive" size="sm" className="h-6 w-6 p-0" onClick={() => handleDeleteCoupon(coupon.id!)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>

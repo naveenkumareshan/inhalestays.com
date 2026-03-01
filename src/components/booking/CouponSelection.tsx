@@ -90,7 +90,7 @@ export const CouponSelection: React.FC<CouponSelectionProps> = ({
   };
 
   const handleSelectCoupon = async (couponId: string) => {
-    const selectedCoupon = availableCoupons.find(c => c._id === couponId);
+    const selectedCoupon = availableCoupons.find(c => c.id === couponId);
     if (selectedCoupon) {
       await validateAndApplyCoupon(selectedCoupon.code);
       setSelectedCouponId(couponId);
@@ -187,7 +187,7 @@ export const CouponSelection: React.FC<CouponSelectionProps> = ({
               </SelectTrigger>
               <SelectContent>
                 {availableCoupons.map((coupon) => (
-                  <SelectItem key={coupon._id} value={coupon._id}>
+                  <SelectItem key={coupon.id} value={coupon.id}>
                     <div className="flex items-center justify-between w-full">
                       <div>
                         <span className="font-medium">{coupon.code}</span>

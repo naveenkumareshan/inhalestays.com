@@ -599,6 +599,104 @@ export type Database = {
           },
         ]
       }
+      coupons: {
+        Row: {
+          applicable_for: string[] | null
+          code: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          end_date: string
+          exclude_users: string[] | null
+          first_time_user_only: boolean | null
+          generated_by: string | null
+          id: string
+          is_active: boolean | null
+          is_referral_coupon: boolean | null
+          max_discount_amount: number | null
+          min_order_amount: number | null
+          name: string
+          partner_id: string | null
+          referral_type: string | null
+          scope: string | null
+          specific_users: string[] | null
+          start_date: string
+          type: string
+          updated_at: string | null
+          usage_count: number | null
+          usage_limit: number | null
+          used_by: Json | null
+          user_usage_limit: number | null
+          value: number
+        }
+        Insert: {
+          applicable_for?: string[] | null
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          end_date: string
+          exclude_users?: string[] | null
+          first_time_user_only?: boolean | null
+          generated_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_referral_coupon?: boolean | null
+          max_discount_amount?: number | null
+          min_order_amount?: number | null
+          name: string
+          partner_id?: string | null
+          referral_type?: string | null
+          scope?: string | null
+          specific_users?: string[] | null
+          start_date: string
+          type: string
+          updated_at?: string | null
+          usage_count?: number | null
+          usage_limit?: number | null
+          used_by?: Json | null
+          user_usage_limit?: number | null
+          value: number
+        }
+        Update: {
+          applicable_for?: string[] | null
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          end_date?: string
+          exclude_users?: string[] | null
+          first_time_user_only?: boolean | null
+          generated_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_referral_coupon?: boolean | null
+          max_discount_amount?: number | null
+          min_order_amount?: number | null
+          name?: string
+          partner_id?: string | null
+          referral_type?: string | null
+          scope?: string | null
+          specific_users?: string[] | null
+          start_date?: string
+          type?: string
+          updated_at?: string | null
+          usage_count?: number | null
+          usage_limit?: number | null
+          used_by?: Json | null
+          user_usage_limit?: number | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupons_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       due_payments: {
         Row: {
           amount: number
