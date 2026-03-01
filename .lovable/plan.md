@@ -1,23 +1,37 @@
 
-# Fix Booking Card Badges
 
-## Problems
-1. **Two redundant badges**: Cards show both "Paid" (from payment status) AND "Fully Paid" -- only one badge is needed.
-2. **Incorrect "Fully Paid" for advance_paid bookings**: Bookings with `advance_paid` status show "Fully Paid" even when there are outstanding dues, because the logic treats `advance_paid` the same as `completed`.
+# Unify Hostel Filters to Match Study Rooms UI
 
-## Changes
+## What's Changing
 
-**File**: `src/components/booking/BookingsList.tsx`
+The Hostels page (`/hostels`) currently has a busy filter area with a search bar, "Near Me" button, gender pills, and city pills all in the sticky header. The Study Rooms page (`/cabins`) has a much cleaner layout: just a title and a single row of category filter pills.
 
-### 1. Remove the old payment status badge (line 192)
-Remove `{booking.paymentStatus && getStatusBadge(booking.paymentStatus)}` so only one badge is shown.
+We'll simplify the Hostels sticky header to follow the same pattern as Study Rooms.
 
-### 2. Fix the due/fully-paid logic (lines 196-200)
-Replace the current logic with:
-- If `dueAmount > 0` --> show red "Due: X" badge
-- If `paymentStatus === 'advance_paid'` (and no due in map) --> show orange "Advance Paid" badge (not "Fully Paid")
-- If `paymentStatus === 'completed'` and no dues --> show green "Fully Paid" badge  
-- If `paymentStatus === 'pending'` --> show amber "Pending" badge
-- If `paymentStatus === 'failed'` or `'cancelled'` --> show red badge
+## Before vs After
 
-This ensures only one meaningful badge per card, and `advance_paid` bookings never falsely show as "Fully Paid".
+| Element | Current (Hostels) | New (Matching Study Rooms) |
+|---------|-------------------|---------------------------|
+| Title | "Find Your Hostel" | "Hostels" |
+| Search bar | Full search input in header | Removed from header |
+| Near Me button | In filter row | Removed |
+| Gender filters | Male / Female / Co-ed pills | Kept as filter pills (same style as category pills in Study Rooms) |
+| City filters | City name pills with Hotel icon | Removed |
+| Layout | Search + 2 rows of pills | Single row of gender filter pills |
+
+The sticky header will contain only:
+1. Title: "Hostels"
+2. One row of filter pills: `All`, `Male`, `Female`, `Co-ed` (matching the rounded-xl, text-[11px], h-8 pill style from Study Rooms)
+
+## Technical Details
+
+**File**: `src/pages/Hostels.tsx`
+
+1. Remove the search `Input` from the sticky header
+2. Remove the "Near Me" `Button`
+3. Remove city filter pills
+4. Add an "All" pill to the gender filters (to clear filter), matching Study Rooms' category pill pattern
+5. Keep existing `filteredHostels` logic but remove `searchQuery` and `cityFilter` state since they're no longer needed
+6. Remove `handleFindNearby`, `handleCityChange`, cities state, and related imports
+7. Match the exact same header structure: title + single pill row with identical styling
+
