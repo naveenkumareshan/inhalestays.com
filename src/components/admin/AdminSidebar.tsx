@@ -316,6 +316,7 @@ export function AdminSidebar() {
         { title: 'All Partners', url: '/admin/vendors', icon: UserCheck, roles: ['admin'] },
         { title: 'Property Approvals', url: '/admin/property-approvals', icon: ClipboardCheck, roles: ['admin'] },
         { title: 'Settlements', url: '/admin/settlements', icon: Wallet, roles: ['admin'] },
+        { title: 'Payouts', url: '/admin/payouts', icon: Wallet, roles: ['admin'] },
       ],
       },
       {
@@ -324,7 +325,6 @@ export function AdminSidebar() {
         roles: ['admin'],
         subItems: [
           { title: 'Booking Reports', url: '/admin/reports', icon: BarChart2, roles: ['admin'] },
-          { title: 'Payouts', url: '/admin/payouts', icon: Wallet, roles: ['admin'] }
         ],
       },
       {
