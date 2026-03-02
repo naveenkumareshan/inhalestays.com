@@ -438,6 +438,7 @@ const HostelRoomDetails = () => {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-background pb-24">
+        <div className="max-w-3xl mx-auto">
         {loading ? (
           <HostelDetailSkeleton />
         ) : error || !hostel ? (
@@ -1040,6 +1041,7 @@ const HostelRoomDetails = () => {
           </>
         )}
 
+      </div>
       </div>
     </ErrorBoundary>
   );

@@ -217,6 +217,7 @@ const BookSeat = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
+      <div className="max-w-3xl mx-auto">
       {loading ? (
         <BookSeatSkeleton />
       ) : error ? (
@@ -428,6 +429,7 @@ const BookSeat = () => {
           )}
         </>
       )}
+      </div>
     </div>
   );
 };
