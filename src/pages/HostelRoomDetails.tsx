@@ -418,7 +418,7 @@ const HostelRoomDetails = () => {
   }, [effectiveFoodPolicy]);
 
   /* ─── Price calculations (after discountedPrice is defined) ─── */
-  const foodAmount = foodOpted ? (durationType === 'daily' ? Math.round(effectiveFoodPrice / 30) * durationCount : durationType === 'weekly' ? Math.round(effectiveFoodPrice / 4) * durationCount : effectiveFoodPrice * durationCount) : 0;
+  const foodAmount = (foodOpted && effectiveFoodPolicy !== 'mandatory') ? (durationType === 'daily' ? Math.round(effectiveFoodPrice / 30) * durationCount : durationType === 'weekly' ? Math.round(effectiveFoodPrice / 4) * durationCount : effectiveFoodPrice * durationCount) : 0;
   const totalPrice = (discountedPrice * durationCount) + foodAmount;
   const calculateAdvanceAmount = () => {
     if (!hostel?.advance_booking_enabled) return null;
@@ -873,7 +873,7 @@ const HostelRoomDetails = () => {
                       </button>
                     }
                   />
-                  {foodOpted && (
+                  {foodOpted && effectiveFoodPolicy !== 'mandatory' && (
                     <div className="text-xs bg-primary/5 rounded-lg p-2 border border-primary/10">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Food Charges</span>
@@ -933,12 +933,17 @@ const HostelRoomDetails = () => {
                         <span className="font-medium text-emerald-600 dark:text-emerald-400">-{selectedStayPackage.discount_percentage}%</span>
                       </div>
                     )}
-                    {foodOpted && foodAmount > 0 && (
+                    {foodOpted && effectiveFoodPolicy === 'mandatory' ? (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Food</span>
+                        <span className="inline-flex items-center text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full font-medium">Included in Rent</span>
+                      </div>
+                    ) : foodOpted && foodAmount > 0 ? (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Food Charges</span>
                         <span className="font-medium text-foreground">{formatCurrency(foodAmount)}</span>
                       </div>
-                    )}
+                    ) : null}
                     <Separator className="my-1.5 opacity-50" />
                     <div className="flex justify-between text-sm">
                       <span className="font-semibold text-foreground">Total Amount</span>
