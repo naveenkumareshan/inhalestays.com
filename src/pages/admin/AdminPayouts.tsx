@@ -1,471 +1,240 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { DataTable } from '@/components/ui/data-table';
-import  ReportDateRangePicker from '@/components/admin/reports/ReportDateRangePicker';
-import { adminPayoutService, AdminPayout, PayoutProcessData, SystemAnalytics } from '@/api/adminPayoutService';
-import { DollarSign, Users, Clock, CheckCircle } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { DateRange } from 'react-day-picker';
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subWeeks, subMonths, subYears } from 'date-fns';
+import { settlementService, SettlementFilters, PaymentData } from '@/api/settlementService';
+import { SettlementDetailDialog } from '@/components/admin/SettlementDetailDialog';
+import { Loader2, Eye, CreditCard, Wallet, Clock, CheckCircle, IndianRupee } from 'lucide-react';
+import { format } from 'date-fns';
 
 const AdminPayouts: React.FC = () => {
-  const [payouts, setPayouts] = useState<AdminPayout[]>([]);
-  const [analytics, setAnalytics] = useState<SystemAnalytics | null>(null);
+  const [settlements, setSettlements] = useState<any[]>([]);
+  const [partners, setPartners] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState<string | null>(null);
-  const [selectedPayout, setSelectedPayout] = useState<AdminPayout | null>(null);
-  const [processData, setProcessData] = useState<PayoutProcessData>({
-    status: 'completed',
-    notes: '',
-    transactionId: ''
-  });
-  const [filters, setFilters] = useState({
-    status: '',
-    period: 'month',
-    dateRange: undefined as DateRange | undefined
-  });
-  const [dateFilterType, setDateFilterType] = useState<string>('thisMonth');
+  const [filters, setFilters] = useState<SettlementFilters>({ status: 'all' });
+  const [selectedSettlement, setSelectedSettlement] = useState<string | null>(null);
+  const [showPayDialog, setShowPayDialog] = useState(false);
+  const [paySettlementId, setPaySettlementId] = useState<string | null>(null);
+  const [payForm, setPayForm] = useState<PaymentData>({ utr_number: '', payment_reference: '', payment_mode: 'neft', payment_date: format(new Date(), 'yyyy-MM-dd'), notes: '' });
+  const [paying, setPaying] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Set initial date range based on default filter
-    handlePredefinedDateRange('today');
-    fetchAnalytics();
-    fetchPayouts();
-    setLoading(false);
-  }, []);
-
-  // useEffect(() => {
-  //   fetchPayouts();
-  //   fetchAnalytics();
-  // }, []);
-
-  const handlePredefinedDateRange = (rangeType: string) => {
-    const today = new Date();
-    let from: Date;
-    let to: Date;
-
-    switch (rangeType) {
-      case 'today':
-        from = startOfDay(today);
-        to = endOfDay(today);
-        break;
-      case 'thisWeek':
-        from = startOfWeek(today);
-        to = endOfWeek(today);
-        break;
-      case 'thisMonth':
-        from = startOfMonth(today);
-        to = endOfMonth(today);
-        break;
-      case 'lastMonth':
-        { const lastMonth = subMonths(today, 1);
-        from = startOfMonth(lastMonth);
-        to = endOfMonth(lastMonth);
-        break; }
-      case 'thisYear':
-        from = startOfYear(today);
-        to = endOfYear(today);
-        break;
-      case 'lastYear':
-        { const lastYear = subYears(today, 1);
-        from = startOfYear(lastYear);
-        to = endOfYear(lastYear);
-        break; }
-      case 'custom':
-        from = startOfWeek(today);
-        to = endOfWeek(today);
-        break;
-      default:
-        return;
-    }
-    
-    setFilters(prev => ({ ...prev, dateRange: { from, to } }));
-    setDateFilterType(rangeType);
-  };
-
-  const handleCustomDateRange = (range: DateRange) => {
-    setFilters(prev => ({ ...prev, dateRange: range }));
-  };
-
-  const fetchPayouts = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    const params: any = {
-      status: filters.status || undefined
-    };
-
-    // Add date range to API call if available
-    if (filters.dateRange?.from) {
-      params.startDate = format(filters.dateRange.from, 'yyyy-MM-dd');
-    }
-    if (filters.dateRange?.to) {
-      params.endDate = format(filters.dateRange.to, 'yyyy-MM-dd');
-    }
-
-    const result = await adminPayoutService.getAllPayouts(params);
-
-    if (result.success) {
-      setPayouts(result.data.data || []);
-    } else {
-      toast({
-        title: "Error",
-        description: "Failed to fetch payouts",
-        variant: "destructive"
-      });
-    }
+    const [settRes, partnerRes, statsRes] = await Promise.all([
+      settlementService.getSettlements(filters),
+      settlementService.getAllPartners(),
+      settlementService.getDashboardStats(),
+    ]);
+    setSettlements(settRes.data || []);
+    setPartners(partnerRes.data || []);
+    setStats(statsRes);
     setLoading(false);
+  }, [filters]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleMarkPaid = async () => {
+    if (!paySettlementId || !payForm.utr_number) {
+      toast({ title: 'Error', description: 'UTR number is required', variant: 'destructive' });
+      return;
+    }
+    setPaying(true);
+    const { error } = await settlementService.markSettlementPaid(paySettlementId, payForm);
+    if (error) toast({ title: 'Error', description: 'Failed to mark paid', variant: 'destructive' });
+    else {
+      toast({ title: 'Success', description: 'Payout marked as paid' });
+      setShowPayDialog(false);
+      setPaySettlementId(null);
+      setPayForm({ utr_number: '', payment_reference: '', payment_mode: 'neft', payment_date: format(new Date(), 'yyyy-MM-dd'), notes: '' });
+      fetchData();
+    }
+    setPaying(false);
   };
 
-  const fetchAnalytics = async () => {
-    const result = await adminPayoutService.getSystemAnalytics(filters.period as any);
-    if (result.success) {
-      setAnalytics(result.data.data);
-    }
+  const getStatusBadge = (status: string) => {
+    const colorMap: Record<string, string> = {
+      draft: 'bg-gray-100 text-gray-700',
+      generated: 'bg-blue-100 text-blue-700',
+      approved: 'bg-green-100 text-green-700',
+      locked: 'bg-orange-100 text-orange-700',
+      paid: 'bg-emerald-100 text-emerald-800',
+      disputed: 'bg-red-100 text-red-700',
+    };
+    return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${colorMap[status] || 'bg-gray-100 text-gray-700'}`}>{status.toUpperCase()}</span>;
   };
-
-  const handleProcessPayout = async () => {
-    if (!selectedPayout) return;
-    
-    setProcessing(selectedPayout._id);
-    const result = await adminPayoutService.processPayout(selectedPayout._id, processData);
-    
-    if (result.success) {
-      toast({
-        title: "Success",
-        description: `Payout ${processData.status} successfully`
-      });
-      fetchPayouts();
-      fetchAnalytics();
-      setSelectedPayout(null);
-      setProcessData({ status: 'completed', notes: '', transactionId: '' });
-    } else {
-      toast({
-        title: "Error",
-        description: result.error?.message || "Failed to process payout",
-        variant: "destructive"
-      });
-    }
-    setProcessing(null);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'default';
-      case 'pending': return 'secondary';
-      case 'processing': return 'default';
-      case 'failed': return 'destructive';
-      case 'cancelled': return 'outline';
-      default: return 'secondary';
-    }
-  };
-
-  // ... keep existing code (columns definition)
-  const columns = [
-    {
-      accessorKey: 'payoutId',
-      header: 'Payout ID',
-    },
-    {
-      accessorKey: 'transactionId',
-      header: 'Transaction ID',
-    },
-    {
-      accessorKey: 'vendorId.bankDetails.accountNumber',
-      header: 'Bank Details',
-      cell: ({ row }: { row: { original: AdminPayout } }) => (
-        <div>
-          <p className="font-medium">{row.original.bankDetails?.accountHolderName}</p>
-          <p className="text-sm text-muted-foreground">{row.original.bankDetails?.accountNumber}</p>
-          <p className="text-sm text-muted-foreground">{row.original.bankDetails?.bankName}</p>
-          <p className="text-sm text-muted-foreground">{row.original.bankDetails?.ifscCode}</p>
-        </div>
-      )
-    },
-    {
-      accessorKey: 'vendorId.businessName',
-      header: 'Vendor',
-      cell: ({ row }: { row: { original: AdminPayout } }) => (
-        <div>
-          <p className="font-medium">{row.original.vendorId.businessName}</p>
-          <p className="text-sm text-muted-foreground">{row.original.vendorId.email}</p>
-          <p className="text-sm text-muted-foreground">PayoutType : {row.original.payoutType}</p>
-        </div>
-      )
-    },
-    {
-      accessorKey: 'amount',
-      header: 'Amount',
-      cell: ({ row }: { row: { original: AdminPayout } }) => (
-        <span className="font-medium">₹{row.original.amount.toLocaleString()}</span>
-      )
-    },
-    {
-      accessorKey: 'netAmount',
-      header: 'netAmount',
-      cell: ({ row }: { row: { original: AdminPayout } }) => (
-        <span className="font-medium">₹{row.original.netAmount.toLocaleString()}</span>
-      )
-    },
-    
-    {
-      accessorKey: 'status',
-      header: 'Status',
-      cell: ({ row }: { row: { original: AdminPayout } }) => (
-        <Badge variant={getStatusColor(row.original.status)}>
-          {row.original.status}
-        </Badge>
-      )
-    },
-    {
-      accessorKey: 'requestedAt',
-      header: 'Requested',
-      cell: ({ row }: { row: { original: AdminPayout } }) => (
-        <span>{new Date(row.original.requestedAt).toLocaleDateString()}</span>
-      )
-    },
-    {
-      accessorKey: 'actions',
-      header: 'Actions',
-      cell: ({ row }: { row: { original: AdminPayout } }) => (
-        <div className="flex gap-2">
-          {row.original.status === 'pending' && (
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  size="sm"
-                  onClick={() => setSelectedPayout(row.original)}
-                >
-                  Process
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Process Payout</DialogTitle>
-                </DialogHeader>
-                    <div>
-                      <p className="font-medium">Name : {selectedPayout?.bankDetails?.accountHolderName}</p>
-                      <p className="font-medium">Account No : {selectedPayout?.bankDetails?.accountNumber}</p>
-                      <p className="font-medium">Bank Name: {selectedPayout?.bankDetails?.bankName}</p>
-                      <p className="font-medium">IFSC Code : {selectedPayout?.bankDetails?.ifscCode}</p>
-                    </div>
-                <div className="space-y-4">
-                  <div>
-                    <Label>Status</Label>
-                    <Select
-                      value={processData.status}
-                      onValueChange={(value: any) => setProcessData(prev => ({ ...prev, status: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="completed">Approve</SelectItem>
-                        <SelectItem value="failed">Reject</SelectItem>
-                        <SelectItem value="cancelled">Cancel</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {processData.status === 'completed' && (
-                    <div>
-                      <Label>Transaction ID</Label>
-                      <Input
-                        value={processData.transactionId}
-                        onChange={(e) => setProcessData(prev => ({ ...prev, transactionId: e.target.value }))}
-                        placeholder="Enter transaction ID"
-                      />
-                    </div>
-                  )}
-                  
-                  <div>
-                    <Label>Notes (Optional)</Label>
-                    <Textarea
-                      value={processData.notes}
-                      onChange={(e) => setProcessData(prev => ({ ...prev, notes: e.target.value }))}
-                      placeholder="Add notes..."
-                    />
-                  </div>
-                  
-                  <Button 
-                    onClick={handleProcessPayout} 
-                    disabled={processing === selectedPayout?._id}
-                    className="w-full"
-                  >
-                    {processing === selectedPayout?._id ? 'Processing...' : 'Confirm'}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          )}
-        </div>
-      )
-    }
-  ];
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Payout Management</h1>
+    <div className="space-y-4">
+      <h1 className="text-xl font-bold">Payout Management</h1>
 
-      {/* Analytics Cards */}
-      {analytics && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Partners</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{analytics.vendors.total}</div>
-              <p className="text-xs text-muted-foreground">
-                {analytics.vendors.active} active
-              </p>
-            </CardContent>
+      {/* Stats */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card className="p-3">
+            <div className="flex items-center gap-2">
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-[10px] text-muted-foreground">Total Paid</p>
+                <p className="text-sm font-bold">₹{stats.totalPaid?.toLocaleString() || 0}</p>
+              </div>
+            </div>
           </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Payouts</CardTitle>
+          <Card className="p-3">
+            <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{analytics.payouts.pending}</div>
-            </CardContent>
+              <div>
+                <p className="text-[10px] text-muted-foreground">Pending Payable</p>
+                <p className="text-sm font-bold">₹{stats.pendingAmount?.toLocaleString() || 0}</p>
+              </div>
+            </div>
           </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Completed Payouts</CardTitle>
+          <Card className="p-3">
+            <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{analytics.payouts.completed}</div>
-            </CardContent>
+              <div>
+                <p className="text-[10px] text-muted-foreground">Paid Settlements</p>
+                <p className="text-sm font-bold">{stats.paidSettlements || 0}</p>
+              </div>
+            </div>
           </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">₹{analytics.payouts.totalAmount.toLocaleString()}</div>
-            </CardContent>
+          <Card className="p-3">
+            <div className="flex items-center gap-2">
+              <IndianRupee className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-[10px] text-muted-foreground">Pending Count</p>
+                <p className="text-sm font-bold">{stats.pendingSettlements || 0}</p>
+              </div>
+            </div>
           </Card>
         </div>
       )}
 
-      {/* Enhanced Filters with Date Range */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Status Filter */}
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 items-end">
+        <div>
+          <Label className="text-[10px]">Status</Label>
+          <Select value={filters.status || 'all'} onValueChange={v => setFilters(f => ({ ...f, status: v }))}>
+            <SelectTrigger className="h-8 text-xs w-[120px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="generated">Generated</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="locked">Locked</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+              <SelectItem value="disputed">Disputed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-[10px]">Partner</Label>
+          <Select value={filters.partner_id || 'all'} onValueChange={v => setFilters(f => ({ ...f, partner_id: v === 'all' ? undefined : v }))}>
+            <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue placeholder="All Partners" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Partners</SelectItem>
+              {partners.map(p => <SelectItem key={p.id} value={p.id}>{p.business_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-[10px]">From</Label>
+          <Input type="date" className="h-8 text-xs w-[130px]" value={filters.period_start || ''} onChange={e => setFilters(f => ({ ...f, period_start: e.target.value }))} />
+        </div>
+        <div>
+          <Label className="text-[10px]">To</Label>
+          <Input type="date" className="h-8 text-xs w-[130px]" value={filters.period_end || ''} onChange={e => setFilters(f => ({ ...f, period_end: e.target.value }))} />
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="border rounded-md overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="text-[11px]">
+              <TableHead className="px-2 py-1.5">S.No.</TableHead>
+              <TableHead className="px-2 py-1.5">Settlement ID</TableHead>
+              <TableHead className="px-2 py-1.5">Partner</TableHead>
+              <TableHead className="px-2 py-1.5">Period</TableHead>
+              <TableHead className="px-2 py-1.5 text-right">Collected</TableHead>
+              <TableHead className="px-2 py-1.5 text-right">Commission</TableHead>
+              <TableHead className="px-2 py-1.5 text-right">Net Payable</TableHead>
+              <TableHead className="px-2 py-1.5">Status</TableHead>
+              <TableHead className="px-2 py-1.5">Paid Date</TableHead>
+              <TableHead className="px-2 py-1.5">UTR</TableHead>
+              <TableHead className="px-2 py-1.5">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {settlements.length === 0 ? (
+              <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground text-xs">No payouts found</TableCell></TableRow>
+            ) : settlements.map((s, idx) => (
+              <TableRow key={s.id} className="text-[11px]">
+                <TableCell className="px-2 py-1.5">{idx + 1}</TableCell>
+                <TableCell className="px-2 py-1.5 font-mono text-[10px]">{s.serial_number || s.id.slice(0, 8)}</TableCell>
+                <TableCell className="px-2 py-1.5">{s.partners?.business_name || '-'}</TableCell>
+                <TableCell className="px-2 py-1.5 whitespace-nowrap">{s.period_start} → {s.period_end}</TableCell>
+                <TableCell className="px-2 py-1.5 text-right">₹{s.total_collected?.toLocaleString()}</TableCell>
+                <TableCell className="px-2 py-1.5 text-right">₹{s.commission_amount?.toLocaleString()}</TableCell>
+                <TableCell className="px-2 py-1.5 text-right font-medium">₹{s.net_payable?.toLocaleString()}</TableCell>
+                <TableCell className="px-2 py-1.5">{getStatusBadge(s.status)}</TableCell>
+                <TableCell className="px-2 py-1.5 whitespace-nowrap">{s.payment_date || '-'}</TableCell>
+                <TableCell className="px-2 py-1.5 font-mono text-[10px]">{s.utr_number || '-'}</TableCell>
+                <TableCell className="px-2 py-1.5">
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setSelectedSettlement(s.id)}><Eye className="h-3 w-3" /></Button>
+                    {(s.status === 'approved' || s.status === 'locked') && (
+                      <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-emerald-600" onClick={() => { setPaySettlementId(s.id); setShowPayDialog(true); }}><CreditCard className="h-3 w-3" /></Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pay Dialog */}
+      <Dialog open={showPayDialog} onOpenChange={setShowPayDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Mark Payout as Paid</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>UTR Number *</Label><Input value={payForm.utr_number} onChange={e => setPayForm(f => ({ ...f, utr_number: e.target.value }))} /></div>
+            <div><Label>Payment Reference</Label><Input value={payForm.payment_reference} onChange={e => setPayForm(f => ({ ...f, payment_reference: e.target.value }))} /></div>
             <div>
-              <Label>Status</Label>
-              <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
+              <Label>Payment Mode</Label>
+              <Select value={payForm.payment_mode} onValueChange={v => setPayForm(f => ({ ...f, payment_mode: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="neft">NEFT</SelectItem>
+                  <SelectItem value="imps">IMPS</SelectItem>
+                  <SelectItem value="upi">UPI</SelectItem>
+                  <SelectItem value="cheque">Cheque</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Analytics Period */}
-            <div>
-              <Label>Analytics Period</Label>
-              <Select value={filters.period} onValueChange={(value) => setFilters(prev => ({ ...prev, period: value }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="week">This Week</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Apply Filters Button */}
-            <div className="flex items-end">
-              <Button onClick={fetchAnalytics} className="w-full">
-                Get Analystics
-              </Button>
-            </div>
+            <div><Label>Payment Date</Label><Input type="date" value={payForm.payment_date} onChange={e => setPayForm(f => ({ ...f, payment_date: e.target.value }))} /></div>
+            <div><Label>Notes</Label><Textarea value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))} /></div>
+            <Button className="w-full" onClick={handleMarkPaid} disabled={paying}>{paying ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Confirm Payment</Button>
           </div>
+        </DialogContent>
+      </Dialog>
 
-          {/* Custom Date Range Picker */}
-          {/* {dateFilterType === 'custom' && ( */}
-            <div className="mt-4">
-              <Label>Custom Date Range</Label>
-              <ReportDateRangePicker
-                dateRange={filters.dateRange}
-                onChange={handleCustomDateRange}
-                onTypeChange={setDateFilterType}
-                className="mt-2"
-                dateFilterType={dateFilterType}
-              />
-            </div>
-          {/* )} */}
-
-          {/* Current Date Range Display */}
-          {filters.dateRange?.from && (
-            <div className="mt-4 p-3 bg-muted rounded-lg">
-              <p className="text-sm font-medium">Current Date Range:</p>
-              <p className="text-sm text-muted-foreground">
-                {format(filters.dateRange.from, 'PPP')} - {filters.dateRange.to ? format(filters.dateRange.to, 'PPP') : 'Present'}
-              </p>
-            </div>
-          )}
-
-           <div className="flex items-end">
-              <Button onClick={fetchPayouts} className="w-full">
-                Fetch Payouts
-              </Button>
-            </div>
-        </CardContent>
-      </Card>
-
-      {/* Payouts Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Payout Requests</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DataTable 
-            columns={columns} 
-            data={payouts} 
-            filter={(value: string) => {
-              return payouts.filter(payout => 
-                payout.vendorId.businessName.toLowerCase().includes(value.toLowerCase()) ||
-                payout.payoutId.toLowerCase().includes(value.toLowerCase())
-              );
-            }}
-          />
-        </CardContent>
-      </Card>
+      {/* Detail Dialog */}
+      {selectedSettlement && (
+        <SettlementDetailDialog settlementId={selectedSettlement} open={!!selectedSettlement} onClose={() => setSelectedSettlement(null)} />
+      )}
     </div>
   );
 };
