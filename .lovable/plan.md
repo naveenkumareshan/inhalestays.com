@@ -1,96 +1,33 @@
 
 
-# Food Policy System for InhaleStays Hostels
+# Fix Food Policy in Admin Hostel Editor
 
-## Overview
-Replace the current simple `food_enabled` boolean + `food_price_monthly` flat price on hostels with a 3-tier Food Policy system (Not Available / Mandatory / Optional) configurable at both the hostel level and sharing-option level, with proper booking snapshots and invoice logic.
+## Problem
+The Food Policy feature was added to `HostelForm.tsx`, but the admin actually uses `HostelEditor.tsx` (the collapsible section-based editor) to manage hostels. That component still uses the old `food_enabled` boolean switch instead of the new 3-tier Food Policy selector.
 
-## Current State
-- Hostels have `food_enabled` (boolean) and `food_price_monthly` (numeric) columns
-- During booking, if `food_enabled`, a checkbox lets the student opt in/out
-- `hostel_bookings` stores `food_opted` (boolean) and `food_amount` (numeric)
-- Invoice shows food as a separate line item when opted
+## Changes
 
-## Database Changes
+### Update `src/components/admin/HostelEditor.tsx`
 
-### 1. Add `food_policy_type` to `hostels` table
-```sql
-ALTER TABLE hostels ADD COLUMN food_policy_type text NOT NULL DEFAULT 'not_available';
--- Values: 'not_available', 'mandatory', 'optional'
-```
-The existing `food_enabled` and `food_price_monthly` columns remain for backward compatibility. New logic reads `food_policy_type` instead.
+1. **Replace `food_enabled` with `food_policy_type` in state initialization** (line 66):
+   - Add `food_policy_type` field, reading from `existingHostel?.food_policy_type` (default `'not_available'`)
+   - Keep `food_enabled` for backward sync
 
-### 2. Add `food_policy_override` to `hostel_sharing_options` table
-```sql
-ALTER TABLE hostel_sharing_options ADD COLUMN food_policy_override text NOT NULL DEFAULT 'inherit';
-ALTER TABLE hostel_sharing_options ADD COLUMN food_price_override numeric;
--- food_policy_override values: 'inherit', 'mandatory', 'optional', 'not_available'
-```
+2. **Replace the old Switch toggle UI** (lines 476-482) with the new Food Policy `Select` dropdown:
+   - Options: Not Available, Mandatory (Included in Rent), Optional (Add-on)
+   - When Mandatory or Optional is selected, show the food price input
+   - Keep the food menu items and menu image upload sections visible when policy is mandatory or optional (replacing the `hostel.food_enabled` condition at line 484)
 
-### 3. Add snapshot columns to `hostel_bookings`
-```sql
-ALTER TABLE hostel_bookings ADD COLUMN food_policy_type text NOT NULL DEFAULT 'not_available';
-ALTER TABLE hostel_bookings ADD COLUMN food_price_snapshot numeric NOT NULL DEFAULT 0;
-ALTER TABLE hostel_bookings ADD COLUMN total_amount_snapshot numeric NOT NULL DEFAULT 0;
-```
+3. **Update save logic** (around line 171):
+   - Sync `food_enabled` from `food_policy_type` on save: `food_enabled: hostel.food_policy_type !== 'not_available'`
+   - Include `food_policy_type` in the data saved to the database
+   - Update the food menu save condition from `hostel.food_enabled` to `hostel.food_policy_type !== 'not_available'`
 
-## Code Changes
+### Summary of UI Change
+The "Food Facility" collapsible section (Section 5) will show:
+- A `Select` dropdown for Food Policy Type (Not Available / Mandatory / Optional)
+- When Mandatory or Optional: food price input, meal menu items, and menu image upload
+- When Not Available: nothing else shown
 
-### 1. Hostel Form (`src/components/admin/HostelForm.tsx`)
-- Add a "Food Policy" section with a `Select` dropdown: Not Available / Mandatory / Optional
-- When Mandatory or Optional is selected, show the `food_price_monthly` input
-- Replace the old `food_enabled` toggle logic; map the new field on save:
-  - `food_policy_type` saved directly
-  - `food_enabled` kept in sync (`true` for mandatory/optional, `false` for not_available`)
-
-### 2. Sharing Option Form (where sharing options are managed)
-- Add "Food Policy Override" dropdown: Inherit from Hostel / Mandatory / Optional / Not Available
-- When override is Mandatory or Optional, show optional `food_price_override` input
-- Inherit means the hostel-level policy applies
-
-### 3. Student Booking Flow (`src/pages/HostelRoomDetails.tsx`)
-- Compute effective food policy: if sharing option has override != 'inherit', use it; otherwise use hostel's `food_policy_type`
-- Compute effective food price: if sharing option has `food_price_override`, use it; otherwise use hostel's `food_price_monthly`
-- **Mandatory**: Auto-set `foodOpted = true`, hide the checkbox, show badge "Food Included", include food in rent line
-- **Optional**: Show checkbox "Add Food (+Rs.X)", show badge "Food Available", update total dynamically
-- **Not Available**: Show badge "No Food Facility", hide food section entirely
-
-### 4. Booking Submission
-- Store snapshot fields in the booking record:
-  - `food_policy_type`: the effective policy at booking time
-  - `food_price_snapshot`: the food price used
-  - `total_amount_snapshot`: the final total
-- Continue storing `food_opted` and `food_amount` as before for compatibility
-
-### 5. Badges in Property Cards / Detail Pages
-- Replace the current single "Food Available" chip logic:
-  - Mandatory: orange badge "Food Included"
-  - Optional: green badge "Food Available"  
-  - Not Available: gray badge "No Food Facility"
-
-### 6. Invoice Logic (`src/utils/invoiceGenerator.ts` + `AdminBookingDetail.tsx`)
-- If `food_policy_type === 'mandatory'`: Show single line "Room Rent (Including Food)" with combined amount
-- If `food_policy_type === 'optional'` and `food_opted`: Show separate line "Food Add-on" with food amount
-- If not_available or not opted: No food line
-
-### 7. Hostel Room View / Sharing Options Table
-- Show effective food policy badge per sharing option in the management table
-
-## Files to Modify
-
-| File | Change |
-|------|--------|
-| **Migration** | Add 3 columns to `hostels`, 2 to `hostel_sharing_options`, 3 to `hostel_bookings` |
-| `src/components/admin/HostelForm.tsx` | Add Food Policy section (Select + conditional price input) |
-| `src/api/hostelService.ts` | Include `food_policy_type` in data types |
-| `src/pages/HostelRoomDetails.tsx` | Effective policy resolution, conditional UI (badge/checkbox/auto-select) |
-| `src/api/hostelBookingService.ts` | Add snapshot fields to booking creation payload |
-| `src/utils/invoiceGenerator.ts` | Conditional line items based on policy type |
-| `src/pages/AdminBookingDetail.tsx` | Use snapshot fields for invoice generation |
-| `src/pages/HostelConfirmation.tsx` | Show policy-aware food display |
-| Sharing option management components | Add override dropdown + price override input |
-| `src/utils/shareUtils.ts` | Update share text to reflect policy type |
-
-## Migration to run
-Existing hostels with `food_enabled = true` will be migrated: `UPDATE hostels SET food_policy_type = 'optional' WHERE food_enabled = true;`
+No database changes needed -- the `food_policy_type` column already exists on the `hostels` table.
 
