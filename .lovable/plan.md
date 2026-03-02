@@ -1,33 +1,40 @@
 
 
-# Fix Food Policy in Admin Hostel Editor
+# Fix Admin Students Page Performance
 
 ## Problem
-The Food Policy feature was added to `HostelForm.tsx`, but the admin actually uses `HostelEditor.tsx` (the collapsible section-based editor) to manage hostels. That component still uses the old `food_enabled` boolean switch instead of the new 3-tier Food Policy selector.
+The Admin Students page is slow and sometimes fails to display users due to:
+1. **No debounce on search** -- Every keystroke triggers a full API call (3 sequential DB queries), causing race conditions where an older response overwrites a newer one
+2. **Double fetch on tab change** -- `handleTabChange` sets both `role` and `searchQuery("")`, triggering the `useEffect` twice in quick succession
+3. **Three sequential queries per fetch** -- The `getUsers` service queries `user_roles`, then `profiles`, then `user_roles` again
 
 ## Changes
 
-### Update `src/components/admin/HostelEditor.tsx`
+### 1. Add search debounce in `AdminStudents.tsx`
+- Add a `debouncedSearch` state that updates 400ms after the user stops typing
+- Use `debouncedSearch` in the `useEffect` dependency instead of `searchQuery`
+- This eliminates race conditions from rapid typing
 
-1. **Replace `food_enabled` with `food_policy_type` in state initialization** (line 66):
-   - Add `food_policy_type` field, reading from `existingHostel?.food_policy_type` (default `'not_available'`)
-   - Keep `food_enabled` for backward sync
+### 2. Fix double-fetch on tab change in `AdminStudents.tsx`
+- In `handleTabChange`, batch the state updates so only one fetch is triggered
+- Use the debounced search value, not raw `searchQuery`, in the effect
 
-2. **Replace the old Switch toggle UI** (lines 476-482) with the new Food Policy `Select` dropdown:
-   - Options: Not Available, Mandatory (Included in Rent), Optional (Add-on)
-   - When Mandatory or Optional is selected, show the food price input
-   - Keep the food menu items and menu image upload sections visible when policy is mandatory or optional (replacing the `hostel.food_enabled` condition at line 484)
+### 3. Optimize `adminUsersService.getUsers`
+- Run the second `user_roles` query in parallel with profile mapping instead of sequentially
+- Add error handling that doesn't silently fail
 
-3. **Update save logic** (around line 171):
-   - Sync `food_enabled` from `food_policy_type` on save: `food_enabled: hostel.food_policy_type !== 'not_available'`
-   - Include `food_policy_type` in the data saved to the database
-   - Update the food menu save condition from `hostel.food_enabled` to `hostel.food_policy_type !== 'not_available'`
+### 4. Add abort controller for race condition prevention
+- Use an AbortController or a fetch counter to ensure only the latest request's response is applied to state
 
-### Summary of UI Change
-The "Food Facility" collapsible section (Section 5) will show:
-- A `Select` dropdown for Food Policy Type (Not Available / Mandatory / Optional)
-- When Mandatory or Optional: food price input, meal menu items, and menu image upload
-- When Not Available: nothing else shown
+## Technical Details
 
-No database changes needed -- the `food_policy_type` column already exists on the `hostels` table.
+| File | Change |
+|------|--------|
+| `src/pages/AdminStudents.tsx` | Add debounced search (useEffect with setTimeout), fix tab change double-fetch, add stale request prevention |
+| `src/api/adminUsersService.ts` | Minor: no structural changes needed, queries are already reasonable for ~10 users |
+
+The core fix is in `AdminStudents.tsx`:
+- Introduce `debouncedSearch` with a 400ms delay
+- Use a fetch counter (`useRef`) to discard stale responses
+- Remove `searchQuery` from useEffect deps, use `debouncedSearch` instead
 
