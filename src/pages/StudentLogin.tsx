@@ -17,6 +17,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { Separator } from "@/components/ui/separator";
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const StudentLogin = () => {
   const navigate = useNavigate();
@@ -42,6 +43,15 @@ const StudentLogin = () => {
       setRedirectPath(location.state.from);
     }
   }, [location]);
+
+  // Handle OAuth redirect return -- check if session exists on mount
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        navigate(redirectPath, { replace: true });
+      }
+    });
+  }, []);
 
   // Redirect authenticated users (handles Google OAuth return)
   useEffect(() => {

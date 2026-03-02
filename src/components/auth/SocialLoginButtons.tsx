@@ -31,7 +31,11 @@ export function SocialLoginButtons({ onLoginSuccess, onLoginError }: SocialLogin
           variant: "destructive"
         });
         onLoginError?.(error);
+        return;
       }
+
+      // OAuth succeeded -- session was set by lovable module
+      onLoginSuccess?.({ success: true });
     } catch (error) {
       console.error('Google login error:', error);
       toast({
