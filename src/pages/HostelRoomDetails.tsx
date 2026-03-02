@@ -50,7 +50,7 @@ import { formatCurrency } from "@/utils/currency";
 import { HostelBedMap } from "@/components/hostels/HostelBedMap";
 import { HostelBedLayoutView } from "@/components/hostels/HostelBedLayoutView";
 import { StayDurationPackages } from "@/components/hostels/StayDurationPackages";
-import { StayPackage, DurationType } from "@/api/hostelStayPackageService";
+import { StayPackage, DurationType, hostelStayPackageService } from '@/api/hostelStayPackageService';
 import { FoodMenuModal } from "@/components/hostels/FoodMenuModal";
 import { ShareButton } from "@/components/ShareButton";
 import { generateHostelShareText } from "@/utils/shareUtils";
@@ -116,10 +116,7 @@ const HostelRoomDetails = () => {
   const [durationCount, setDurationCount] = useState<number>(1);
   const [showDetails, setShowDetails] = useState(true);
 
-  const handleSelectPackage = (pkg: StayPackage) => {
-    setSelectedStayPackage(pkg);
-    setDurationCount(pkg.min_months);
-  };
+  const [hostelPackages, setHostelPackages] = useState<StayPackage[]>([]);
   const [categories, setCategories] = useState<HostelBedCategory[]>([]);
 
   // Bed view mode toggle
@@ -150,13 +147,15 @@ const HostelRoomDetails = () => {
           ? await hostelService.getHostelById(hostelId)
           : await hostelService.getHostelBySerialNumber(hostelId);
         const resolvedId = hostelData.id;
-        const [roomsData, catResult] = await Promise.all([
+        const [roomsData, catResult, packagesData] = await Promise.all([
           hostelRoomService.getHostelRooms(resolvedId),
           hostelBedCategoryService.getCategories(resolvedId),
+          hostelStayPackageService.getPackages(resolvedId),
         ]);
         setHostel(hostelData);
         setRooms(roomsData || []);
         if (catResult.success) setCategories(catResult.data);
+        setHostelPackages(packagesData || []);
       } catch (err) {
         console.error("Error fetching hostel details:", err);
         setError("Failed to load hostel details");
@@ -716,17 +715,38 @@ const HostelRoomDetails = () => {
                   </Label>
                   <Select
                     value={String(durationCount)}
-                    onValueChange={(val) => { setDurationCount(parseInt(val)); setSelectedBed(null); }}
+                    onValueChange={(val) => {
+                      const count = parseInt(val);
+                      setDurationCount(count);
+                      setSelectedBed(null);
+                      // Auto-match best package for selected duration
+                      const matchingPkgs = hostelPackages
+                        .filter(p => p.duration_type === durationType && p.min_months <= count)
+                        .sort((a, b) => b.min_months - a.min_months);
+                      setSelectedStayPackage(matchingPkgs.length > 0 ? matchingPkgs[0] : null);
+                    }}
                   >
                     <SelectTrigger className="h-9">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent className="max-h-80">
                       {(durationType === 'daily'
-                        ? Array.from({length: 30}, (_, i) => ({ label: `${i+1} ${i === 0 ? 'Day' : 'Days'}`, value: i+1 }))
+                        ? Array.from({length: 30}, (_, i) => {
+                            const v = i + 1;
+                            const pkg = hostelPackages.find(p => p.duration_type === 'daily' && p.min_months === v);
+                            return { label: `${v} ${v === 1 ? 'Day' : 'Days'}${pkg ? ` (${pkg.discount_percentage}% off)` : ''}`, value: v };
+                          })
                         : durationType === 'weekly'
-                        ? Array.from({length: 12}, (_, i) => ({ label: `${i+1} ${i === 0 ? 'Week' : 'Weeks'}`, value: i+1 }))
-                        : Array.from({length: 12}, (_, i) => ({ label: `${i+1} ${i === 0 ? 'Month' : 'Months'}`, value: i+1 }))
+                        ? Array.from({length: 12}, (_, i) => {
+                            const v = i + 1;
+                            const pkg = hostelPackages.find(p => p.duration_type === 'weekly' && p.min_months === v);
+                            return { label: `${v} ${v === 1 ? 'Week' : 'Weeks'}${pkg ? ` (${pkg.discount_percentage}% off)` : ''}`, value: v };
+                          })
+                        : Array.from({length: 12}, (_, i) => {
+                            const v = i + 1;
+                            const pkg = hostelPackages.find(p => p.duration_type === 'monthly' && p.min_months === v);
+                            return { label: `${v} ${v === 1 ? 'Month' : 'Months'}${pkg ? ` (${pkg.discount_percentage}% off)` : ''}`, value: v };
+                          })
                       ).map(opt => (
                         <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
                       ))}
@@ -833,30 +853,14 @@ const HostelRoomDetails = () => {
               )}
             </div>
 
-            {/* ═══ 4: Choose Package ═══ */}
-            {selectedBed && (<>
+            {/* Package section removed - discounts now shown in months dropdown */}
+
+            {/* ═══ Food Plan ═══ */}
+            {selectedBed && effectiveFoodPolicy !== 'not_available' && (<>
               <Separator className="my-0" />
               <div className="px-3 pt-2">
                 <div className="flex items-center gap-2 mb-1.5">
                   <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 5 : 4}</div>
-                  <Label className="text-sm font-semibold text-foreground">Choose Package</Label>
-                </div>
-                <StayDurationPackages
-                  hostelId={hostel.id}
-                  monthlyPrice={selectedBedPrice}
-                  selectedPackage={selectedStayPackage}
-                  onSelectPackage={handleSelectPackage}
-                  durationType={durationType}
-                />
-              </div>
-            </>)}
-
-            {/* ═══ Food Plan ═══ */}
-            {selectedBed && selectedStayPackage && effectiveFoodPolicy !== 'not_available' && (<>
-              <Separator className="my-0" />
-              <div className="px-3 pt-2">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 6 : 5}</div>
                   <Label className="text-sm font-semibold text-foreground">Food Plan</Label>
                 </div>
                 <div className="bg-muted/30 rounded-xl border border-border/50 p-3 space-y-2">
@@ -901,11 +905,11 @@ const HostelRoomDetails = () => {
             </>)}
 
             {/* ═══ Review & Pay ═══ */}
-            {selectedBed && selectedStayPackage && (<>
+            {selectedBed && (<>
               <Separator className="my-0" />
               <div className="px-3 pt-2 pb-6">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? (effectiveFoodPolicy !== 'not_available' ? 7 : 6) : (effectiveFoodPolicy !== 'not_available' ? 6 : 5)}</div>
+                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? (effectiveFoodPolicy !== 'not_available' ? 6 : 5) : (effectiveFoodPolicy !== 'not_available' ? 5 : 4)}</div>
                   <Label className="text-sm font-semibold text-foreground">Review & Pay</Label>
                 </div>
 
