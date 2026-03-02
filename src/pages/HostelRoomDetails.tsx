@@ -115,6 +115,11 @@ const HostelRoomDetails = () => {
   const [durationType, setDurationType] = useState<DurationType>('monthly');
   const [durationCount, setDurationCount] = useState<number>(1);
   const [showDetails, setShowDetails] = useState(true);
+
+  const handleSelectPackage = (pkg: StayPackage) => {
+    setSelectedStayPackage(pkg);
+    setDurationCount(pkg.min_months);
+  };
   const [categories, setCategories] = useState<HostelBedCategory[]>([]);
 
   // Bed view mode toggle
@@ -840,7 +845,7 @@ const HostelRoomDetails = () => {
                   hostelId={hostel.id}
                   monthlyPrice={selectedBedPrice}
                   selectedPackage={selectedStayPackage}
-                  onSelectPackage={setSelectedStayPackage}
+                  onSelectPackage={handleSelectPackage}
                   durationType={durationType}
                 />
               </div>
