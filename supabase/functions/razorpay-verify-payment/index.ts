@@ -50,13 +50,18 @@ Deno.serve(async (req) => {
     );
 
     const isHostel = bookingType === "hostel";
-    const tableName = isHostel ? "hostel_bookings" : "bookings";
+    const isLaundry = bookingType === "laundry";
+    const tableName = isHostel ? "hostel_bookings" : isLaundry ? "laundry_orders" : "bookings";
 
     // Test mode: skip signature verification, directly confirm booking
     if (testMode) {
+      const updateData: Record<string, any> = { payment_status: "completed" };
+      if (!isLaundry) updateData.status = "confirmed";
+      if (isLaundry) updateData.status = "confirmed";
+
       const { error: updateError } = await adminClient
         .from(tableName)
-        .update({ payment_status: "completed", status: "confirmed" })
+        .update(updateData)
         .eq("id", bookingId);
 
       if (updateError) {
@@ -84,6 +89,27 @@ Deno.serve(async (req) => {
             payment_method: "online",
             transaction_id: `test_pay_${Date.now()}`,
             receipt_type: "booking_payment",
+          });
+        }
+      }
+
+      // Create laundry receipt in test mode
+      if (isLaundry) {
+        const { data: order } = await adminClient
+          .from("laundry_orders")
+          .select("user_id, partner_id, total_amount")
+          .eq("id", bookingId)
+          .single();
+
+        if (order) {
+          await adminClient.from("laundry_receipts").insert({
+            order_id: bookingId,
+            user_id: order.user_id,
+            partner_id: order.partner_id,
+            amount: order.total_amount,
+            payment_method: "online",
+            transaction_id: `test_pay_${Date.now()}`,
+            receipt_type: "laundry_payment",
           });
         }
       }
@@ -182,6 +208,27 @@ Deno.serve(async (req) => {
           payment_method: "online",
           transaction_id: razorpay_payment_id,
           receipt_type: "booking_payment",
+        });
+      }
+    }
+
+    // Create laundry receipt on successful payment
+    if (isLaundry) {
+      const { data: order } = await adminClient
+        .from("laundry_orders")
+        .select("user_id, partner_id, total_amount")
+        .eq("id", bookingId)
+        .single();
+
+      if (order) {
+        await adminClient.from("laundry_receipts").insert({
+          order_id: bookingId,
+          user_id: order.user_id,
+          partner_id: order.partner_id,
+          amount: order.total_amount,
+          payment_method: "online",
+          transaction_id: razorpay_payment_id,
+          receipt_type: "laundry_payment",
         });
       }
     }

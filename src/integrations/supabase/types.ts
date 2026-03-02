@@ -1793,6 +1793,370 @@ export type Database = {
           },
         ]
       }
+      laundry_complaints: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          order_id: string | null
+          responded_at: string | null
+          responded_by: string | null
+          response: string | null
+          serial_number: string | null
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          order_id?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          response?: string | null
+          serial_number?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          order_id?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          response?: string | null
+          serial_number?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "laundry_complaints_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "laundry_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      laundry_items: {
+        Row: {
+          category: string
+          created_at: string
+          display_order: number
+          icon: string
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          display_order?: number
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          price?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          display_order?: number
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+        }
+        Relationships: []
+      }
+      laundry_order_items: {
+        Row: {
+          id: string
+          item_id: string | null
+          item_name: string
+          item_price: number
+          order_id: string
+          quantity: number
+          subtotal: number
+        }
+        Insert: {
+          id?: string
+          item_id?: string | null
+          item_name: string
+          item_price?: number
+          order_id: string
+          quantity?: number
+          subtotal?: number
+        }
+        Update: {
+          id?: string
+          item_id?: string | null
+          item_name?: string
+          item_price?: number
+          order_id?: string
+          quantity?: number
+          subtotal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "laundry_order_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "laundry_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "laundry_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "laundry_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      laundry_orders: {
+        Row: {
+          created_at: string
+          delivery_date: string | null
+          delivery_otp: string
+          delivery_otp_verified: boolean
+          delivery_time_slot: string | null
+          id: string
+          notes: string | null
+          partner_id: string | null
+          payment_method: string
+          payment_status: string
+          pickup_address: Json | null
+          pickup_date: string | null
+          pickup_otp: string
+          pickup_otp_verified: boolean
+          pickup_time_slot: string | null
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          razorpay_signature: string | null
+          serial_number: string | null
+          settlement_id: string | null
+          settlement_status: string
+          status: string
+          total_amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_date?: string | null
+          delivery_otp?: string
+          delivery_otp_verified?: boolean
+          delivery_time_slot?: string | null
+          id?: string
+          notes?: string | null
+          partner_id?: string | null
+          payment_method?: string
+          payment_status?: string
+          pickup_address?: Json | null
+          pickup_date?: string | null
+          pickup_otp?: string
+          pickup_otp_verified?: boolean
+          pickup_time_slot?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
+          serial_number?: string | null
+          settlement_id?: string | null
+          settlement_status?: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delivery_date?: string | null
+          delivery_otp?: string
+          delivery_otp_verified?: boolean
+          delivery_time_slot?: string | null
+          id?: string
+          notes?: string | null
+          partner_id?: string | null
+          payment_method?: string
+          payment_status?: string
+          pickup_address?: Json | null
+          pickup_date?: string | null
+          pickup_otp?: string
+          pickup_otp_verified?: boolean
+          pickup_time_slot?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
+          serial_number?: string | null
+          settlement_id?: string | null
+          settlement_status?: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "laundry_orders_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "laundry_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      laundry_partners: {
+        Row: {
+          bank_details: Json | null
+          business_name: string
+          commission_percentage: number
+          contact_person: string
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          phone: string
+          serial_number: string | null
+          service_area: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bank_details?: Json | null
+          business_name?: string
+          commission_percentage?: number
+          contact_person?: string
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          phone?: string
+          serial_number?: string | null
+          service_area?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bank_details?: Json | null
+          business_name?: string
+          commission_percentage?: number
+          contact_person?: string
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          phone?: string
+          serial_number?: string | null
+          service_area?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      laundry_pickup_slots: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          is_active: boolean
+          max_orders: number
+          slot_name: string
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          is_active?: boolean
+          max_orders?: number
+          slot_name: string
+          start_time: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          max_orders?: number
+          slot_name?: string
+          start_time?: string
+        }
+        Relationships: []
+      }
+      laundry_receipts: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          order_id: string | null
+          partner_id: string | null
+          payment_method: string
+          receipt_type: string
+          serial_number: string | null
+          settlement_id: string | null
+          settlement_status: string
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          partner_id?: string | null
+          payment_method?: string
+          receipt_type?: string
+          serial_number?: string | null
+          settlement_id?: string | null
+          settlement_status?: string
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          partner_id?: string | null
+          payment_method?: string
+          receipt_type?: string
+          serial_number?: string | null
+          settlement_id?: string | null
+          settlement_status?: string
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "laundry_receipts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "laundry_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "laundry_receipts_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "laundry_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_ledger: {
         Row: {
           amount: number

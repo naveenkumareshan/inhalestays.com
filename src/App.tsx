@@ -71,7 +71,9 @@ const MyPromotions = lazy(() => import("./pages/partner/MyPromotions"));
 const BusinessPerformance = lazy(() => import("./pages/partner/BusinessPerformance"));
 const SubscriptionPlans = lazy(() => import("./pages/admin/SubscriptionPlans"));
 const MySubscriptions = lazy(() => import("./pages/partner/MySubscriptions"));
-
+const AdminLaundry = lazy(() => import("./pages/admin/AdminLaundry"));
+const StudentLaundryOrders = lazy(() => import("./pages/StudentLaundryOrders"));
+const LaundryPartnerDashboard = lazy(() => import("./pages/LaundryPartnerDashboard"));
 // Student / public pages
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsAndConditions = lazy(() => import("./pages/TermsAndConditions"));
@@ -190,6 +192,7 @@ function App() {
               <Route path="sponsored-listings" element={<SponsoredListings />} />
               <Route path="business-performance" element={<BusinessPerformance />} />
               <Route path="subscription-plans" element={<SubscriptionPlans />} />
+              <Route path="laundry" element={<AdminLaundry />} />
             </Route>
 
             {/* ── Partner routes (alias for vendor/host admin panel) ── */}
@@ -237,6 +240,7 @@ function App() {
               <Route path="promotions" element={<MyPromotions />} />
               <Route path="business-performance" element={<BusinessPerformance />} />
               <Route path="my-subscriptions" element={<MySubscriptions />} />
+              <Route path="laundry" element={<AdminLaundry />} />
             </Route>
 
             {/* ── Partner routes (formerly vendor/host) ── */}
@@ -277,7 +281,7 @@ function App() {
               <Route path="/hostel-booking/:hostelId/:roomId" element={<HostelBooking />} />
               <Route path="/booking-confirmation/:bookingId" element={<StudentSuspense><HostelBookConfirmation /></StudentSuspense>} />
               <Route path="/laundry" element={<StudentSuspense><Laundry /></StudentSuspense>} />
-              <Route path="/laundry-request" element={<StudentSuspense><LaundryRequest /></StudentSuspense>} />
+              <Route path="/laundry-request" element={<StudentSuspense><Laundry /></StudentSuspense>} />
               <Route path="/privacy-policy" element={<StudentSuspense><PrivacyPolicy /></StudentSuspense>} />
               <Route path="/terms" element={<StudentSuspense><TermsAndConditions /></StudentSuspense>} />
               <Route path="/booking/:cabinId" element={<StudentSuspense><Booking /></StudentSuspense>} />
@@ -318,10 +322,20 @@ function App() {
                 element={<ProtectedRoute><StudentSuspense><ComplaintsPage /></StudentSuspense></ProtectedRoute>}
               />
               <Route
+                path="/student/laundry-orders"
+                element={<ProtectedRoute><StudentSuspense><StudentLaundryOrders /></StudentSuspense></ProtectedRoute>}
+              />
+              <Route
                 path="/student/support"
                 element={<ProtectedRoute><StudentSuspense><SupportPage /></StudentSuspense></ProtectedRoute>}
               />
             </Route>
+
+            {/* ── Laundry Partner Dashboard ── */}
+            <Route
+              path="/laundry-partner/dashboard"
+              element={<ProtectedRoute><StudentSuspense><LaundryPartnerDashboard /></StudentSuspense></ProtectedRoute>}
+            />
 
             <Route path="*" element={<PageNotFound />} />
           </Routes>
