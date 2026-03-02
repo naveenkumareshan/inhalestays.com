@@ -1,46 +1,29 @@
 
 
-# Day-Wise Food Menu System
+# Table-Style Weekly Food Menu View
 
-## What This Does
-Upgrade the food menu from a simple meal-type list (Breakfast/Lunch/Dinner) to a **day-wise schedule** (Sunday through Saturday), where each day has its own Breakfast, Lunch, and Dinner items. Both the student-facing modal and the admin editor will use this new pattern.
+## What Changes
+Replace the current tab-based food menu layout with a clean **weekly table view** (like the reference image) -- rows for each day (Sun-Sat), columns for Breakfast, Lunch, and Dinner. This applies to both the student modal and the admin editor.
 
-## Changes
+## Student View (`FoodMenuModal.tsx`)
+- Remove the day tabs layout entirely
+- Replace with a table: **Day | Breakfast (7-9 AM) | Lunch (12-2 PM) | Dinner (7-9 PM)**
+- Each row shows one day (Sun through Sat) with comma-separated items per meal
+- Highlight today's row with a subtle background color so students can quickly spot it
+- Keep the menu image display and empty state messaging
+- Widen the modal to `max-w-2xl` to fit the table comfortably
 
-### 1. Database Migration
-Add a `day_of_week` column to the existing `hostel_food_menu` table:
-```sql
-ALTER TABLE public.hostel_food_menu 
-ADD COLUMN day_of_week text NOT NULL DEFAULT 'monday';
-```
-This allows each menu item to be tagged to a specific day (sunday, monday, tuesday, wednesday, thursday, friday, saturday).
-
-### 2. Student View: `FoodMenuModal` (`src/components/hostels/FoodMenuModal.tsx`)
-Complete redesign of the modal:
-- **Top tabs**: Show days of the week (Sun, Mon, Tue, Wed, Thu, Fri, Sat) as selectable tabs -- default to current day
-- **Below tabs**: Show Breakfast, Lunch, Dinner sections with food items for the selected day
-- Keep the menu image display if available
-- Show "No items for this day" if a day has no entries
-
-### 3. Admin Editor: `HostelEditor.tsx` (Food Menu Section, lines ~521-546)
-Redesign the food menu editing section:
-- Add a day selector (tabs or dropdown) at the top: Sunday through Saturday
-- For the selected day, show the existing Breakfast/Lunch/Dinner item management (add/remove items)
-- Update the state structure from `Record<string, string[]>` to `Record<string, Record<string, string[]>>` (day -> meal_type -> items)
-- Update save logic to include `day_of_week` in each insert
-- Update fetch logic to group by day then meal type
-- Add a "Copy to all days" convenience button so admins can quickly replicate one day's menu to all other days
-
-### 4. Save/Fetch Logic Updates (`HostelEditor.tsx`)
-- **Fetch** (line ~104): Group fetched items by `day_of_week` then `meal_type`
-- **Save** (line ~178): Include `day_of_week` field in each menu insert record
-- Delete and re-insert pattern stays the same
+## Admin View (`HostelEditor.tsx` food menu section)
+- Add a **read-only preview table** above the editing area showing the full weekly menu at a glance (same table format as student view)
+- Keep the existing day-selector + add/remove item editing UI below the table for data entry
+- This gives admins a quick overview while still having granular editing per day
 
 ## Technical Details
 
 | File | Change |
 |------|--------|
-| Database | Add `day_of_week` text column to `hostel_food_menu` |
-| `src/components/hostels/FoodMenuModal.tsx` | Redesign with day tabs, grouped by meal type per day |
-| `src/components/admin/HostelEditor.tsx` | Add day selector in food menu section, update state/save/fetch for day-wise data |
+| `src/components/hostels/FoodMenuModal.tsx` | Replace tabs with a weekly table layout. Group all items by day and meal type into rows. Highlight current day row. |
+| `src/components/admin/HostelEditor.tsx` | Add a weekly overview table (read-only) above the existing day-wise editing controls in the food menu section. |
+
+No database changes needed -- the existing `hostel_food_menu` table with `day_of_week` and `meal_type` columns already supports this structure.
 
