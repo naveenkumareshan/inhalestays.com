@@ -1,29 +1,41 @@
 
 
-# Table-Style Weekly Food Menu View
+# Fix: Package Selection Should Update Duration, Dates, and Food Amount
 
-## What Changes
-Replace the current tab-based food menu layout with a clean **weekly table view** (like the reference image) -- rows for each day (Sun-Sat), columns for Breakfast, Lunch, and Dinner. This applies to both the student modal and the admin editor.
+## Problem
+When a user selects a stay package (e.g., 3-month or 6-month), three things are broken:
+1. **Price breakdown** still calculates for only 1 month (durationCount stays at 1)
+2. **Check-out date** doesn't change (still shows 1 month from check-in)
+3. **Food amount** for optional food also only charges 1 month
 
-## Student View (`FoodMenuModal.tsx`)
-- Remove the day tabs layout entirely
-- Replace with a table: **Day | Breakfast (7-9 AM) | Lunch (12-2 PM) | Dinner (7-9 PM)**
-- Each row shows one day (Sun through Sat) with comma-separated items per meal
-- Highlight today's row with a subtle background color so students can quickly spot it
-- Keep the menu image display and empty state messaging
-- Widen the modal to `max-w-2xl` to fit the table comfortably
+## Root Cause
+In `src/pages/HostelRoomDetails.tsx`, `onSelectPackage` is set to `setSelectedStayPackage` (line 843), which only updates the package state. It does **not** update `durationCount` to the package's `min_months`. All calculations (endDate, totalPrice, foodAmount) depend on `durationCount`, which remains at 1.
 
-## Admin View (`HostelEditor.tsx` food menu section)
-- Add a **read-only preview table** above the editing area showing the full weekly menu at a glance (same table format as student view)
-- Keep the existing day-selector + add/remove item editing UI below the table for data entry
-- This gives admins a quick overview while still having granular editing per day
+## Fix
 
-## Technical Details
+### File: `src/pages/HostelRoomDetails.tsx`
+
+**Change 1: Update durationCount when a package is selected**
+
+Replace the direct `setSelectedStayPackage` callback with a handler that also sets `durationCount` to the package's `min_months`:
+
+```typescript
+const handleSelectPackage = (pkg: StayPackage) => {
+  setSelectedStayPackage(pkg);
+  setDurationCount(pkg.min_months);
+};
+```
+
+Then pass `handleSelectPackage` instead of `setSelectedStayPackage` as the `onSelectPackage` prop to `StayDurationPackages` (line 843).
+
+This single change fixes all three issues because:
+- `endDate` is derived from `durationCount` (line 261-263)
+- `totalPrice` is `discountedPrice * durationCount + foodAmount` (line 422)
+- `foodAmount` uses `durationCount` in its calculation (line 421)
+
+No database changes needed. No other files need modification.
 
 | File | Change |
 |------|--------|
-| `src/components/hostels/FoodMenuModal.tsx` | Replace tabs with a weekly table layout. Group all items by day and meal type into rows. Highlight current day row. |
-| `src/components/admin/HostelEditor.tsx` | Add a weekly overview table (read-only) above the existing day-wise editing controls in the food menu section. |
-
-No database changes needed -- the existing `hostel_food_menu` table with `day_of_week` and `meal_type` columns already supports this structure.
+| `src/pages/HostelRoomDetails.tsx` | Add `handleSelectPackage` handler that updates both `selectedStayPackage` and `durationCount`; pass it as `onSelectPackage` prop |
 
