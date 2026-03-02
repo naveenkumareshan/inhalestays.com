@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { bookingsService } from '@/api/bookingsService';
 import { format } from 'date-fns';
@@ -48,12 +49,6 @@ const defaultProfile: ProfileData = {
   course_preparing_for: '',
 };
 
-const statusColor: Record<string, string> = {
-  completed: 'bg-green-100 text-green-700',
-  pending: 'bg-yellow-100 text-yellow-700',
-  failed: 'bg-red-100 text-red-700',
-  cancelled: 'bg-muted text-muted-foreground',
-};
 
 const SECTION_FIELDS: Record<string, (keyof ProfileData)[]> = {
   account: ['name', 'email', 'phone', 'alternate_phone', 'gender'],
@@ -148,7 +143,29 @@ export const ProfileManagement = () => {
   const loadBookings = async () => {
     try {
       const res = await bookingsService.getUserBookings();
-      if (res.success && Array.isArray(res.data)) setBookings(res.data.slice(0, 2));
+      if (res.success && Array.isArray(res.data)) {
+        const bookingsList = res.data.slice(0, 2);
+        // Fetch dues for these bookings
+        if (bookingsList.length > 0) {
+          const bookingIds = bookingsList.map((b: any) => b.id);
+          const { data: duesData } = await supabase
+            .from('dues')
+            .select('booking_id, due_amount, paid_amount')
+            .in('booking_id', bookingIds);
+          const dueMap: Record<string, number> = {};
+          if (duesData) {
+            for (const d of duesData) {
+              if (d.booking_id) {
+                dueMap[d.booking_id] = (dueMap[d.booking_id] || 0) + (d.due_amount - d.paid_amount);
+              }
+            }
+          }
+          bookingsList.forEach((b: any) => {
+            b.dueAmount = dueMap[b.id] || 0;
+          });
+        }
+        setBookings(bookingsList);
+      }
     } finally {
       setLoadingBookings(false);
     }
@@ -447,9 +464,27 @@ export const ProfileManagement = () => {
                         {b.start_date ? format(new Date(b.start_date), 'd MMM') : '—'} → {b.end_date ? format(new Date(b.end_date), 'd MMM yyyy') : '—'}
                       </p>
                     </div>
-                    <span className={`flex-shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full ${statusColor[b.payment_status] || 'bg-muted text-muted-foreground'}`}>
-                      {b.payment_status}
-                    </span>
+                    {(b.dueAmount ?? 0) > 0 ? (
+                      <Badge variant="outline" className="border-red-500 text-red-600 text-[10px] px-1.5 py-0.5 flex-shrink-0">
+                        Due: ₹{b.dueAmount?.toLocaleString()}
+                      </Badge>
+                    ) : b.payment_status === 'completed' ? (
+                      <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] px-1.5 py-0.5 flex-shrink-0">
+                        Fully Paid
+                      </Badge>
+                    ) : b.payment_status === 'advance_paid' ? (
+                      <Badge variant="outline" className="border-amber-500 text-amber-600 text-[10px] px-1.5 py-0.5 flex-shrink-0">
+                        Advance Paid
+                      </Badge>
+                    ) : b.payment_status === 'pending' ? (
+                      <Badge variant="outline" className="border-amber-500 text-amber-500 text-[10px] px-1.5 py-0.5 flex-shrink-0">
+                        Pending
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-destructive text-destructive text-[10px] px-1.5 py-0.5 flex-shrink-0">
+                        {b.payment_status}
+                      </Badge>
+                    )}
                   </CardContent>
                 </Card>
               </Link>
