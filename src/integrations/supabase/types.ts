@@ -1670,6 +1670,7 @@ export type Database = {
           review_count: number
           security_deposit: number
           serial_number: string | null
+          show_food_price: boolean
           state_id: string | null
           stay_type: string
           updated_at: string
@@ -1714,6 +1715,7 @@ export type Database = {
           review_count?: number
           security_deposit?: number
           serial_number?: string | null
+          show_food_price?: boolean
           state_id?: string | null
           stay_type?: string
           updated_at?: string
@@ -1758,6 +1760,7 @@ export type Database = {
           review_count?: number
           security_deposit?: number
           serial_number?: string | null
+          show_food_price?: boolean
           state_id?: string | null
           stay_type?: string
           updated_at?: string

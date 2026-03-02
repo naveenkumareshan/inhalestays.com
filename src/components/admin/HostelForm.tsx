@@ -55,6 +55,7 @@ export interface HostelData {
   food_policy_type?: 'not_available' | 'mandatory' | 'optional';
   food_price_monthly?: number;
   food_enabled?: boolean;
+  show_food_price?: boolean;
 }
 
 export const HostelForm: React.FC<HostelFormProps> = ({
@@ -90,6 +91,7 @@ export const HostelForm: React.FC<HostelFormProps> = ({
     advance_applicable_durations: ['daily', 'weekly', 'monthly'],
     food_policy_type: 'not_available',
     food_price_monthly: 0,
+    show_food_price: true,
   });
 
   const [loading, setLoading] = useState(false);
@@ -125,6 +127,7 @@ export const HostelForm: React.FC<HostelFormProps> = ({
         advance_applicable_durations: initialData.advance_applicable_durations || ['daily', 'weekly', 'monthly'],
         food_policy_type: initialData.food_policy_type || 'not_available',
         food_price_monthly: initialData.food_price_monthly || 0,
+        show_food_price: initialData.show_food_price ?? true,
       });
     }
   }, [initialData]);
@@ -275,6 +278,12 @@ export const HostelForm: React.FC<HostelFormProps> = ({
               <div>
                 <Label className="text-xs">Food Price (₹/month)</Label>
                 <Input name="food_price_monthly" type="number" value={formData.food_price_monthly} onChange={handleNumberChange} min="0" />
+              </div>
+            )}
+            {formData.food_policy_type === 'mandatory' && (
+              <div className="flex items-center gap-2">
+                <Switch checked={formData.show_food_price ?? true} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, show_food_price: checked }))} />
+                <Label className="text-xs font-normal cursor-pointer">Show food price to students</Label>
               </div>
             )}
           </div>

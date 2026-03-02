@@ -67,6 +67,7 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
     food_policy_type: existingHostel?.food_policy_type || 'not_available',
     food_price_monthly: existingHostel?.food_price_monthly ?? 0,
     food_menu_image: existingHostel?.food_menu_image || '',
+    show_food_price: existingHostel?.show_food_price ?? true,
   });
 
   // Food menu items state
@@ -504,6 +505,18 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
                         />
                       </div>
                     </div>
+
+                    {hostel.food_policy_type === 'mandatory' && (
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="show_food_price"
+                          checked={hostel.show_food_price}
+                          onCheckedChange={(checked) => setHostel(prev => ({ ...prev, show_food_price: checked }))}
+                        />
+                        <Label htmlFor="show_food_price" className="text-xs font-medium cursor-pointer">Show food price to students</Label>
+                        <p className="text-xs text-muted-foreground ml-1">If off, students see only "Food Included" without price</p>
+                      </div>
+                    )}
 
                     {/* Food Menu Items */}
                     {(['breakfast', 'lunch', 'dinner'] as const).map(mealType => (

@@ -850,7 +850,7 @@ const HostelRoomDetails = () => {
                       <Badge className="bg-orange-500/10 text-orange-700 dark:text-orange-400 border border-orange-500/20 text-xs">
                         <Utensils className="h-3 w-3 mr-1" /> Food Included
                       </Badge>
-                      <span className="text-xs text-muted-foreground">({formatCurrency(effectiveFoodPrice)}/mo included in rent)</span>
+                      {hostel.show_food_price !== false && <span className="text-xs text-muted-foreground">({formatCurrency(effectiveFoodPrice)}/mo included in rent)</span>}
                     </div>
                   ) : (
                     <div className="flex items-start gap-2">
