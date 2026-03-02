@@ -142,30 +142,57 @@ export const ProfileManagement = () => {
 
   const loadBookings = async () => {
     try {
-      const res = await bookingsService.getUserBookings();
-      if (res.success && Array.isArray(res.data)) {
-        const bookingsList = res.data.slice(0, 2);
-        // Fetch dues for these bookings
-        if (bookingsList.length > 0) {
-          const bookingIds = bookingsList.map((b: any) => b.id);
-          const { data: duesData } = await supabase
-            .from('dues')
-            .select('booking_id, due_amount, paid_amount')
-            .in('booking_id', bookingIds);
-          const dueMap: Record<string, number> = {};
-          if (duesData) {
-            for (const d of duesData) {
-              if (d.booking_id) {
-                dueMap[d.booking_id] = (dueMap[d.booking_id] || 0) + (d.due_amount - d.paid_amount);
-              }
-            }
-          }
-          bookingsList.forEach((b: any) => {
-            b.dueAmount = dueMap[b.id] || 0;
-          });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch both reading room and hostel bookings in parallel
+      const [readingRes, hostelRes] = await Promise.all([
+        bookingsService.getUserBookings(),
+        supabase
+          .from('hostel_bookings')
+          .select('*, hostels(name)')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(2),
+      ]);
+
+      const readingBookings = (readingRes.success && Array.isArray(readingRes.data))
+        ? readingRes.data.map((b: any) => ({ ...b, type: 'reading_room' as const }))
+        : [];
+
+      const hostelBookings = (hostelRes.data || []).map((b: any) => ({
+        ...b,
+        type: 'hostel' as const,
+        payment_status: b.payment_status || b.status,
+      }));
+
+      // Merge, sort by created_at desc, take 2
+      const merged = [...readingBookings, ...hostelBookings]
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 2);
+
+      // Fetch dues for reading room bookings
+      const rrIds = merged.filter((b: any) => b.type === 'reading_room').map((b: any) => b.id);
+      const hIds = merged.filter((b: any) => b.type === 'hostel').map((b: any) => b.id);
+
+      const [duesRes, hostelDuesRes] = await Promise.all([
+        rrIds.length > 0
+          ? supabase.from('dues').select('booking_id, due_amount, paid_amount').in('booking_id', rrIds)
+          : Promise.resolve({ data: [] }),
+        hIds.length > 0
+          ? supabase.from('hostel_dues').select('booking_id, due_amount, paid_amount').in('booking_id', hIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const dueMap: Record<string, number> = {};
+      for (const d of [...(duesRes.data || []), ...(hostelDuesRes.data || [])]) {
+        if ((d as any).booking_id) {
+          dueMap[(d as any).booking_id] = (dueMap[(d as any).booking_id] || 0) + ((d as any).due_amount - (d as any).paid_amount);
         }
-        setBookings(bookingsList);
       }
+      merged.forEach((b: any) => { b.dueAmount = dueMap[b.id] || 0; });
+
+      setBookings(merged);
     } finally {
       setLoadingBookings(false);
     }
@@ -449,8 +476,8 @@ export const ProfileManagement = () => {
           </Card>
         ) : (
           <div className="space-y-2">
-            {bookings.map((b) => (
-              <Link key={b.id} to={`/student/bookings/${b.id}`}>
+            {bookings.map((b: any) => (
+              <Link key={b.id} to={b.type === 'hostel' ? `/student/hostel-bookings/${b.id}` : `/student/bookings/${b.id}`}>
                 <Card className="rounded-2xl border-0 shadow-sm bg-card hover:shadow-md transition-shadow">
                   <CardContent className="p-3 flex items-center gap-3">
                     <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -458,7 +485,9 @@ export const ProfileManagement = () => {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[12px] font-semibold text-foreground truncate">
-                        {(b.cabins as any)?.name || 'Reading Room'} — Seat #{b.seat_number || '—'}
+                        {b.type === 'hostel'
+                          ? `${(b.hostels as any)?.name || 'Hostel'} — Bed #${b.bed_number || '—'}`
+                          : `${(b.cabins as any)?.name || 'Reading Room'} — Seat #${b.seat_number || '—'}`}
                       </p>
                       <p className="text-[11px] text-muted-foreground">
                         {b.start_date ? format(new Date(b.start_date), 'd MMM') : '—'} → {b.end_date ? format(new Date(b.end_date), 'd MMM yyyy') : '—'}
