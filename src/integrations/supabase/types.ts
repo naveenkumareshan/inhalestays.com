@@ -1279,6 +1279,7 @@ export type Database = {
       hostel_food_menu: {
         Row: {
           created_at: string
+          day_of_week: string
           display_order: number
           hostel_id: string
           id: string
@@ -1288,6 +1289,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          day_of_week?: string
           display_order?: number
           hostel_id: string
           id?: string
@@ -1297,6 +1299,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          day_of_week?: string
           display_order?: number
           hostel_id?: string
           id?: string

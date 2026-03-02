@@ -70,12 +70,24 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
     show_food_price: existingHostel?.show_food_price ?? true,
   });
 
-  // Food menu items state
-  const [foodMenuItems, setFoodMenuItems] = useState<Record<string, string[]>>({
-    breakfast: [],
-    lunch: [],
-    dinner: [],
+  const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+  const DAY_LABELS: Record<string, string> = {
+    sunday: 'Sunday', monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
+    thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday',
+  };
+  const DAY_SHORT: Record<string, string> = {
+    sunday: 'Sun', monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed',
+    thursday: 'Thu', friday: 'Fri', saturday: 'Sat',
+  };
+
+  // Food menu items state: day -> meal_type -> items
+  const emptyDayMenu = (): Record<string, string[]> => ({ breakfast: [], lunch: [], dinner: [] });
+  const [foodMenuItems, setFoodMenuItems] = useState<Record<string, Record<string, string[]>>>(() => {
+    const init: Record<string, Record<string, string[]>> = {};
+    DAYS.forEach(d => { init[d] = emptyDayMenu(); });
+    return init;
   });
+  const [selectedFoodDay, setSelectedFoodDay] = useState<string>('monday');
   const [newFoodItem, setNewFoodItem] = useState<Record<string, string>>({ breakfast: '', lunch: '', dinner: '' });
 
   const [partners, setPartners] = useState<Array<{ id: string; name: string; email: string; phone: string; serial_number: string }>>([]);
@@ -111,9 +123,12 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
           .eq('is_active', true)
           .order('display_order');
         if (data) {
-          const grouped: Record<string, string[]> = { breakfast: [], lunch: [], dinner: [] };
+          const grouped: Record<string, Record<string, string[]>> = {};
+          DAYS.forEach(d => { grouped[d] = { breakfast: [], lunch: [], dinner: [] }; });
           (data as any[]).forEach((item: any) => {
-            if (grouped[item.meal_type]) grouped[item.meal_type].push(item.item_name);
+            const day = item.day_of_week || 'monday';
+            if (!grouped[day]) grouped[day] = { breakfast: [], lunch: [], dinner: [] };
+            if (grouped[day][item.meal_type]) grouped[day][item.meal_type].push(item.item_name);
           });
           setFoodMenuItems(grouped);
         }
@@ -181,14 +196,17 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
         // Delete existing items and re-insert
         await supabase.from('hostel_food_menu').delete().eq('hostel_id', existingHostel.id);
         const menuInserts: any[] = [];
-        (['breakfast', 'lunch', 'dinner'] as const).forEach(mealType => {
-          foodMenuItems[mealType].forEach((itemName, idx) => {
-            menuInserts.push({
-              hostel_id: existingHostel.id,
-              meal_type: mealType,
-              item_name: itemName,
-              display_order: idx,
-              is_active: true,
+        DAYS.forEach(day => {
+          (['breakfast', 'lunch', 'dinner'] as const).forEach(mealType => {
+            (foodMenuItems[day]?.[mealType] || []).forEach((itemName, idx) => {
+              menuInserts.push({
+                hostel_id: existingHostel.id,
+                meal_type: mealType,
+                item_name: itemName,
+                display_order: idx,
+                is_active: true,
+                day_of_week: day,
+              });
             });
           });
         });
@@ -208,12 +226,34 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
   const addFoodItem = (mealType: string) => {
     const item = newFoodItem[mealType]?.trim();
     if (!item) return;
-    setFoodMenuItems(prev => ({ ...prev, [mealType]: [...prev[mealType], item] }));
+    setFoodMenuItems(prev => ({
+      ...prev,
+      [selectedFoodDay]: {
+        ...prev[selectedFoodDay],
+        [mealType]: [...(prev[selectedFoodDay]?.[mealType] || []), item],
+      },
+    }));
     setNewFoodItem(prev => ({ ...prev, [mealType]: '' }));
   };
 
   const removeFoodItem = (mealType: string, index: number) => {
-    setFoodMenuItems(prev => ({ ...prev, [mealType]: prev[mealType].filter((_, i) => i !== index) }));
+    setFoodMenuItems(prev => ({
+      ...prev,
+      [selectedFoodDay]: {
+        ...prev[selectedFoodDay],
+        [mealType]: (prev[selectedFoodDay]?.[mealType] || []).filter((_, i) => i !== index),
+      },
+    }));
+  };
+
+  const copyToAllDays = () => {
+    const sourceMenu = foodMenuItems[selectedFoodDay];
+    setFoodMenuItems(prev => {
+      const updated = { ...prev };
+      DAYS.forEach(day => { updated[day] = { breakfast: [...sourceMenu.breakfast], lunch: [...sourceMenu.lunch], dinner: [...sourceMenu.dinner] }; });
+      return updated;
+    });
+    toast({ title: "Copied", description: `${DAY_LABELS[selectedFoodDay]}'s menu copied to all days.` });
   };
 
   const handleMapLocationChange = (coordinates: { lat: number; lng: number }) => {
@@ -518,32 +558,57 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
                       </div>
                     )}
 
-                    {/* Food Menu Items */}
-                    {(['breakfast', 'lunch', 'dinner'] as const).map(mealType => (
-                      <div key={mealType}>
-                        <Label className="text-xs font-medium capitalize mb-1 block">{mealType === 'breakfast' ? '🌅 Breakfast' : mealType === 'lunch' ? '☀️ Lunch' : '🌙 Dinner'}</Label>
-                        <div className="flex flex-wrap gap-1.5 mb-1.5">
-                          {foodMenuItems[mealType].map((item, idx) => (
-                            <span key={idx} className="inline-flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-md">
-                              {item}
-                              <button onClick={() => removeFoodItem(mealType, idx)} className="text-muted-foreground hover:text-destructive"><X className="h-3 w-3" /></button>
-                            </span>
-                          ))}
-                        </div>
-                        <div className="flex gap-1.5">
-                          <Input
-                            className="h-8 text-xs flex-1"
-                            placeholder={`Add ${mealType} item...`}
-                            value={newFoodItem[mealType] || ''}
-                            onChange={e => setNewFoodItem(prev => ({ ...prev, [mealType]: e.target.value }))}
-                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addFoodItem(mealType); } }}
-                          />
-                          <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => addFoodItem(mealType)}>
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
+                    {/* Day-wise Food Menu Items */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-xs font-medium">Day-wise Menu</Label>
+                        <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={copyToAllDays}>
+                          Copy to all days
+                        </Button>
                       </div>
-                    ))}
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {DAYS.map(day => (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => setSelectedFoodDay(day)}
+                            className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
+                              selectedFoodDay === day
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                            }`}
+                          >
+                            {DAY_SHORT[day]}
+                          </button>
+                        ))}
+                      </div>
+
+                      {(['breakfast', 'lunch', 'dinner'] as const).map(mealType => (
+                        <div key={mealType} className="mb-3">
+                          <Label className="text-xs font-medium capitalize mb-1 block">{mealType === 'breakfast' ? '🌅 Breakfast' : mealType === 'lunch' ? '☀️ Lunch' : '🌙 Dinner'}</Label>
+                          <div className="flex flex-wrap gap-1.5 mb-1.5">
+                            {(foodMenuItems[selectedFoodDay]?.[mealType] || []).map((item, idx) => (
+                              <span key={idx} className="inline-flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-md">
+                                {item}
+                                <button onClick={() => removeFoodItem(mealType, idx)} className="text-muted-foreground hover:text-destructive"><X className="h-3 w-3" /></button>
+                              </span>
+                            ))}
+                          </div>
+                          <div className="flex gap-1.5">
+                            <Input
+                              className="h-8 text-xs flex-1"
+                              placeholder={`Add ${mealType} item...`}
+                              value={newFoodItem[mealType] || ''}
+                              onChange={e => setNewFoodItem(prev => ({ ...prev, [mealType]: e.target.value }))}
+                              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addFoodItem(mealType); } }}
+                            />
+                            <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => addFoodItem(mealType)}>
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
 
                     {/* Menu Image Upload */}
                     <div>

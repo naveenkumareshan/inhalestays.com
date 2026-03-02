@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { Utensils } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 interface FoodMenuModalProps {
   hostelId: string;
@@ -16,7 +17,14 @@ interface MenuItem {
   meal_type: string;
   item_name: string;
   display_order: number;
+  day_of_week: string;
 }
+
+const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+const DAY_LABELS: Record<string, string> = {
+  sunday: 'Sun', monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed',
+  thursday: 'Thu', friday: 'Fri', saturday: 'Sat',
+};
 
 const mealTypeLabels: Record<string, string> = {
   breakfast: '🌅 Breakfast',
@@ -24,9 +32,14 @@ const mealTypeLabels: Record<string, string> = {
   dinner: '🌙 Dinner',
 };
 
+function getTodayDay(): string {
+  return DAYS[new Date().getDay()];
+}
+
 export function FoodMenuModal({ hostelId, menuImage, trigger }: FoodMenuModalProps) {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(getTodayDay());
 
   const fetchMenu = async () => {
     setLoading(true);
@@ -40,7 +53,8 @@ export function FoodMenuModal({ hostelId, menuImage, trigger }: FoodMenuModalPro
     setLoading(false);
   };
 
-  const grouped = items.reduce<Record<string, MenuItem[]>>((acc, item) => {
+  const dayItems = items.filter(i => i.day_of_week === selectedDay);
+  const grouped = dayItems.reduce<Record<string, MenuItem[]>>((acc, item) => {
     if (!acc[item.meal_type]) acc[item.meal_type] = [];
     acc[item.meal_type].push(item);
     return acc;
@@ -68,22 +82,42 @@ export function FoodMenuModal({ hostelId, menuImage, trigger }: FoodMenuModalPro
               </div>
             )}
 
-            {['breakfast', 'lunch', 'dinner'].map(mealType => {
-              const mealItems = grouped[mealType];
-              if (!mealItems?.length) return null;
-              return (
-                <div key={mealType}>
-                  <h3 className="text-sm font-semibold mb-1.5">{mealTypeLabels[mealType]}</h3>
-                  <div className="flex flex-wrap gap-1.5">
-                    {mealItems.map(item => (
-                      <Badge key={item.id} variant="secondary" className="text-xs">
-                        {item.item_name}
-                      </Badge>
-                    ))}
+            <Tabs value={selectedDay} onValueChange={setSelectedDay}>
+              <TabsList className="w-full flex overflow-x-auto">
+                {DAYS.map(day => (
+                  <TabsTrigger key={day} value={day} className="flex-1 text-xs px-1.5">
+                    {DAY_LABELS[day]}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              {DAYS.map(day => (
+                <TabsContent key={day} value={day}>
+                  <div className="space-y-3 pt-1">
+                    {['breakfast', 'lunch', 'dinner'].map(mealType => {
+                      const mealItems = day === selectedDay ? grouped[mealType] : undefined;
+                      if (!mealItems?.length) return null;
+                      return (
+                        <div key={mealType}>
+                          <h3 className="text-sm font-semibold mb-1.5">{mealTypeLabels[mealType]}</h3>
+                          <div className="flex flex-wrap gap-1.5">
+                            {mealItems.map(item => (
+                              <Badge key={item.id} variant="secondary" className="text-xs">
+                                {item.item_name}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {dayItems.length === 0 && (
+                      <p className="text-center text-sm text-muted-foreground py-4">No menu items for this day.</p>
+                    )}
                   </div>
-                </div>
-              );
-            })}
+                </TabsContent>
+              ))}
+            </Tabs>
 
             {items.length === 0 && !menuImage && (
               <p className="text-center text-sm text-muted-foreground py-4">No menu items available yet.</p>
