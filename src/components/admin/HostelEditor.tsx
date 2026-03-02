@@ -558,29 +558,48 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
                       </div>
                     )}
 
-                    {/* Day-wise Food Menu Items */}
+                    {/* Weekly Overview Table */}
+                    <div>
+                      <Label className="text-xs font-medium mb-2 block">Weekly Menu Overview</Label>
+                      <div className="rounded-md border overflow-hidden mb-4">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="bg-muted/30">
+                              <th className="text-left px-2 py-1.5 font-semibold w-20">Day</th>
+                              <th className="text-left px-2 py-1.5 font-semibold">🌅 Breakfast</th>
+                              <th className="text-left px-2 py-1.5 font-semibold">☀️ Lunch</th>
+                              <th className="text-left px-2 py-1.5 font-semibold">🌙 Dinner</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {DAYS.map(day => (
+                              <tr
+                                key={day}
+                                className={`border-t cursor-pointer hover:bg-muted/30 ${selectedFoodDay === day ? 'bg-primary/5' : ''}`}
+                                onClick={() => setSelectedFoodDay(day)}
+                              >
+                                <td className="px-2 py-1.5 font-medium">{DAY_SHORT[day]}</td>
+                                {(['breakfast', 'lunch', 'dinner'] as const).map(meal => (
+                                  <td key={meal} className="px-2 py-1.5 text-muted-foreground">
+                                    {(foodMenuItems[day]?.[meal] || []).join(', ') || '—'}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Day-wise Editing */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <Label className="text-xs font-medium">Day-wise Menu</Label>
+                        <Label className="text-xs font-medium">
+                          Editing: <span className="text-primary">{DAY_SHORT[selectedFoodDay]}</span>
+                        </Label>
                         <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={copyToAllDays}>
                           Copy to all days
                         </Button>
-                      </div>
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        {DAYS.map(day => (
-                          <button
-                            key={day}
-                            type="button"
-                            onClick={() => setSelectedFoodDay(day)}
-                            className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
-                              selectedFoodDay === day
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                            }`}
-                          >
-                            {DAY_SHORT[day]}
-                          </button>
-                        ))}
                       </div>
 
                       {(['breakfast', 'lunch', 'dinner'] as const).map(mealType => (
