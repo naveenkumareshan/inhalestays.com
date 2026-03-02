@@ -1,41 +1,34 @@
 
 
-# Fix: Package Selection Should Update Duration, Dates, and Food Amount
+# Merge Months Dropdown with Packages
 
-## Problem
-When a user selects a stay package (e.g., 3-month or 6-month), three things are broken:
-1. **Price breakdown** still calculates for only 1 month (durationCount stays at 1)
-2. **Check-out date** doesn't change (still shows 1 month from check-in)
-3. **Food amount** for optional food also only charges 1 month
+## What Changes
+Remove the separate "Choose Package" section (step 4/5) entirely. Instead, integrate package data directly into the months dropdown in the "Stay Duration" section. Each month option will show the discount percentage from matching packages beside it (e.g., "3 Months - 10% off"). Selecting a month auto-applies the matching package's discount to all calculations.
 
-## Root Cause
-In `src/pages/HostelRoomDetails.tsx`, `onSelectPackage` is set to `setSelectedStayPackage` (line 843), which only updates the package state. It does **not** update `durationCount` to the package's `min_months`. All calculations (endDate, totalPrice, foodAmount) depend on `durationCount`, which remains at 1.
+## How It Works
 
-## Fix
+### 1. Fetch packages in `HostelRoomDetails.tsx`
+- Fetch all packages for the hostel/durationType when the page loads (move fetch logic from `StayDurationPackages` into the parent)
+- Build a map of `min_months -> package` for quick lookup
 
-### File: `src/pages/HostelRoomDetails.tsx`
+### 2. Update the Months dropdown (lines 717-733)
+- For each month option in the Select, check if a package exists for that month count
+- If yes, show the discount beside the label: `"3 Months (10% off)"` or `"6 Months (15% off)"`
+- When user selects a month, auto-set `selectedStayPackage` to the matching package (or null if no package for that duration)
 
-**Change 1: Update durationCount when a package is selected**
+### 3. Remove "Choose Package" section (lines 836-852)
+- Delete the entire step 4 "Choose Package" block that renders `StayDurationPackages`
+- Re-number subsequent step badges (Food Plan, etc.)
 
-Replace the direct `setSelectedStayPackage` callback with a handler that also sets `durationCount` to the package's `min_months`:
+### 4. Update `handleSelectPackage` / durationCount logic
+- Replace with inline logic: when `durationCount` changes in the dropdown, find the best matching package (where `min_months <= durationCount`) and auto-apply it
+- The discount calculation already works via `selectedStayPackage.discount_percentage` (line 396-398)
 
-```typescript
-const handleSelectPackage = (pkg: StayPackage) => {
-  setSelectedStayPackage(pkg);
-  setDurationCount(pkg.min_months);
-};
-```
-
-Then pass `handleSelectPackage` instead of `setSelectedStayPackage` as the `onSelectPackage` prop to `StayDurationPackages` (line 843).
-
-This single change fixes all three issues because:
-- `endDate` is derived from `durationCount` (line 261-263)
-- `totalPrice` is `discountedPrice * durationCount + foodAmount` (line 422)
-- `foodAmount` uses `durationCount` in its calculation (line 421)
-
-No database changes needed. No other files need modification.
+## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/pages/HostelRoomDetails.tsx` | Add `handleSelectPackage` handler that updates both `selectedStayPackage` and `durationCount`; pass it as `onSelectPackage` prop |
+| `src/pages/HostelRoomDetails.tsx` | Fetch packages on load; update months dropdown to show discounts; remove "Choose Package" section; auto-match package on month change |
+
+No database changes needed. `StayDurationPackages.tsx` can remain as-is (unused but harmless) or be cleaned up later.
 
