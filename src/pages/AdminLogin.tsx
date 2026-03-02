@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Navigation } from '../components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -99,11 +99,11 @@ const AdminLogin = () => {
                     onChange={handleChange} 
                     required 
                   />
-                  {/* <div className="text-right">
-                    <Link to="/forgot-password" className="text-sm text-cabin-wood hover:underline">
+                  <div className="text-right">
+                    <Link to="/admin/forgot-password" className="text-sm text-primary hover:underline">
                       Forgot password?
                     </Link>
-                  </div> */}
+                  </div>
                 </div>                                
                 <Button 
                   type="submit" 

@@ -3,6 +3,7 @@ import React, { lazy, Suspense, useEffect } from "react";
 import { hideSplashScreen } from "./utils/splashScreen";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const AdminForgotPassword = lazy(() => import("./pages/AdminForgotPassword"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminHostels = lazy(() => import("./pages/hotelManager/HostelManagement"));
 const SeatManagement = lazy(() => import("./pages/SeatManagement"));
@@ -129,6 +130,7 @@ function App() {
           <Routes>
             {/* ── Admin routes (kept separate, untouched) ── */}
             <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/forgot-password" element={<Suspense fallback={<div className="p-6 text-center">Loading...</div>}><AdminForgotPassword /></Suspense>} />
             <Route
               path="/admin"
               element={
