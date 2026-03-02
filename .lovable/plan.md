@@ -1,51 +1,44 @@
 
 
-# Improve Desktop Layout for Reading Room and Hostel Detail Pages
+# Plan: Move Payouts & Redesign Student Laundry Page
 
-## Problem
-Both the Reading Room detail page (`BookSeat.tsx`) and Hostel detail page (`HostelRoomDetails.tsx`) are built mobile-first with no max-width constraint. On desktop screens, the hero image stretches the entire browser width and all content (chips, amenities, booking form) spreads across the full viewport, making the layout feel scattered and unappealing.
+## 1. Move Admin Payouts to Partners Section
 
-On mobile, the layout works great (as you noted). The fix needs to constrain the desktop layout without breaking the mobile experience.
+**File:** `src/components/admin/AdminSidebar.tsx`
 
-## Solution
-Wrap the main content of both pages in a centered container with `max-w-3xl mx-auto` (about 768px) so on desktop the layout feels like a well-structured card/column rather than scattered full-width content. This matches the reference screenshots (image-112 and image-113) where the content is neatly contained.
+Currently, "Payouts" lives under the "Reports" section (line 327). It will be moved to the "Partners" section as a sub-item below "Settlements" (line 318).
 
-## Changes
+**Changes:**
+- Add `{ title: 'Payouts', url: '/admin/payouts', icon: Wallet, roles: ['admin'] }` to the Partners subItems array, after "Settlements"
+- Remove the Payouts entry from the Reports subItems array
+- The Reports section will then only contain "Booking Reports"
 
-### 1. `src/pages/BookSeat.tsx` - Reading Room Detail Page
-- Wrap the entire page content (after the outer `div`) in a `max-w-3xl mx-auto` container
-- This constrains the hero image, info chips, details section, and booking form to a comfortable desktop width
-- Mobile layout remains unchanged since `max-w-3xl` only kicks in on wider screens
+---
 
-### 2. `src/pages/HostelRoomDetails.tsx` - Hostel Detail Page
-- Same approach: wrap the main content area in a `max-w-3xl mx-auto` container
-- Constrains the hero slider, info chips, amenities, and the multi-step booking flow
-- Mobile layout stays the same
+## 2. Redesign Student Laundry Page with More Color
 
-## Technical Details
+**File:** `src/pages/Laundry.tsx`
 
-Both files need the same small change -- adding a wrapper div with desktop-constraining classes:
+The current laundry page is functional but visually plain -- white cards with minimal color. The redesign will add vibrancy while keeping the multi-step flow intact.
 
-```text
-Before:
-<div className="min-h-screen bg-background pb-24">
-  ... full-width content ...
-</div>
+**Visual Changes:**
+- Add a gradient hero header with a colorful background (purple/blue gradient) and white text
+- Color-code item categories with distinct background tints (e.g., blue for clothing, green for bedding, orange for special)
+- Add colorful category header pills/badges instead of plain text labels
+- Style the quantity counter buttons with colored accents
+- Add a colorful floating cart summary bar at the bottom with gradient background
+- Use colored icons and accent borders on the Address and Schedule step cards
+- Make the step indicator use gradient colors instead of flat primary
+- Add a celebratory gradient background to the order confirmation step
+- Add subtle colored shadows to item cards
 
-After:
-<div className="min-h-screen bg-background pb-24">
-  <div className="max-w-3xl mx-auto">
-    ... now constrained on desktop ...
-  </div>
-</div>
-```
+**No structural changes** -- the 5-step flow (Items, Address, Schedule, Review, Payment) and all logic remain identical. Only styling classes and a few wrapper elements change.
 
-The sticky collapsed header (shown when hero is scrolled away) will also be constrained within this container, keeping it visually consistent.
+---
 
 ### Files Modified
 | File | Change |
 |------|--------|
-| `src/pages/BookSeat.tsx` | Add `max-w-3xl mx-auto` wrapper inside the outer div |
-| `src/pages/HostelRoomDetails.tsx` | Add `max-w-3xl mx-auto` wrapper inside the outer div |
+| `src/components/admin/AdminSidebar.tsx` | Move Payouts from Reports to Partners section |
+| `src/pages/Laundry.tsx` | Add colorful styling to the student laundry ordering page |
 
-No new dependencies or database changes required.
