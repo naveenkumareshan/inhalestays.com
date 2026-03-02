@@ -51,6 +51,18 @@ export interface HostelFilters {
   search?: string;
 }
 
+const UUID_FIELDS = ['state_id', 'city_id', 'area_id', 'created_by', 'vendor_id'];
+
+function sanitizeUUIDs(data: Record<string, any>) {
+  const cleaned = { ...data };
+  for (const field of UUID_FIELDS) {
+    if (cleaned[field] === '' || cleaned[field] === undefined) {
+      cleaned[field] = null;
+    }
+  }
+  return cleaned;
+}
+
 export const hostelService = {
   getAllHostels: async (filters?: HostelFilters) => {
     let query = supabase
@@ -82,9 +94,10 @@ export const hostelService = {
 
   createHostel: async (hostelData: Partial<HostelData>) => {
     const { data: { user } } = await supabase.auth.getUser();
+    const sanitized = sanitizeUUIDs({ ...hostelData, created_by: user?.id });
     const { data, error } = await supabase
       .from('hostels')
-      .insert({ ...hostelData, created_by: user?.id } as any)
+      .insert(sanitized as any)
       .select()
       .single();
     if (error) throw error;
@@ -92,9 +105,10 @@ export const hostelService = {
   },
 
   updateHostel: async (hostelId: string, hostelData: Partial<HostelData>) => {
+    const sanitized = sanitizeUUIDs(hostelData);
     const { data, error } = await supabase
       .from('hostels')
-      .update(hostelData as any)
+      .update(sanitized as any)
       .eq('id', hostelId)
       .select()
       .single();
