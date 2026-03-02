@@ -946,7 +946,7 @@ const HostelRoomDetails = () => {
                       <span className="text-muted-foreground">Base Price</span>
                       <span className="font-medium text-foreground">{formatCurrency(effectiveBasePrice)} {priceLabel} × {durationCount}</span>
                     </div>
-                    {selectedStayPackage.discount_percentage > 0 && (
+                    {selectedStayPackage && selectedStayPackage.discount_percentage > 0 && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Package Discount ({selectedStayPackage.name})</span>
                         <span className="font-medium text-emerald-600 dark:text-emerald-400">-{selectedStayPackage.discount_percentage}%</span>
