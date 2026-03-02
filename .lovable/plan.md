@@ -1,31 +1,35 @@
 
 
-# Reset Admin Password
+# Add Forgot Password for Admin Login
 
-## Problem
-You're logged out and need your admin password reset to `Naveen1*`. The existing `admin-reset-password` edge function requires admin authentication, which you can't provide since you're locked out.
+## Overview
+Enable the "Forgot Password" flow on the admin login page so admins can reset their password via email verification -- reusing the existing Supabase-powered reset mechanism.
 
-## Solution
-Create a temporary edge function `one-time-password-reset` that uses the service role key to reset the password without requiring authentication. After successful reset, the function will be deleted.
+## What Already Exists
+- A `ForgotPassword` page at `/student/forgot-password` that calls `supabase.auth.resetPasswordForEmail` -- this works for ANY user, including admins.
+- A `ResetPassword` page at `/reset-password` that handles the actual password update.
+- The admin login page (`AdminLogin.tsx`) has a commented-out "Forgot password?" link (lines 102-106).
 
-### Steps
+## Changes
 
-1. **Create temporary edge function** `one-time-password-reset/index.ts`
-   - Hardcoded to only work for user ID `8a0ee35f-90a4-4657-bda3-d53f07eebb03`
-   - Uses service role key to call `auth.admin.updateUserById`
-   - Sets password to `Naveen1*`
-   - No auth required (one-time use)
+### 1. Create an Admin Forgot Password page
+Create `src/pages/AdminForgotPassword.tsx` -- a copy of the existing `ForgotPassword` page with two differences:
+- The "Return to Login" link points to `/admin/login` instead of `/student/login`
+- Title/description styled to match the admin context
 
-2. **Deploy and call the function** to reset the password
+### 2. Add route in App.tsx
+Add a new route: `/admin/forgot-password` pointing to the new `AdminForgotPassword` component.
 
-3. **Delete the temporary function** immediately after use
+### 3. Uncomment and update the link in AdminLogin.tsx
+Uncomment the "Forgot password?" link (lines 102-106) and point it to `/admin/forgot-password`.
 
-4. **You log in** at `/admin/login` with:
-   - Email: `admin@inhalestays.com`
-   - Password: `Naveen1*`
+## Technical Details
 
----
+| File | Change |
+|------|--------|
+| `src/pages/AdminForgotPassword.tsx` | New file -- reuses `supabase.auth.resetPasswordForEmail` with redirect to `/reset-password`, "Return to Login" links to `/admin/login` |
+| `src/App.tsx` | Add route `<Route path="/admin/forgot-password" element={<AdminForgotPassword />} />` |
+| `src/pages/AdminLogin.tsx` | Uncomment the forgot password link, change it to `/admin/forgot-password` |
 
-### Security Note
-The temporary function is hardcoded to a single user ID and will be deleted right after use, so there is no security risk.
+No database or backend changes needed -- the existing Supabase password reset email flow works for all users regardless of role.
 
