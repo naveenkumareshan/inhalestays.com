@@ -1,10 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { Utensils } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 
 interface FoodMenuModalProps {
   hostelId: string;
@@ -22,14 +21,8 @@ interface MenuItem {
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
 const DAY_LABELS: Record<string, string> = {
-  sunday: 'Sun', monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed',
-  thursday: 'Thu', friday: 'Fri', saturday: 'Sat',
-};
-
-const mealTypeLabels: Record<string, string> = {
-  breakfast: '🌅 Breakfast',
-  lunch: '☀️ Lunch',
-  dinner: '🌙 Dinner',
+  sunday: 'Sunday', monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
+  thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday',
 };
 
 function getTodayDay(): string {
@@ -39,7 +32,6 @@ function getTodayDay(): string {
 export function FoodMenuModal({ hostelId, menuImage, trigger }: FoodMenuModalProps) {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedDay, setSelectedDay] = useState(getTodayDay());
 
   const fetchMenu = async () => {
     setLoading(true);
@@ -53,20 +45,24 @@ export function FoodMenuModal({ hostelId, menuImage, trigger }: FoodMenuModalPro
     setLoading(false);
   };
 
-  const dayItems = items.filter(i => i.day_of_week === selectedDay);
-  const grouped = dayItems.reduce<Record<string, MenuItem[]>>((acc, item) => {
-    if (!acc[item.meal_type]) acc[item.meal_type] = [];
-    acc[item.meal_type].push(item);
-    return acc;
-  }, {});
+  // Group items: day -> meal_type -> item names
+  const grouped: Record<string, Record<string, string[]>> = {};
+  DAYS.forEach(day => { grouped[day] = { breakfast: [], lunch: [], dinner: [] }; });
+  items.forEach(item => {
+    if (grouped[item.day_of_week]?.[item.meal_type]) {
+      grouped[item.day_of_week][item.meal_type].push(item.item_name);
+    }
+  });
+
+  const today = getTodayDay();
 
   return (
     <Dialog onOpenChange={(open) => { if (open) fetchMenu(); }}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Utensils className="h-4 w-4" /> Food Menu
+            <Utensils className="h-4 w-4" /> Weekly Food Menu
           </DialogTitle>
         </DialogHeader>
 
@@ -82,46 +78,44 @@ export function FoodMenuModal({ hostelId, menuImage, trigger }: FoodMenuModalPro
               </div>
             )}
 
-            <Tabs value={selectedDay} onValueChange={setSelectedDay}>
-              <TabsList className="w-full flex overflow-x-auto">
-                {DAYS.map(day => (
-                  <TabsTrigger key={day} value={day} className="flex-1 text-xs px-1.5">
-                    {DAY_LABELS[day]}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-
-              {DAYS.map(day => (
-                <TabsContent key={day} value={day}>
-                  <div className="space-y-3 pt-1">
-                    {['breakfast', 'lunch', 'dinner'].map(mealType => {
-                      const mealItems = day === selectedDay ? grouped[mealType] : undefined;
-                      if (!mealItems?.length) return null;
-                      return (
-                        <div key={mealType}>
-                          <h3 className="text-sm font-semibold mb-1.5">{mealTypeLabels[mealType]}</h3>
-                          <div className="flex flex-wrap gap-1.5">
-                            {mealItems.map(item => (
-                              <Badge key={item.id} variant="secondary" className="text-xs">
-                                {item.item_name}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {dayItems.length === 0 && (
-                      <p className="text-center text-sm text-muted-foreground py-4">No menu items for this day.</p>
-                    )}
-                  </div>
-                </TabsContent>
-              ))}
-            </Tabs>
-
-            {items.length === 0 && !menuImage && (
+            {items.length > 0 ? (
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="text-xs font-semibold w-24">Day</TableHead>
+                      <TableHead className="text-xs font-semibold">🌅 Breakfast</TableHead>
+                      <TableHead className="text-xs font-semibold">☀️ Lunch</TableHead>
+                      <TableHead className="text-xs font-semibold">🌙 Dinner</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {DAYS.map(day => (
+                      <TableRow
+                        key={day}
+                        className={day === today ? 'bg-primary/5 font-medium' : ''}
+                      >
+                        <TableCell className="text-xs font-medium py-2">
+                          {DAY_LABELS[day]}
+                          {day === today && (
+                            <span className="ml-1 text-[10px] text-primary">(Today)</span>
+                          )}
+                        </TableCell>
+                        {(['breakfast', 'lunch', 'dinner'] as const).map(meal => (
+                          <TableCell key={meal} className="text-xs py-2 text-muted-foreground">
+                            {grouped[day][meal].length > 0
+                              ? grouped[day][meal].join(', ')
+                              : '—'}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : !menuImage ? (
               <p className="text-center text-sm text-muted-foreground py-4">No menu items available yet.</p>
-            )}
+            ) : null}
           </div>
         )}
       </DialogContent>
