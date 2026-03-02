@@ -1,0 +1,1 @@
+ALTER TABLE public.hostels ADD COLUMN show_food_price boolean NOT NULL DEFAULT true;
