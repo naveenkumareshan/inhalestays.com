@@ -177,15 +177,13 @@ export const seatsService = {
         .from('seats').select('*').eq('id', seatId).single();
       if (seatError) throw seatError;
 
-      // Check for conflicting bookings
-      const { data: conflicts, error: bookError } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('seat_id', seatId)
-        .eq('payment_status', 'completed')
-        .lte('start_date', endDate)
-        .gte('end_date', startDate);
-      if (bookError) throw bookError;
+      // Use RPC to check availability (bypasses RLS)
+      const { data: isAvailable, error: rpcError } = await supabase.rpc('check_seat_available', {
+        p_seat_id: seatId,
+        p_start_date: startDate.split('T')[0],
+        p_end_date: endDate.split('T')[0],
+      });
+      if (rpcError) throw rpcError;
 
       return {
         success: true,
@@ -193,8 +191,8 @@ export const seatsService = {
           seatId: seat.id,
           price: String(seat.price),
           number: seat.number,
-          isAvailable: seat.is_available && (!conflicts || conflicts.length === 0),
-          conflictingBookings: conflicts || [],
+          isAvailable: seat.is_available && (isAvailable === true),
+          conflictingBookings: [],
         },
       };
     } catch (e) {
@@ -208,13 +206,11 @@ export const seatsService = {
         .from('seats').select('*').eq('cabin_id', cabinId);
       if (error) throw error;
 
-      const { data: bookings } = await supabase
-        .from('bookings')
-        .select('seat_id, slot_id')
-        .eq('cabin_id', cabinId)
-        .not('payment_status', 'in', '("cancelled","failed")')
-        .lte('start_date', endDate)
-        .gte('end_date', startDate);
+      const { data: bookings } = await supabase.rpc('get_conflicting_seat_bookings', {
+        p_cabin_id: cabinId,
+        p_start_date: startDate.split('T')[0],
+        p_end_date: endDate.split('T')[0],
+      });
 
       const conflicting = (bookings || []).filter(b => {
         if (slotId) return b.slot_id === slotId || b.slot_id === null;
@@ -248,16 +244,12 @@ export const seatsService = {
         .order('number');
       if (error) throw error;
 
-      // Fetch conflicting bookings — exclude cancelled/failed
-      let bookingQuery = supabase
-        .from('bookings')
-        .select('seat_id, slot_id')
-        .eq('cabin_id', cabinId)
-        .not('payment_status', 'in', '("cancelled","failed")')
-        .lte('start_date', endDate)
-        .gte('end_date', startDate);
-
-      const { data: bookings } = await bookingQuery;
+      // Use RPC to bypass RLS and see all users' bookings
+      const { data: bookings } = await supabase.rpc('get_conflicting_seat_bookings', {
+        p_cabin_id: cabinId,
+        p_start_date: startDate.split('T')[0],
+        p_end_date: endDate.split('T')[0],
+      });
 
       // Filter by slot if provided — same seat can be booked in different slots
       const conflicting = (bookings || []).filter(b => {

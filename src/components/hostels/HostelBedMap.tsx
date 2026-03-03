@@ -59,20 +59,12 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
           .in('room_id', roomIds)
           .order('bed_number');
 
-        // Date-aware booking overlap query
-        let bookingQuery = supabase
-          .from('hostel_bookings')
-          .select('bed_id, payment_status, profiles:user_id(name)')
-          .eq('hostel_id', hostelId)
-          .in('status', ['confirmed', 'pending']);
-
-        if (startDate && endDate) {
-          bookingQuery = bookingQuery
-            .lte('start_date', endDate)
-            .gte('end_date', startDate);
-        }
-
-        const { data: bookings } = await bookingQuery;
+        // Use RPC to bypass RLS and see all users' bookings
+        const { data: bookings } = await supabase.rpc('get_conflicting_hostel_bookings', {
+          p_hostel_id: hostelId,
+          p_start_date: startDate || null,
+          p_end_date: endDate || null,
+        });
 
         // Fetch hostel_dues with proportional_end_date for advance_paid bookings
         const { data: duesData } = await supabase
@@ -97,7 +89,7 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
               return;
             }
           }
-          bookingMap.set(b.bed_id, b.profiles?.name || 'Occupied');
+          bookingMap.set(b.bed_id, b.user_name || 'Occupied');
         });
 
         const grouped: Record<number, any[]> = {};

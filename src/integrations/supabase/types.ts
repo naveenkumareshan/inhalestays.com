@@ -3419,6 +3419,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_hostel_bed_available: {
+        Args: { p_bed_id: string; p_end_date: string; p_start_date: string }
+        Returns: boolean
+      }
+      check_seat_available: {
+        Args: { p_end_date: string; p_seat_id: string; p_start_date: string }
+        Returns: boolean
+      }
       generate_serial_number: {
         Args: { p_entity_type: string }
         Returns: string
@@ -3428,6 +3436,30 @@ export type Database = {
         Returns: {
           average_rating: number
           review_count: number
+        }[]
+      }
+      get_conflicting_hostel_bookings: {
+        Args: {
+          p_end_date?: string
+          p_hostel_id: string
+          p_start_date?: string
+        }
+        Returns: {
+          bed_id: string
+          payment_status: string
+          user_name: string
+        }[]
+      }
+      get_conflicting_seat_bookings: {
+        Args: {
+          p_cabin_id: string
+          p_end_date: string
+          p_slot_id?: string
+          p_start_date: string
+        }
+        Returns: {
+          seat_id: string
+          slot_id: string
         }[]
       }
       has_role: {
