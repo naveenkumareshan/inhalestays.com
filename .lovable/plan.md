@@ -1,79 +1,53 @@
 
 
-# Add Financial Details and Collect Button to Check-in Tracker
+# Fix "Page Not Found" on Profile Booking Links
 
-## What Changes
+## Problem
+When clicking booking line items or the "Due" badge on the student profile page, the user gets "Page Not Found" because:
 
-Each row in the Check-in Tracker (both pending and reported tables) will show inline financial summary columns and a "Collect" button when there are pending dues.
+1. **Hostel bookings** link to `/student/hostel-bookings/:bookingId` -- but this route does NOT exist in `App.tsx`. There is no route defined for it at all.
+2. **Reading room bookings** link to `/student/bookings/:bookingId` -- this route EXISTS and should work. If it's also showing "Page Not Found", it may be a serial_number mismatch issue.
 
-## Table Column Updates
+## Solution
 
-### Reading Room Check-in Table
-| S.No. | Student | Room / Seat | Start Date | Seat Price | Deposit | Paid | Due | Payment | Actions |
+### Option A: Reuse the existing `StudentBookingView` for both types (Recommended)
 
-- **Seat Price**: `total_price` from booking (excludes locker/discount)
-- **Deposit**: `locker_price` from booking
-- **Paid**: Sum of all `receipts` for this booking
-- **Due**: `total_price - paid` (remaining balance)
+The simplest fix: make `StudentBookingView` handle both reading room and hostel bookings, and route both types to the same path pattern.
 
-### Hostel Check-in Table
-| S.No. | Student | Hostel / Bed | Start Date | Bed Price | Deposit | Paid | Due | Payment | Actions |
+### Changes
 
-- **Bed Price**: `total_price` from hostel_booking
-- **Deposit**: `security_deposit` from hostel_booking
-- **Paid**: `advance_amount` + sum of due collections from `hostel_receipts`
-- **Due**: Grand total minus paid
+**1. `src/App.tsx`** -- Add the missing hostel booking route
 
-## Data Fetching Changes
+Add a new route that points to the same `StudentBookingView` component:
+```
+/student/hostel-bookings/:bookingId  -->  StudentBookingView
+```
 
-### `CheckInTracker.tsx`
-1. Expand the reading room query to also fetch the related `dues` record for each booking:
-   - After fetching bookings, run a parallel query on `dues` table filtered by `booking_id` to get `total_fee`, `advance_paid`, `paid_amount`, `due_amount`
-   - Also fetch `receipts` for those bookings to calculate total collected
+**2. `src/pages/students/StudentBookingView.tsx`** -- Add hostel booking support
 
-2. Expand the hostel query similarly:
-   - Fetch `hostel_dues` by `booking_id` to get financial data
-   - Fetch `hostel_receipts` for those bookings
+Currently this page only queries the `bookings` table. Update to:
+- First try `bookings` table (reading room) by `serial_number`, then by `id`
+- If not found, try `hostel_bookings` table by `serial_number`, then by `id`
+- Fetch associated financial data from the correct table (`dues` vs `hostel_dues`, `receipts` vs `hostel_receipts`)
+- Render the appropriate detail layout based on booking type (cabin info vs hostel/bed info)
+- For the "Pay Due" button, use the correct Razorpay flow for the booking type
 
-3. Alternatively (simpler approach): Query `dues`/`hostel_dues` in a single batch after bookings load, keyed by `booking_id`, and merge the financial data into each row.
+**3. `src/components/profile/ProfileManagement.tsx`** -- No changes needed
 
-## Collect Button and Flow
-
-- Add a **"Collect"** button in the Actions column when `due > 0`
-- Reuse the exact same **Sheet-based collect drawer** pattern from `DueManagement.tsx` / `HostelDueManagement.tsx`:
-  - Shows: Total Fee, Advance Paid, Collected So Far, Remaining Due
-  - Amount input, Payment Method radio group (Cash/UPI/Bank/Online)
-  - Transaction ID (for UPI/Bank)
-  - Notes
-  - Confirm Collection button
-  - Payment History (DuePaymentHistory / HostelDuePaymentHistory)
-- On successful collection, invalidate the checkin queries
-
-## Receipts Dialog
-
-- Add a **Receipts** button (Receipt icon) in Actions
-- Reuse the same receipts dialog pattern from `DueManagement.tsx`:
-  - Serial number, badge for type (Booking/Due Collection), amount, method, date+time, collected by, txn ID, notes
-  - Fetches from `receipts` table (reading room) or `hostel_receipts` table (hostel)
-
-## ReportedTodaySection Updates
-
-- Same column additions (Seat/Bed Price, Deposit, Paid, Due) for the reported table
-- Same data fetching approach (batch dues lookup)
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/admin/operations/CheckInTracker.tsx` | Add dues/receipts queries, financial columns, Collect drawer (Sheet), Receipts dialog, Collect button in actions |
-| `src/components/admin/operations/ReportedTodaySection.tsx` | Add dues queries, financial columns display |
+The navigation links are already correct (`/student/hostel-bookings/:id` and `/student/bookings/:id`).
 
 ## Technical Details
 
-- Financial columns use `text-[11px]` with `₹` prefix and `.toLocaleString()` formatting
-- Due amount > 0 shown in red; fully paid shown in green
-- Collect drawer imports: `Sheet`, `SheetContent`, `SheetHeader`, `SheetTitle`, `RadioGroup`, `RadioGroupItem`, `Label`, `Textarea`, `Separator`, payment method icons
-- Reading room uses `vendorSeatsService.collectDuePayment()` for collection
-- Hostel uses direct Supabase insert into `hostel_due_payments` + update `hostel_dues` (matching existing HostelDueManagement pattern)
-- Receipts dialog matches the existing standardized format with serial numbers, badges, grid layout
+- The `StudentBookingView` will detect booking type by checking which table returns data
+- Hostel bookings query: `hostel_bookings` joined with `hostels(name)`, `hostel_rooms(room_number)`, `hostel_beds(bed_number)`
+- Hostel financial data: `hostel_dues` for due records, `hostel_receipts` for payment history
+- Partner info lookup: use `hostels.created_by` for hostel bookings (same pattern as `cabins.created_by`)
+- The "Pay Due" Razorpay flow passes the correct `bookingType` parameter (`hostel` vs `cabin`)
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/App.tsx` | Add `/student/hostel-bookings/:bookingId` route pointing to `StudentBookingView` |
+| `src/pages/students/StudentBookingView.tsx` | Add dual-table lookup (bookings + hostel_bookings), render hostel-specific details, use correct financial tables |
 
