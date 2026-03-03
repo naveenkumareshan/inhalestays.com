@@ -1,81 +1,79 @@
 
 
-# Rewrite Student Import for Both Reading Rooms and Hostels
+# Add Financial Details and Collect Button to Check-in Tracker
 
-## Current Problem
-The student import currently:
-- Uses `axios` calling `localhost:5000/api/admin/bookings/bulk-create` -- a legacy API that does not exist
-- Only supports Reading Room (cabin) bookings
-- Template has fields specific to reading rooms only
-- The import will always fail because the backend endpoint doesn't exist
+## What Changes
 
-## Solution
-Rewrite `StudentExcelImport.tsx` and `bulkBookingService.ts` to use Supabase directly, supporting both Reading Rooms and Hostels.
+Each row in the Check-in Tracker (both pending and reported tables) will show inline financial summary columns and a "Collect" button when there are pending dues.
 
-## Property Type Selection
-Add a **property type selector** (Reading Room / Hostel) at the top. Based on selection, show:
-- For **Reading Room**: cabin selector, floor selector
-- For **Hostel**: hostel selector (then rooms/beds are referenced by room_number and bed_number in the Excel)
+## Table Column Updates
 
-## Template Fields
+### Reading Room Check-in Table
+| S.No. | Student | Room / Seat | Start Date | Seat Price | Deposit | Paid | Due | Payment | Actions |
 
-### Reading Room Template
-| Column | Required | Description |
-|--------|----------|-------------|
-| name | Yes | Student name |
-| email | Yes | Email (auto-generated from phone if blank) |
-| phone | Yes | Phone number |
-| amount | Yes | Booking fee |
-| key_deposite | No | Locker/key deposit |
-| startDate | Yes | Start date (DD-MM-YYYY) |
-| endDate | Yes | End date (DD-MM-YYYY) |
-| seat_no | Yes | Seat number |
-| room_name | Yes | Room/floor name |
-| status | No | Booking status (default: booked) |
-| receipt_no | No | Receipt reference |
-| transaction_id | Yes | Payment reference |
-| pay_mode | No | Payment method (Cash/UPI/etc.) |
+- **Seat Price**: `total_price` from booking (excludes locker/discount)
+- **Deposit**: `locker_price` from booking
+- **Paid**: Sum of all `receipts` for this booking
+- **Due**: `total_price - paid` (remaining balance)
 
-### Hostel Template
-| Column | Required | Description |
-|--------|----------|-------------|
-| name | Yes | Student name |
-| email | Yes | Email |
-| phone | Yes | Phone number |
-| amount | Yes | Total rent amount |
-| security_deposit | No | Security deposit |
-| startDate | Yes | Start date |
-| endDate | Yes | End date |
-| room_number | Yes | Room number (matches hostel_rooms.room_number) |
-| bed_number | Yes | Bed number (matches hostel_beds.bed_number) |
-| transaction_id | Yes | Payment reference |
-| pay_mode | No | Payment method |
-| receipt_no | No | Receipt reference |
+### Hostel Check-in Table
+| S.No. | Student | Hostel / Bed | Start Date | Bed Price | Deposit | Paid | Due | Payment | Actions |
 
-## Processing Logic (Supabase-direct)
+- **Bed Price**: `total_price` from hostel_booking
+- **Deposit**: `security_deposit` from hostel_booking
+- **Paid**: `advance_amount` + sum of due collections from `hostel_receipts`
+- **Due**: Grand total minus paid
 
-For each student row:
-1. **Create user** via `create-student` edge function (already exists) -- creates auth user + profile
-2. **Create booking**:
-   - **Reading Room**: Insert into `bookings` table with seat lookup by `seat_no` + `room_name` within the selected cabin/floor
-   - **Hostel**: Lookup `hostel_rooms` by `room_number`, then `hostel_beds` by `bed_number` within that room, insert into `hostel_bookings`, create `hostel_receipts`, mark bed unavailable
-3. **Create receipt**: Insert into receipts table with payment details
-4. Report success/failure per student row
+## Data Fetching Changes
+
+### `CheckInTracker.tsx`
+1. Expand the reading room query to also fetch the related `dues` record for each booking:
+   - After fetching bookings, run a parallel query on `dues` table filtered by `booking_id` to get `total_fee`, `advance_paid`, `paid_amount`, `due_amount`
+   - Also fetch `receipts` for those bookings to calculate total collected
+
+2. Expand the hostel query similarly:
+   - Fetch `hostel_dues` by `booking_id` to get financial data
+   - Fetch `hostel_receipts` for those bookings
+
+3. Alternatively (simpler approach): Query `dues`/`hostel_dues` in a single batch after bookings load, keyed by `booking_id`, and merge the financial data into each row.
+
+## Collect Button and Flow
+
+- Add a **"Collect"** button in the Actions column when `due > 0`
+- Reuse the exact same **Sheet-based collect drawer** pattern from `DueManagement.tsx` / `HostelDueManagement.tsx`:
+  - Shows: Total Fee, Advance Paid, Collected So Far, Remaining Due
+  - Amount input, Payment Method radio group (Cash/UPI/Bank/Online)
+  - Transaction ID (for UPI/Bank)
+  - Notes
+  - Confirm Collection button
+  - Payment History (DuePaymentHistory / HostelDuePaymentHistory)
+- On successful collection, invalidate the checkin queries
+
+## Receipts Dialog
+
+- Add a **Receipts** button (Receipt icon) in Actions
+- Reuse the same receipts dialog pattern from `DueManagement.tsx`:
+  - Serial number, badge for type (Booking/Due Collection), amount, method, date+time, collected by, txn ID, notes
+  - Fetches from `receipts` table (reading room) or `hostel_receipts` table (hostel)
+
+## ReportedTodaySection Updates
+
+- Same column additions (Seat/Bed Price, Deposit, Paid, Due) for the reported table
+- Same data fetching approach (batch dues lookup)
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/admin/StudentExcelImport.tsx` | Full rewrite: add property type toggle, separate templates for RR/Hostel, Supabase-direct processing loop |
-| `src/api/bulkBookingService.ts` | Rewrite to use Supabase client instead of axios; add hostel bulk booking methods; fix validation for both types |
+| `src/components/admin/operations/CheckInTracker.tsx` | Add dues/receipts queries, financial columns, Collect drawer (Sheet), Receipts dialog, Collect button in actions |
+| `src/components/admin/operations/ReportedTodaySection.tsx` | Add dues queries, financial columns display |
 
 ## Technical Details
 
-- The `create-student` edge function is reused to create user accounts (handles existing users gracefully)
-- For Reading Room: seats are looked up via `supabase.from('seats').select('id').eq('cabin_id', cabinId).eq('number', seatNo)`
-- For Hostel: rooms are looked up via `hostel_rooms.room_number`, beds via `hostel_beds.bed_number` within that room
-- Processing is sequential per student (to avoid race conditions on seat/bed availability)
-- Date parsing handles both Excel serial numbers and string formats (DD-MM-YYYY)
-- All amounts use `formatCurrency()` with max 2 decimals
-- Partner-scoped: if the logged-in user is a partner, only their properties are shown in the selector
+- Financial columns use `text-[11px]` with `₹` prefix and `.toLocaleString()` formatting
+- Due amount > 0 shown in red; fully paid shown in green
+- Collect drawer imports: `Sheet`, `SheetContent`, `SheetHeader`, `SheetTitle`, `RadioGroup`, `RadioGroupItem`, `Label`, `Textarea`, `Separator`, payment method icons
+- Reading room uses `vendorSeatsService.collectDuePayment()` for collection
+- Hostel uses direct Supabase insert into `hostel_due_payments` + update `hostel_dues` (matching existing HostelDueManagement pattern)
+- Receipts dialog matches the existing standardized format with serial numbers, badges, grid layout
 
