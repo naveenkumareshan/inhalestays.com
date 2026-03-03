@@ -250,7 +250,7 @@ const StudentBookings = () => {
             <Card
               className="bg-white/10 border-0 shadow-none cursor-pointer"
               onClick={() => {
-                if (firstDueInfo?.booking_id) navigate(`/student/bookings/${firstDueInfo.booking_id}`);
+                if (firstDueInfo?.booking_id) navigate(`/student/bookings/${(firstDueInfo as any).serial_number || firstDueInfo.booking_id}`);
               }}
             >
               <CardContent className="p-3">

@@ -305,7 +305,7 @@ const AdminBookingsList = () => {
 
   const handleViewDetails = (booking: Booking) => {
     const bookingType = booking.cabinId ? "cabin" : "hostel";
-    navigate(`/admin/bookings/${booking._id}/${bookingType}`);
+    navigate(`/admin/bookings/${booking.bookingId || booking._id}/${bookingType}`);
   };
 
 

@@ -238,7 +238,7 @@ export default function AdminHostelBookings() {
                             </TableCell>
                             <TableCell className="py-1 px-2 text-right">
                               <Tooltip><TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate(`/admin/bookings/${b.id}/hostel`)}>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate(`/admin/bookings/${b.serial_number || b.id}/hostel`)}>
                                   <Eye className="h-3.5 w-3.5" />
                                 </Button>
                               </TooltipTrigger><TooltipContent>Details</TooltipContent></Tooltip>

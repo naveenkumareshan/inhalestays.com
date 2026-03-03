@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { BookingTransactionView } from '@/components/booking/BookingTransactionView';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const BookingTransactions = () => {
   const { bookingId, bookingType } = useParams<{ 
@@ -11,6 +12,20 @@ const BookingTransactions = () => {
     bookingType: 'cabin' | 'hostel' 
   }>();
   const navigate = useNavigate();
+  const [resolvedId, setResolvedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const resolve = async () => {
+      if (!bookingId || !bookingType) { setLoading(false); return; }
+      const table = bookingType === 'hostel' ? 'hostel_bookings' : 'bookings';
+      // Try serial_number first
+      const { data } = await supabase.from(table).select('id').eq('serial_number', bookingId).maybeSingle();
+      setResolvedId(data?.id || bookingId);
+      setLoading(false);
+    };
+    resolve();
+  }, [bookingId, bookingType]);
 
   if (!bookingId || !bookingType) {
     return (
@@ -26,6 +41,14 @@ const BookingTransactions = () => {
             </Button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-60">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
   }
@@ -51,7 +74,7 @@ const BookingTransactions = () => {
         </div>
 
         <BookingTransactionView 
-          bookingId={bookingId} 
+          bookingId={resolvedId || bookingId} 
           bookingType={bookingType}
           booking={null}
         />

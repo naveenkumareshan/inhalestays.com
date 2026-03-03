@@ -455,7 +455,7 @@ const StudentDashboard: React.FC = () => {
                         ) : (
                           <div className="space-y-6">
                             {currentBookings.map((booking) => (
-                              <div key={booking.id} onClick={() => navigate(`/student/bookings/${booking.id}`)} className="cursor-pointer hover:bg-muted/50 transition rounded-2xl border p-5 shadow-md space-y-4">
+                              <div key={booking.id} onClick={() => navigate(`/student/bookings/${(booking as any).serial_number || booking.id}`)} className="cursor-pointer hover:bg-muted/50 transition rounded-2xl border p-5 shadow-md space-y-4">
                               {/* Top: Title & Status */}
                               <div className="flex flex-col md:flex-row md:justify-between md:items-center">
                                 <div>

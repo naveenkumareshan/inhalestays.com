@@ -122,7 +122,7 @@ const AdminBookings = () => {
           <span className="font-semibold">₹{(b.seatPrice || 0).toLocaleString()}</span>
           <span className="text-muted-foreground ml-2">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</span>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/admin/bookings/${b._id}/cabin`)}>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/admin/bookings/${b.bookingId || b._id}/cabin`)}>
           <Eye className="h-3.5 w-3.5" />
         </Button>
       </div>
@@ -217,7 +217,7 @@ const AdminBookings = () => {
                         </TableCell>
                         <TableCell className="py-1 px-2 text-right">
                           <Tooltip><TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate(`/admin/bookings/${b._id}/cabin`)}>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate(`/admin/bookings/${b.bookingId || b._id}/cabin`)}>
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
                           </TooltipTrigger><TooltipContent>Details</TooltipContent></Tooltip>

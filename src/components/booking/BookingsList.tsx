@@ -318,7 +318,7 @@ export const BookingsList = ({
 
               {['completed', 'advance_paid'].includes(booking.paymentStatus) && (
                 <>
-                  <Link to={`/student/bookings/${booking.id}`} className="flex-1">
+                  <Link to={`/student/bookings/${(booking as any).serial_number || booking.id}`} className="flex-1">
                     <Button variant="outline" size="sm" className="w-full h-8 text-[12px] rounded-xl gap-1">
                       <Eye className="h-3.5 w-3.5" /> View Details
                     </Button>

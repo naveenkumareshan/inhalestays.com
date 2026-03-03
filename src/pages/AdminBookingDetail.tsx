@@ -49,13 +49,31 @@ const AdminBookingDetail = () => {
       setLoading(true);
       let bookingData: any = null;
 
+      let resolvedId = bookingId!;
+
       if (bookingType === 'hostel') {
-        const data = await hostelService.getBookingById(bookingId!);
-        bookingData = data;
+        // Dual-lookup: try serial_number first, then UUID
+        let { data: hb } = await supabase
+          .from('hostel_bookings')
+          .select('*, hostels(name), hostel_rooms(room_number), hostel_beds(bed_number), profiles:user_id(name, email, phone)')
+          .eq('serial_number', bookingId!)
+          .maybeSingle();
+        if (!hb) {
+          const res = await supabase
+            .from('hostel_bookings')
+            .select('*, hostels(name), hostel_rooms(room_number), hostel_beds(bed_number), profiles:user_id(name, email, phone)')
+            .eq('id', bookingId!)
+            .single();
+          hb = res.data;
+        }
+        bookingData = hb;
+        if (bookingData) resolvedId = bookingData.id;
       } else {
+        // Dual-lookup for cabin bookings
         const response = await adminBookingsService.getBookingById(bookingId!);
         if (response.success && response.data) {
           bookingData = response.data;
+          resolvedId = bookingData._id || bookingData.id || bookingId!;
         }
       }
 
@@ -71,7 +89,7 @@ const AdminBookingDetail = () => {
         const { data: rcpts } = await supabase
           .from('hostel_receipts')
           .select('*')
-          .eq('booking_id', bookingId!)
+          .eq('booking_id', resolvedId)
           .order('created_at', { ascending: false });
         setReceipts((rcpts || []).map(r => ({
           ...r,
@@ -84,13 +102,13 @@ const AdminBookingDetail = () => {
         const { data: rcpts } = await supabase
           .from('receipts')
           .select('*')
-          .eq('booking_id', bookingId!)
+          .eq('booking_id', resolvedId)
           .order('created_at', { ascending: false });
         setReceipts((rcpts || []) as ReceiptRow[]);
         const { data: dues } = await supabase
           .from('dues')
           .select('*')
-          .eq('booking_id', bookingId!)
+          .eq('booking_id', resolvedId)
           .limit(1)
           .maybeSingle();
         setDueData(dues);

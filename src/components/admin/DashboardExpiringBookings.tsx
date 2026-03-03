@@ -76,7 +76,7 @@ export function DashboardExpiringBookings() {
                 <div 
                 key={booking._id} 
                 className="flex justify-between items-center p-1.5 rounded-md hover:bg-muted cursor-pointer"
-                onClick={() => navigate(`/admin/bookings/${booking._id}/cabin`)}
+                onClick={() => navigate(`/admin/bookings/${booking.bookingId || booking._id}/cabin`)}
               >
                 <div>
                   <p className="font-medium">{booking.studentName || 'Student'}</p>

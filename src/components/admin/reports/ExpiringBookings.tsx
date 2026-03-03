@@ -52,7 +52,7 @@ export function ExpiringBookings() {
   };
 
   const handleRenewBooking = (bookingId: string) => {
-    navigate(`/admin/bookings/${bookingId}/cabin`)
+    navigate(`/admin/bookings/${bookingId}/cabin`) // bookingId here is already the _id from the row
   };
 
   const handleContactStudent = (studentId: string, studentName: string, method: 'email' | 'phone') => {
@@ -175,7 +175,7 @@ export function ExpiringBookings() {
                             variant="outline" 
                             size="sm"
                             className="w-full"
-                            onClick={() => handleRenewBooking(booking._id)}
+                            onClick={() => handleRenewBooking(booking.bookingId || booking._id)}
                           >
                             View
                           </Button>

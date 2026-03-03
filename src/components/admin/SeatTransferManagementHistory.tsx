@@ -157,8 +157,8 @@ export function SeatTransferManagementHistory() {
   };
 
 
-  const viewBookings = (bookingid) => {
-     window.open(`/admin/bookings/${bookingid}/cabin`, '_blank');
+  const viewBookings = (booking: any) => {
+     window.open(`/admin/bookings/${booking.bookingId || booking._id}/cabin`, '_blank');
   };
 
   const exportData = async (format: 'csv' | 'xlsx') => {
@@ -341,7 +341,7 @@ export function SeatTransferManagementHistory() {
                     variant="outline"
                     size="sm"
                     className="h-8 ml-3 shrink-0"
-                    onClick={() => viewBookings(booking._id)}
+                    onClick={() => viewBookings(booking)}
                   >
                     <Eye className="h-3.5 w-3.5 mr-1" />
                     View

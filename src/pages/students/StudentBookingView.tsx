@@ -122,26 +122,39 @@ export default function StudentBookingView() {
     if (!bookingId) return;
     try {
       setLoading(true);
-      const [bookingRes, receiptsRes, duesRes] = await Promise.all([
-        supabase
+      // Dual-lookup: try serial_number first, then fall back to UUID
+      const selectQuery = "*, cabins(name, opening_time, closing_time, working_days, is_24_hours, slots_enabled, created_by), seats:seat_id(price, number, category), cabin_slots:slot_id(name, start_time, end_time, price)";
+      let bookingRes = await supabase
+        .from("bookings")
+        .select(selectQuery)
+        .eq("serial_number", bookingId)
+        .maybeSingle();
+
+      if (!bookingRes.data) {
+        bookingRes = await supabase
           .from("bookings")
-          .select("*, cabins(name, opening_time, closing_time, working_days, is_24_hours, slots_enabled, created_by), seats:seat_id(price, number, category), cabin_slots:slot_id(name, start_time, end_time, price)")
+          .select(selectQuery)
           .eq("id", bookingId)
-          .single(),
+          .single();
+      }
+
+      if (bookingRes.error || !bookingRes.data) throw new Error("Not found");
+
+      const resolvedId = bookingRes.data.id;
+
+      const [receiptsRes, duesRes] = await Promise.all([
         supabase
           .from("receipts")
           .select("*")
-          .eq("booking_id", bookingId)
+          .eq("booking_id", resolvedId)
           .order("created_at", { ascending: false }),
         supabase
           .from("dues")
           .select("id, due_amount, paid_amount, status")
-          .eq("booking_id", bookingId)
+          .eq("booking_id", resolvedId)
           .in("status", ["pending", "partial"])
           .maybeSingle(),
       ]);
-
-      if (bookingRes.error || !bookingRes.data) throw new Error("Not found");
       setBooking(bookingRes.data);
       setReceipts((receiptsRes.data as ReceiptItem[]) || []);
       setDueRecord(duesRes.data as DueRecord | null);
