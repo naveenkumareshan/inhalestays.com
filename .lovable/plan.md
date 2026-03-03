@@ -1,197 +1,64 @@
 
+# Fix Share Button, URL, and Bottom Navigation
 
-# Fix: Seats/Beds Shown as Available Due to RLS Blocking Cross-User Booking Visibility
+## 1. Update Share URL to `inhalestays.com`
 
-## Root Cause
+**File: `src/utils/appUrl.ts`**
+Change `"https://bookmynook.com"` to `"https://inhalestays.com"`. This single change fixes all share links, credential links, and partner links across the entire app.
 
-The availability logic queries the `bookings` and `hostel_bookings` tables to find conflicting reservations. However, **RLS policies restrict students to only see their own bookings** (`auth.uid() = user_id`). This means:
+## 2. Move Share Button Below Image (beside photo counter)
 
-- When Student A checks seat availability, they cannot see Student B's bookings
-- All seats booked by other users appear as "Available"
-- The pre-payment safety check also fails silently for the same reason
+Currently the ShareButton sits in the top-right image overlay. Move it to the property info section below the image, next to the property name, making it more visible and accessible.
 
-This affects **both Reading Room seats and Hostel beds**.
+**File: `src/pages/BookSeat.tsx`** (lines 256-266)
+- Remove `ShareButton` from the `absolute top-3 right-3` overlay div
+- Add it in the info section (line ~274) next to the property name, as a small inline icon button
 
-## Solution
+**File: `src/pages/HostelRoomDetails.tsx`** (lines 486-498)
+- Same change: remove from overlay, place next to hostel name below the image
 
-Create two **SECURITY DEFINER** database functions that bypass RLS to return only the booking conflict data needed (seat/bed IDs), without exposing any personal information. Then update the frontend services to call these functions instead of querying the tables directly.
+**File: `src/components/CabinImageSlider.tsx`**
+- No changes needed -- the photo counter stays inside the carousel as-is
 
----
-
-## Step 1: Create Database Functions
-
-### Function 1: `get_conflicting_seat_bookings`
-Returns seat IDs that have active bookings overlapping a given date range for a cabin, with optional slot filtering.
-
-```sql
-CREATE OR REPLACE FUNCTION public.get_conflicting_seat_bookings(
-  p_cabin_id uuid,
-  p_start_date date,
-  p_end_date date,
-  p_slot_id uuid DEFAULT NULL
-)
-RETURNS TABLE(seat_id uuid, slot_id uuid)
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT DISTINCT b.seat_id, b.slot_id
-  FROM public.bookings b
-  WHERE b.cabin_id = p_cabin_id
-    AND b.payment_status NOT IN ('cancelled', 'failed')
-    AND b.start_date <= p_end_date
-    AND b.end_date >= p_start_date;
-$$;
+### Layout after change (BookSeat example):
+```text
+[  Image Carousel with photo counter "1/5"  ]
+PropertyName                    [Share icon]
+Star 4.5 (12 reviews)
+Pin Location address
 ```
 
-### Function 2: `get_conflicting_hostel_bookings`
-Returns bed IDs with active bookings overlapping a date range for a hostel, plus payment status for advance_paid logic.
+## 3. Clean Up Share Text
 
-```sql
-CREATE OR REPLACE FUNCTION public.get_conflicting_hostel_bookings(
-  p_hostel_id uuid,
-  p_start_date date DEFAULT NULL,
-  p_end_date date DEFAULT NULL
-)
-RETURNS TABLE(bed_id uuid, payment_status text, user_name text)
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT hb.bed_id, hb.payment_status::text, p.name as user_name
-  FROM public.hostel_bookings hb
-  LEFT JOIN public.profiles p ON p.id = hb.user_id
-  WHERE hb.hostel_id = p_hostel_id
-    AND hb.status IN ('confirmed', 'pending')
-    AND (p_start_date IS NULL OR hb.start_date <= p_end_date)
-    AND (p_end_date IS NULL OR hb.end_date >= p_start_date);
-$$;
-```
+**File: `src/utils/shareUtils.ts`**
+- Make the share text cleaner and more readable
+- Put property name prominently first
+- Keep emojis but format better with line breaks
 
-### Function 3: `check_seat_available`
-Single-seat availability check for the pre-payment safety net.
+## 4. Bigger Bottom Navigation Icons with Theme Color
 
-```sql
-CREATE OR REPLACE FUNCTION public.check_seat_available(
-  p_seat_id uuid,
-  p_start_date date,
-  p_end_date date
-)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT NOT EXISTS (
-    SELECT 1 FROM public.bookings
-    WHERE seat_id = p_seat_id
-      AND payment_status NOT IN ('cancelled', 'failed')
-      AND start_date <= p_end_date
-      AND end_date >= p_start_date
-  );
-$$;
-```
+**File: `src/components/student/MobileBottomNav.tsx`**
+- Increase icon size: `w-5 h-5` (20px) to `w-6 h-6` (24px)
+- Increase text: `text-[10px]` to `text-[11px]`
+- Increase nav height: `min-h-[56px]` to `min-h-[64px]`
+- Active tab: add light primary background (`bg-primary/10 rounded-xl px-3 py-1`)
+- Widen active indicator bar: `w-8` to `w-10`
+- Increase active scale: `scale-110` to `scale-[1.15]`
 
-### Function 4: `check_hostel_bed_available`
-Single-bed availability check for the pre-payment safety net.
-
-```sql
-CREATE OR REPLACE FUNCTION public.check_hostel_bed_available(
-  p_bed_id uuid,
-  p_start_date date,
-  p_end_date date
-)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT NOT EXISTS (
-    SELECT 1 FROM public.hostel_bookings
-    WHERE bed_id = p_bed_id
-      AND status IN ('confirmed', 'pending')
-      AND start_date <= p_end_date
-      AND end_date >= p_start_date
-  );
-$$;
+### Visual result:
+```text
+Before: tiny icons, no color distinction
+After:  larger icons, active tab has soft primary-tinted background pill
 ```
 
 ---
 
-## Step 2: Update `src/api/seatsService.ts`
-
-### `getAvailableSeatsForDateRange` -- replace direct bookings query with RPC call:
-```typescript
-// Instead of: supabase.from('bookings').select('seat_id, slot_id')...
-const { data: bookings } = await supabase.rpc('get_conflicting_seat_bookings', {
-  p_cabin_id: cabinId,
-  p_start_date: startDate.split('T')[0],
-  p_end_date: endDate.split('T')[0],
-});
-```
-
-### `checkSeatsAvailabilityBulk` -- same RPC call replacement
-
-### `checkSeatAvailability` -- use `check_seat_available` RPC:
-```typescript
-const { data: isAvailable } = await supabase.rpc('check_seat_available', {
-  p_seat_id: seatId,
-  p_start_date: startDate,
-  p_end_date: endDate,
-});
-```
-
----
-
-## Step 3: Update `src/components/hostels/HostelBedMap.tsx`
-
-Replace the direct `hostel_bookings` query with RPC:
-```typescript
-// Instead of: supabase.from('hostel_bookings').select(...)
-const { data: bookings } = await supabase.rpc('get_conflicting_hostel_bookings', {
-  p_hostel_id: hostelId,
-  p_start_date: startDate || null,
-  p_end_date: endDate || null,
-});
-```
-
-## Step 4: Update `src/components/hostels/HostelBedLayoutView.tsx`
-
-Same RPC replacement as HostelBedMap.
-
-## Step 5: Update `src/pages/HostelRoomDetails.tsx`
-
-Replace the pre-payment direct query with `check_hostel_bed_available` RPC:
-```typescript
-const { data: isAvailable } = await supabase.rpc('check_hostel_bed_available', {
-  p_bed_id: selectedBed.id,
-  p_start_date: format(checkInDate, 'yyyy-MM-dd'),
-  p_end_date: format(endDate, 'yyyy-MM-dd'),
-});
-if (!isAvailable) {
-  // Block booking
-}
-```
-
----
-
-## Files Modified
+## Summary
 
 | File | Change |
 |------|--------|
-| **Database migration** | Create 4 SECURITY DEFINER functions |
-| `src/api/seatsService.ts` | Use `get_conflicting_seat_bookings` and `check_seat_available` RPCs |
-| `src/components/hostels/HostelBedMap.tsx` | Use `get_conflicting_hostel_bookings` RPC |
-| `src/components/hostels/HostelBedLayoutView.tsx` | Use `get_conflicting_hostel_bookings` RPC |
-| `src/pages/HostelRoomDetails.tsx` | Use `check_hostel_bed_available` RPC |
-
-## Security Notes
-- The RPC functions only return seat/bed IDs and minimal data (no PII exposed)
-- SECURITY DEFINER bypasses RLS safely since the functions have a narrow, read-only scope
-- No changes to existing RLS policies needed
-- No UI or business logic changes
-
+| `src/utils/appUrl.ts` | URL to `https://inhalestays.com` |
+| `src/utils/shareUtils.ts` | Cleaner share text formatting |
+| `src/pages/BookSeat.tsx` | Move ShareButton below image beside name |
+| `src/pages/HostelRoomDetails.tsx` | Move ShareButton below image beside name |
+| `src/components/student/MobileBottomNav.tsx` | Larger icons, themed active state |
