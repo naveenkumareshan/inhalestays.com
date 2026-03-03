@@ -1,80 +1,104 @@
 
+# Multi-Point Fix: Partner Data Isolation, Settlement Export, Partner Statement, and Decimal Formatting
 
-# Fix Partner Data Isolation: Show Only Linked Properties
+## 1. Partner Data Isolation -- Complaints, Users, Settlements, Deposits, Employees
 
-## Problem
-Partners (vendors) can see ALL active/approved Reading Rooms and Hostels instead of only the properties they own. This happens because:
-- RLS has "Anyone can view active approved cabins/hostels" policies (needed for student-facing pages)
-- Partner-facing pages don't always filter by `created_by` in their queries
+**Problem**: Partners can currently see all complaints, all users/students, and all settlements instead of only data related to their own properties.
 
-## Affected Pages and Fixes
+**Solution**: RLS policies already restrict data for partners on `complaints`, `hostel_bookings`, `bookings`, etc. The queries themselves just need to not override RLS. Most queries already go through `supabase.from(...)` which respects RLS. However, a few pages need explicit ownership filters:
 
-### 1. Seat Control Center (VendorSeats) and Due Management
-**File**: `src/api/vendorSeatsService.ts` -- `getVendorCabins()`
+### Complaints (`ComplaintsManagement.tsx`)
+- The RLS policy "Vendors can view complaints for own properties" already filters by `cabin.created_by` and `hostel.created_by`. The query `supabase.from('complaints').select(...)` will naturally return only the partner's complaints via RLS.
+- **No code change needed** -- RLS handles this correctly. Verify by testing.
 
-Currently queries `cabins` with no ownership filter. Fix: add `.eq('created_by', user.id)` for non-admin users.
+### Students/Users (`AdminStudents.tsx`)
+- Partners should only see students who have bookings at their properties. This requires filtering students by their booking associations.
+- Add a check: if user role is not admin/super_admin, fetch students who have bookings in the partner's cabins or hostels.
+- Query the partner's cabin/hostel IDs, then filter profiles by `user_id IN (bookings for those properties)`.
 
-- Get current user via `supabase.auth.getUser()`
-- Check role from `user_roles` table
-- If not admin, add `.eq('created_by', userId)` filter to cabins query
+### Settlements (`PartnerSettlements.tsx` -- partner view)
+- Partners use `PartnerEarnings.tsx` which already filters by `partner_id` -- this is correct.
+- The admin `PartnerSettlements.tsx` is admin-only, so no change needed.
 
-### 2. Hostel Bed Map
-**File**: `src/pages/admin/HostelBedMap.tsx` (line ~168)
+### Deposits
+- Already handled in the previous partner isolation fix (HostelDeposits uses `created_by` filter).
 
-Currently queries `hostels` with only `is_active = true`. Fix: for non-admin users, add `.eq('created_by', userId)`.
+### Employees
+- `vendorEmployeeService.ts` already filters by `partner_user_id = user.id` -- correct.
 
-- Use `useAuth()` hook (already imported) to check `user.role`
-- If role is not `admin`, add created_by filter to the hostels fetch query
+**Files to modify**: `src/pages/AdminStudents.tsx` -- add partner-specific student filtering.
 
-### 3. Hostel Due Management
-**File**: `src/pages/admin/HostelDueManagement.tsx` (line ~61)
+## 2. Admin Settlement Table -- Show Bank Details + Export for Bank Upload
 
-Currently queries `hostels` with `is_active = true`. Fix: same pattern -- add `created_by` filter for non-admin.
+**Problem**: The admin settlement table doesn't show partner bank details (Name, Account Number, IFSC) and lacks a bank-uploadable export.
 
-### 4. Hostel Receipts
-**File**: `src/pages/admin/HostelReceipts.tsx` (line ~58)
+**Solution**:
 
-Currently queries `hostels` with no filter. Fix: add `created_by` filter for non-admin.
+### Table Changes (`PartnerSettlements.tsx`)
+- Add 3 columns after "Partner": Account Holder Name, Account Number, IFSC Code
+- Data is already fetched via `partners!inner(business_name, contact_person, email, bank_details)` join
+- Access via `s.partners?.bank_details?.accountHolderName`, `s.partners?.bank_details?.accountNumber`, `s.partners?.bank_details?.ifscCode`
 
-### 5. Hostel Deposits
-**File**: `src/pages/admin/HostelDeposits.tsx`
+### Bank Transfer Export
+- Add an "Export for Bank" button that generates a CSV with columns matching standard bank upload format:
+  - Beneficiary Name, Account Number, IFSC Code, Amount (Net Payable), UTR/Reference, Payment Mode, Settlement ID, Period
+- Only include settlements with status "approved" or "locked" (ready for payment)
+- Use the existing ExcelJS dependency for clean export
 
-The hostel bookings queries here rely on RLS for `hostel_bookings`, which does have proper partner filtering ("Partners can view bookings for own hostels"). However, any hostel dropdown/filter lists need the `created_by` filter.
+**Files to modify**: `src/pages/admin/PartnerSettlements.tsx`
 
-### 6. Partner Cabin Management (CabinManagement.tsx + CabinsDashboard.tsx)
-**File**: `src/api/hostelManagerService.ts`
+## 3. Partner Earnings -- Settlement Statement Popup + Download
 
-Currently uses axios to call a non-existent external API `/manager/cabins/managed`. Fix: replace with direct Supabase query filtered by `created_by`.
+**Problem**: Partners can see settlement list but can't view a detailed statement or download it.
 
-- Rewrite `getManagedCabins()` to use `supabase.from('cabins').select('*').eq('created_by', userId)`
-- Remove the broken axios calls for the other stats methods or convert them similarly
+**Solution**:
 
-## Implementation Pattern
+### Statement Popup (`PartnerEarnings.tsx`)
+- Enhance the existing "Eye" button click to show a full statement dialog (similar to `SettlementDetailDialog`)
+- Include: settlement summary (total collected, commission, gateway fees, adjustments, TDS, security hold, net payable), plus receipt-level breakdown table
+- Add a "Download Statement" button inside the popup
 
-Every affected query will follow this pattern:
+### Download Statement
+- Generate a CSV/Excel file containing:
+  - Header: Settlement ID, Period, Partner Name, Date
+  - Summary: Total Collected, Commission, Gateway Fees, Adjustments, Net Payable
+  - Items table: S.No, Receipt ID, Type, Module, Student, Property, Payment Date, Amount, Commission, Gateway Fee, Net Amount
+  - Footer: Totals
 
-```text
-1. Get current user (from useAuth hook or supabase.auth.getUser())
-2. Check if user.role === 'admin'
-3. If admin: no filter (see all)
-4. If partner/vendor: add .eq('created_by', userId)
-```
+**Files to modify**: `src/pages/partner/PartnerEarnings.tsx`, `src/api/partnerEarningsService.ts`
 
-## Files to Modify
+## 4. Settlement Cycle Automation Confirmation
 
-| File | Change |
-|------|--------|
-| `src/api/vendorSeatsService.ts` | Add `created_by` filter to `getVendorCabins()` for non-admin users |
-| `src/pages/admin/HostelBedMap.tsx` | Add `created_by` filter to hostels query for non-admin |
-| `src/pages/admin/HostelDueManagement.tsx` | Add `created_by` filter to hostels query for non-admin |
-| `src/pages/admin/HostelReceipts.tsx` | Add `created_by` filter to hostels query for non-admin |
-| `src/pages/admin/HostelDeposits.tsx` | Add `created_by` filter to hostel bookings queries for non-admin |
-| `src/api/hostelManagerService.ts` | Replace broken axios calls with Supabase queries filtered by `created_by` |
+The settlement generation already uses `period_start` and `period_end` dates. The `partner_payout_settings` table has a `settlement_cycle` field (weekly, biweekly, monthly, custom). The current generate dialog allows manual period selection. The settlement list is already sorted by `created_at` descending, so settlements follow the admin's generation cycle. **No code change needed** -- this is already working as designed.
 
-## Technical Notes
+## 5. All Amounts -- Max 2 Decimal Places
 
-- The `user.role` is available from `useAuth()` context in page components
-- For service files, we use `supabase.auth.getUser()` and check `user_roles` table
-- RLS policies for `hostel_bookings`, `hostel_dues`, `hostel_receipts` already have partner-specific policies that filter correctly -- the issue is primarily with the **hostel/cabin dropdown lists** and **direct property queries** that hit the public SELECT policy
-- No database or RLS changes needed -- this is purely a code-level filtering fix
+**Problem**: Amounts displayed with `toLocaleString()` may show inconsistent decimals. The `formatCurrency()` utility already limits to 2 decimals, but many places use raw `toLocaleString()`.
 
+**Solution**:
+- Replace all `toLocaleString()` amount displays with `formatCurrency()` across all affected files
+- Update `roundPrice()` calls in settlement generation to ensure calculated values are rounded before storage
+- Key files to update:
+  - `src/pages/admin/PartnerSettlements.tsx`
+  - `src/pages/partner/PartnerEarnings.tsx`
+  - `src/components/admin/SettlementDetailDialog.tsx`
+  - `src/api/settlementService.ts` (round calculated amounts before insert)
+
+## Files to Modify Summary
+
+| File | Changes |
+|------|---------|
+| `src/pages/AdminStudents.tsx` | Filter students by partner's property bookings for non-admin users |
+| `src/pages/admin/PartnerSettlements.tsx` | Add bank detail columns + "Export for Bank" button |
+| `src/pages/partner/PartnerEarnings.tsx` | Enhanced statement popup with download option, use `formatCurrency()` |
+| `src/api/partnerEarningsService.ts` | Add method to fetch full settlement detail for partner view |
+| `src/components/admin/SettlementDetailDialog.tsx` | Use `formatCurrency()` for all amounts |
+| `src/api/settlementService.ts` | Round all calculated amounts with `roundPrice()` before DB insert |
+
+## Technical Details
+
+- Bank details are stored as JSONB in `partners.bank_details` with keys: `accountHolderName`, `accountNumber`, `ifscCode`, `bankName`
+- The `formatCurrency()` from `src/utils/currency.ts` formats with INR symbol and max 2 decimals
+- The `roundPrice()` utility rounds to 2 decimal places using `Math.round((amount + Number.EPSILON) * 100) / 100`
+- ExcelJS (already installed) will be used for the bank export CSV generation
+- Partner earnings statement reuses the same `settlement_items` table data already queried by `getMySettlementItems()`
