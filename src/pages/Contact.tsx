@@ -25,9 +25,10 @@ const Contact = () => {
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-center">Contact Us</h1>
+        <h1 className="text-3xl font-bold mb-4 text-center">Contact Us</h1>
+        <p className="text-muted-foreground text-center mb-8">Contact details will be updated soon. In the meantime, send us a message below.</p>
         
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="max-w-lg mx-auto">
           <Card>
             <CardHeader>
               <CardTitle>Send us a message</CardTitle>
@@ -66,52 +67,6 @@ const Contact = () => {
               </form>
             </CardContent>
           </Card>
-          
-          <div className="space-y-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Our Location</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="mb-4">
-                  123 Hostel Avenue<br />
-                  Campus Area<br />
-                  University District, State<br />
-                  ZIP Code
-                </p>
-                
-                <div className="aspect-video bg-muted rounded-md flex items-center justify-center">
-                  <p className="text-muted-foreground text-sm">Map placeholder</p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Contact Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <p>
-                  <strong className="block">Email:</strong>
-                  <a href="mailto:info@inhalestays.com" className="text-primary hover:underline">
-                    info@inhalestays.com
-                  </a>
-                </p>
-                
-                <p>
-                  <strong className="block">Phone:</strong>
-                  <a href="tel:+1234567890" className="text-primary hover:underline">
-                    +1 (234) 567-890
-                  </a>
-                </p>
-                
-                <p>
-                  <strong className="block">Office Hours:</strong>
-                  Monday - Friday: 9am - 5pm
-                </p>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </div>
     </div>
