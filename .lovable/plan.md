@@ -1,65 +1,91 @@
 
 
-# Fix Capacity Upgrade Pricing (Per Month) + Diamond Universal Package
+# 1. Copiable Employee Login Links + 2. Partner Onboarding Landing Page
 
-## Changes
+## Part 1: Copiable Login Links in Employee Pages
 
-### 1. Capacity Upgrade Price = Per Month, Billed Yearly
+### Admin Employees Page (`src/pages/admin/AdminEmployees.tsx`)
+- Replace the static text showing `/admin/login` with a copiable full URL using `getPublicAppUrl() + '/admin/login'`
+- Add a Copy button (clipboard icon) next to the URL that copies to clipboard and shows a toast confirmation
 
-Currently, `capacity_upgrade_price` (e.g. 300) is treated as a flat one-time amount per slab. The user wants it to be **per month**, so the yearly cost per slab = `capacity_upgrade_price * 12`.
+### Partner Employees Page (`src/pages/vendor/VendorEmployees.tsx`)
+- Add the same copiable login URL box showing `getPublicAppUrl() + '/partner/login'`
+- Same copy-to-clipboard behavior with toast feedback
 
-**Files to update:**
+Both will use a small info card at the top with the full URL and a copy icon button.
 
-| File | Change |
-|------|--------|
-| `src/pages/partner/MySubscriptions.tsx` | Update `totalAmount` calculation: `capacityUpgrades * selectedPlan.capacity_upgrade_price * 12` instead of `* price`. Update all display text to show "/month per slab" and the yearly total. |
-| `src/pages/admin/SubscriptionPlans.tsx` | Update label from "Price per Slab" to "Price per Slab/Month". No formula change needed in admin (admin just sets the monthly rate). |
-| `supabase/functions/subscription-create-order/index.ts` | Update: `capacityUpgradeAmount = capacityUpgrades * plan.capacity_upgrade_price * 12` |
+---
 
-**Example:** If `capacity_upgrade_price = 300` and partner picks 2 slabs:
-- Monthly cost: 2 x 300 = 600/month
-- Yearly cost: 600 x 12 = 7,200 added to the subscription total
+## Part 2: Partner Onboarding Landing Page
 
-### 2. Diamond Plan = Universal Package (Multiple Properties)
+Create a new page at `/partner/onboard` that serves as a marketing/information page to attract partners before they register. This replaces the direct jump to the complex multi-step registration form.
 
-Currently, subscriptions are **per-property** -- each reading room or hostel needs its own subscription. The Diamond plan should act as a **universal package**: one subscription covers ALL the partner's reading rooms and hostels.
+### Page Structure
 
-**Approach:** Add a `is_universal` boolean column to `subscription_plans`. When a plan has `is_universal = true`:
+**Hero Section:**
+- Headline: "Partner with InhaleStays" with subtext about growing their business
+- Three selectable property type cards: Reading Room, Hostel, Laundry -- partner can select one or multiple to see relevant features
 
-- In the partner UI, skip property selection -- subscribe at the partner level
-- The subscription record stores `property_id = NULL` and `property_type = 'universal'`
-- The `useSubscriptionAccess` hook checks: if any active subscription with `property_type = 'universal'` exists for the partner, all properties are covered
-- Admin form gets a new "Universal Package" toggle for plans
+**Features Section (dynamic based on selection):**
+- Reading Room features: Seat map management, automated booking, due management, slot-based pricing, deposit management, analytics dashboard, student management
+- Hostel features: Bed/room/floor management, sharing types, food management, stay packages, booking calendar, multi-property support
+- Laundry features: Order management, pickup/delivery tracking, agent dashboard, complaint handling
+- Common features (always shown): Partner dashboard, employee management, settlement tracking, payout management, subscription plans, reviews management
 
-**Database migration:**
-```sql
-ALTER TABLE subscription_plans ADD COLUMN is_universal boolean NOT NULL DEFAULT false;
-ALTER TABLE property_subscriptions ALTER COLUMN property_id DROP NOT NULL;
-```
+**How It Works Section:**
+- Step 1: Register with basic details (phone + email)
+- Step 2: Our team contacts you for verification
+- Step 3: Set up your property on the platform
+- Step 4: Start receiving bookings
 
-**Files to update:**
+**FAQ Section:**
+- Accordion with common questions: commission rates, how payments work, how long approval takes, what documents needed, can I manage multiple properties, etc.
 
-| File | Change |
-|------|--------|
-| `src/pages/admin/SubscriptionPlans.tsx` | Add "Universal Package" toggle to form; show in table |
-| `src/pages/partner/MySubscriptions.tsx` | When a universal plan is selected, skip property selection step; show a "Subscribe for All Properties" card; pass `propertyType: 'universal', propertyId: null` to edge function |
-| `supabase/functions/subscription-create-order/index.ts` | Handle `propertyType === 'universal'`: skip property ownership check, set `property_id: null` |
-| `src/hooks/useSubscriptionAccess.ts` | Add fallback: if no property-specific subscription, check for any `universal` subscription for the same partner |
+**CTA / Registration Section:**
+- Simple registration form capturing only: Name, Phone, Email, Password, Interested Property Types (from selection above)
+- "Register Now" button
+- This creates the user account via the existing `admin-create-user` edge function with role `vendor`, and inserts a minimal partner record
+- The partner can fill in business details, bank details, documents later from their dashboard
+- The admin gets a lead (name + phone + email) for follow-up even if partner doesn't complete full setup
 
-### 3. Display Changes in Partner Subscription Flow
+### Simplified Registration Flow
+The current `VendorRegister` page requires 4 steps with all business/bank/address details upfront. The new approach:
+1. New `/partner/onboard` page collects only essentials (name, phone, email, password, property types)
+2. On submit: creates auth user + profile + partner record with `status: 'pending'`
+3. Redirect to `/partner/login` with success message
+4. Keep the old `/partner/register` route working (redirect to `/partner/onboard`)
 
-**Step 2 (Capacity Upgrades):**
-- Show: "Add upgrade slabs at Rs X/month each (billed yearly: Rs X*12/slab)"
-- Extra capacity line: show monthly and yearly breakdown
-- e.g. "+2 slabs = Rs 600/month (Rs 7,200/year)"
+### Database
+- No new tables needed -- uses existing `profiles` and `partners` tables
+- The partner record is created with minimal data; admin follows up to collect details
 
-**Step 3 (Order Summary):**
-- Show capacity upgrade as: "Capacity Upgrades (2 slabs x Rs 300/mo x 12)" with yearly total
+---
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/pages/partner/PartnerOnboard.tsx` | New landing + simplified registration page |
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/pages/admin/AdminEmployees.tsx` | Add copiable full URL with copy button |
+| `src/pages/vendor/VendorEmployees.tsx` | Add copiable login URL with copy button |
+| `src/App.tsx` | Add `/partner/onboard` route, redirect `/partner/register` to it |
 
 ## Technical Details
 
-- The `capacity_upgrade_price` column meaning changes from "flat price" to "monthly price per slab" -- existing data (300) already makes sense as a monthly rate
-- Diamond plan in DB already has `hostel_bed_limit: 0` and `reading_room_seat_limit: 0` (unlimited), which is correct for a universal plan
-- The universal subscription uses `property_type = 'universal'` to distinguish from per-property subscriptions
-- `useSubscriptionAccess` will first check property-specific subscription, then fall back to checking universal subscription via partner lookup
+### Copiable URL Implementation
+```typescript
+const loginUrl = `${getPublicAppUrl()}/admin/login`;
+const handleCopy = () => {
+  navigator.clipboard.writeText(loginUrl);
+  toast({ title: "Copied!", description: "Login URL copied to clipboard" });
+};
+```
+
+### Simplified Registration
+The onboard page will call the existing `admin-create-user` edge function (or directly use Supabase auth signup) to create a minimal user with vendor role, then insert a partner record with just the contact info and selected property types. This ensures the admin has a lead to follow up on.
 
