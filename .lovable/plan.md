@@ -1,53 +1,88 @@
 
+# Add Release Seat, Cancel Booking, and Fix Seat Availability During Due Period
 
-# Fix "Page Not Found" on Profile Booking Links
+## Two Changes
 
-## Problem
-When clicking booking line items or the "Due" badge on the student profile page, the user gets "Page Not Found" because:
+### 1. Add "Release Seat" and "Cancel Booking" Buttons
 
-1. **Hostel bookings** link to `/student/hostel-bookings/:bookingId` -- but this route does NOT exist in `App.tsx`. There is no route defined for it at all.
-2. **Reading room bookings** link to `/student/bookings/:bookingId` -- this route EXISTS and should work. If it's also showing "Page Not Found", it may be a serial_number mismatch issue.
+Add two new action buttons in the Partner Seat Control Center (VendorSeats) sheet when viewing a booked seat, with AlertDialog confirmation popups.
 
-## Solution
+**Release Seat** (terminates booking, frees seat):
+- Updates `bookings.payment_status` to `'terminated'`
+- Updates `bookings.end_date` to today (checkout_date effect)
+- Does NOT delete the booking record
+- Seat becomes available immediately for new bookings
 
-### Option A: Reuse the existing `StudentBookingView` for both types (Recommended)
+**Cancel Booking** (cancels entirely, cleans up dues):
+- Updates `bookings.payment_status` to `'cancelled'`
+- Seat becomes available immediately
+- Updates any pending `dues` record for this booking to `status = 'cancelled'`
+- Keeps all `receipts` and `due_payments` history unchanged
 
-The simplest fix: make `StudentBookingView` handle both reading room and hostel bookings, and route both types to the same path pattern.
+Both actions show an AlertDialog confirmation popup before executing.
 
-### Changes
+### 2. Keep Seats/Beds Unavailable Throughout Booked Period (Even With Dues)
 
-**1. `src/App.tsx`** -- Add the missing hostel booking route
+Currently, seats with `advance_paid` status auto-release after `proportional_end_date`. The user wants seats to stay **unavailable for the full booked period** regardless of due status. The partner should manually release the seat if needed.
 
-Add a new route that points to the same `StudentBookingView` component:
-```
-/student/hostel-bookings/:bookingId  -->  StudentBookingView
-```
+**Changes to availability logic:**
+- Remove the `proportional_end_date` check from `computeDateStatus()` in `vendorSeatsService.ts` -- seats with active bookings stay booked through `end_date`
+- Remove the same check from `currentBookingRaw` selection logic
+- Remove the `proportional_end_date` check from `HostelBedMap.tsx` and `HostelBedLayoutView.tsx` (student-facing hostel bed maps)
+- The `check_seat_available` and `check_hostel_bed_available` RPCs already check the full date range (no proportional_end_date logic), so they're already correct
+- The `getAvailableSeatsForDateRange` in `seatsService.ts` uses those RPCs, so student booking view is already correct
 
-**2. `src/pages/students/StudentBookingView.tsx`** -- Add hostel booking support
-
-Currently this page only queries the `bookings` table. Update to:
-- First try `bookings` table (reading room) by `serial_number`, then by `id`
-- If not found, try `hostel_bookings` table by `serial_number`, then by `id`
-- Fetch associated financial data from the correct table (`dues` vs `hostel_dues`, `receipts` vs `hostel_receipts`)
-- Render the appropriate detail layout based on booking type (cabin info vs hostel/bed info)
-- For the "Pay Due" button, use the correct Razorpay flow for the booking type
-
-**3. `src/components/profile/ProfileManagement.tsx`** -- No changes needed
-
-The navigation links are already correct (`/student/hostel-bookings/:id` and `/student/bookings/:id`).
-
-## Technical Details
-
-- The `StudentBookingView` will detect booking type by checking which table returns data
-- Hostel bookings query: `hostel_bookings` joined with `hostels(name)`, `hostel_rooms(room_number)`, `hostel_beds(bed_number)`
-- Hostel financial data: `hostel_dues` for due records, `hostel_receipts` for payment history
-- Partner info lookup: use `hostels.created_by` for hostel bookings (same pattern as `cabins.created_by`)
-- The "Pay Due" Razorpay flow passes the correct `bookingType` parameter (`hostel` vs `cabin`)
+---
 
 ## Files to Modify
 
-| File | Change |
-|------|--------|
-| `src/App.tsx` | Add `/student/hostel-bookings/:bookingId` route pointing to `StudentBookingView` |
-| `src/pages/students/StudentBookingView.tsx` | Add dual-table lookup (bookings + hostel_bookings), render hostel-specific details, use correct financial tables |
+| File | Changes |
+|------|---------|
+| `src/api/vendorSeatsService.ts` | Add `releaseSeat()` and `cancelBooking()` service methods; remove `proportional_end_date` auto-release logic from `computeDateStatus()` and `getSeatsForDate()` |
+| `src/pages/vendor/VendorSeats.tsx` | Add Release Seat and Cancel Booking buttons with AlertDialog confirmation; import AlertDialog components |
+| `src/components/hostels/HostelBedMap.tsx` | Remove proportional_end_date-based availability override |
+| `src/components/hostels/HostelBedLayoutView.tsx` | Remove proportional_end_date-based availability override |
 
+## Technical Details
+
+### New Service Methods in `vendorSeatsService.ts`
+
+```typescript
+releaseSeat: async (bookingId: string) => {
+  // 1. Update booking status to terminated, set end_date to today
+  await supabase.from('bookings').update({
+    payment_status: 'terminated',
+    end_date: new Date().toISOString().split('T')[0],
+  }).eq('id', bookingId);
+  return { success: true };
+}
+
+cancelBooking: async (bookingId: string) => {
+  // 1. Update booking status to cancelled
+  await supabase.from('bookings').update({
+    payment_status: 'cancelled',
+  }).eq('id', bookingId);
+  // 2. Cancel pending dues (don't delete)
+  await supabase.from('dues').update({
+    status: 'cancelled',
+  }).eq('booking_id', bookingId).eq('status', 'pending');
+  return { success: true };
+}
+```
+
+### Availability Logic Change
+
+In `computeDateStatus()`, remove lines 156-161 that check `proportional_end_date` and return `'available'`. The seat stays `'booked'` or `'expiring_soon'` for the full booking period.
+
+In `getSeatsForDate()`, remove lines 344-351 that skip `currentBooking` display for advance_paid bookings past proportional_end_date.
+
+In hostel bed maps, remove the dues lookup and the availability override that marks beds as available after proportional_end_date.
+
+### UI: Action Buttons in Sheet
+
+Add "Release Seat" and "Cancel Booking" in the action buttons grid (alongside Renew, Book Future, Transfer, Block) for each current booking. Each opens an AlertDialog:
+
+- **Release Seat**: Warning text "This will terminate the booking and free the seat immediately. The student will no longer have access. This cannot be undone."
+- **Cancel Booking**: Warning text "This will cancel the booking, free the seat, and cancel any pending dues. Transaction history will be preserved. This cannot be undone."
+
+On confirmation, call the service method, close the sheet, and refresh seats.
