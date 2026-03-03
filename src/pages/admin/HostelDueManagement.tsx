@@ -57,12 +57,18 @@ const HostelDueManagement: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
 
-    // Fetch hostels
-    const { data: hostelsData } = await supabase
+    // Fetch hostels (filtered by ownership for partners)
+    let hostelsQuery = supabase
       .from('hostels')
       .select('id, name')
       .eq('is_active', true)
       .order('name');
+
+    if (user?.role && user.role !== 'admin' && user.role !== 'super_admin' && user.id) {
+      hostelsQuery = hostelsQuery.eq('created_by', user.id);
+    }
+
+    const { data: hostelsData } = await hostelsQuery;
     if (hostelsData) setHostels(hostelsData);
 
     // Fetch dues with joins

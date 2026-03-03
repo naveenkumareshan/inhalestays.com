@@ -14,6 +14,7 @@ import { CalendarIcon, Search, Receipt, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/currency';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ReceiptRow {
   id: string;
@@ -54,8 +55,14 @@ const HostelReceipts: React.FC = () => {
     fetchReceipts();
   }, []);
 
+  const { user } = useAuth();
+
   const fetchHostels = async () => {
-    const { data } = await supabase.from('hostels').select('id, name').order('name');
+    let query = supabase.from('hostels').select('id, name').order('name');
+    if (user?.role && user.role !== 'admin' && user.role !== 'super_admin' && user.id) {
+      query = query.eq('created_by', user.id);
+    }
+    const { data } = await query;
     setHostels(data || []);
   };
 

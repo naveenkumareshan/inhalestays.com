@@ -59,25 +59,43 @@ export function CabinsDashboard() {
       // Fetch managed cabins
       const cabinsResponse = await hostelManagerService.getManagedCabins();
       
-      if (cabinsResponse.success) {
-        setCabins(cabinsResponse.data || []);
+      if (cabinsResponse.success && cabinsResponse.data) {
+        const mapped: Cabin[] = (cabinsResponse.data as any[]).map((c: any) => ({
+          _id: c.id,
+          id: c.id,
+          name: c.name || '',
+          description: c.description || '',
+          category: c.category || 'standard',
+          price: Number(c.price) || 0,
+          capacity: c.capacity || 0,
+          imageUrl: c.image_url || '',
+          amenities: c.amenities || [],
+          isActive: c.is_active ?? true,
+        }));
+        setCabins(mapped);
       }
       
       // Fetch revenue stats
       const revenueResponse = await hostelManagerService.getCabinRevenueStats();
-      
-      // Fetch booking stats
       const bookingStatsResponse = await hostelManagerService.getCabinBookingStats();
-      
-      // Fetch seats stats
       const seatsStatsResponse = await hostelManagerService.getCabinSeatsStats();
       
-      // Combine all stats
       if (revenueResponse.success && bookingStatsResponse.success && seatsStatsResponse.success) {
+        const rev = revenueResponse.data as any;
+        const bk = bookingStatsResponse.data as any;
+        const seats = seatsStatsResponse.data as any;
+        const totalSeats = seats?.total || 0;
+        const occupiedSeats = seats?.occupied || 0;
         setStats({
-          ...revenueResponse.data,
-          ...bookingStatsResponse.data,
-          ...seatsStatsResponse.data
+          totalRevenue: rev?.totalRevenue || 0,
+          monthlyRevenue: rev?.totalRevenue || 0,
+          totalSeats,
+          availableSeats: seats?.available || 0,
+          occupiedSeats,
+          occupancyRate: totalSeats > 0 ? Math.round((occupiedSeats / totalSeats) * 100) : 0,
+          totalBookings: bk?.total || 0,
+          activeBookings: bk?.active || 0,
+          completedBookings: 0,
         });
       }
       

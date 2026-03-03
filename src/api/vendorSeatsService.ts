@@ -211,10 +211,22 @@ function mapBookingToDetail(b: any, slotNameMap?: Record<string, string>, seatCa
 export const vendorSeatsService = {
   getVendorCabins: async () => {
     try {
-      const { data: cabins, error } = await supabase
-        .from('cabins')
-        .select('*')
-        .order('name');
+      // Filter cabins by ownership for non-admin users
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      let cabinsQuery = supabase.from('cabins').select('*').order('name');
+      
+      if (authUser) {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', authUser.id);
+        const isAdmin = roleData?.some(r => r.role === 'admin' || r.role === 'super_admin');
+        if (!isAdmin) {
+          cabinsQuery = cabinsQuery.eq('created_by', authUser.id);
+        }
+      }
+
+      const { data: cabins, error } = await cabinsQuery;
       if (error) throw error;
 
       const { data: seats, error: seatsError } = await supabase

@@ -161,15 +161,22 @@ const HostelBedMap: React.FC = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Fetch hostels on mount
+  // Fetch hostels on mount (filtered by ownership for partners)
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const { data } = await supabase
+      let query = supabase
         .from('hostels')
         .select('id, name, gender, security_deposit, advance_booking_enabled, advance_percentage, advance_flat_amount, advance_use_flat, allowed_durations, advance_applicable_durations')
         .eq('is_active', true)
         .order('name');
+
+      // Filter for non-admin users
+      if (user?.role && user.role !== 'admin' && user.role !== 'super_admin' && user.id) {
+        query = query.eq('created_by', user.id);
+      }
+
+      const { data } = await query;
       if (data) {
         setHostels(data.map((h: any) => ({
           ...h,
@@ -179,7 +186,7 @@ const HostelBedMap: React.FC = () => {
       }
       setLoading(false);
     })();
-  }, []);
+  }, [user]);
 
   // Fetch beds when hostel or date changes
   const fetchBeds = useCallback(async () => {
