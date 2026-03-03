@@ -562,8 +562,8 @@ const HostelRoomDetails = () => {
                   {hostel.amenities?.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {hostel.amenities.map((amenity: string) => (
-                        <span key={amenity} className="inline-flex items-center gap-1 text-xs bg-primary/5 text-foreground border border-primary/10 px-2.5 py-1 rounded-lg">
-                          <CheckCircle2 className="h-3 w-3 text-primary" />
+                        <span key={amenity} className="inline-flex items-center gap-1 text-xs bg-secondary/5 text-foreground border border-secondary/10 px-2.5 py-1 rounded-lg">
+                          <CheckCircle2 className="h-3 w-3 text-secondary" />
                           {amenity}
                         </span>
                       ))}
@@ -575,7 +575,7 @@ const HostelRoomDetails = () => {
                         hostelId={hostel.id}
                         menuImage={hostel.food_menu_image}
                         trigger={
-                          <button className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors cursor-pointer">
+                          <button className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/10 text-secondary border border-secondary/20 hover:bg-secondary/20 transition-colors cursor-pointer">
                             <Utensils className="h-3.5 w-3.5" />
                             View Food Menu
                           </button>
@@ -597,7 +597,7 @@ const HostelRoomDetails = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="ml-auto text-xs text-primary"
+                  className="ml-auto text-xs text-secondary"
                   onClick={() => { setShowDetails(true); heroRef.current?.scrollIntoView({ behavior: "smooth" }); }}
                 >
                   View Details
@@ -609,7 +609,7 @@ const HostelRoomDetails = () => {
             <Separator className="my-0" />
             <div className="px-3 pt-2">
               <div className="flex items-center gap-2 mb-1.5">
-                <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">1</div>
+                <div className="h-6 w-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-bold">1</div>
                 <Label className="text-sm font-semibold text-foreground">Select Sharing Type</Label>
               </div>
 
@@ -619,8 +619,8 @@ const HostelRoomDetails = () => {
                   onClick={() => handleSharingFilterChange('all')}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
                     sharingFilter === 'all'
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                      ? 'bg-secondary text-secondary-foreground border-secondary'
+                      : 'bg-muted/50 text-muted-foreground border-border hover:border-secondary/50'
                   }`}
                 >
                   All
@@ -631,8 +631,8 @@ const HostelRoomDetails = () => {
                     onClick={() => handleSharingFilterChange(type)}
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
                       sharingFilter === type
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                        ? 'bg-secondary text-secondary-foreground border-secondary'
+                        : 'bg-muted/50 text-muted-foreground border-border hover:border-secondary/50'
                     }`}
                   >
                     {type}
@@ -647,7 +647,7 @@ const HostelRoomDetails = () => {
               <Separator className="my-0" />
               <div className="px-3 pt-2">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">2</div>
+                  <div className="h-6 w-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-bold">2</div>
                   <Label className="text-sm font-semibold text-foreground">Select Category</Label>
                 </div>
                 <div className="flex gap-1.5 overflow-x-auto pb-2 no-scrollbar">
@@ -655,8 +655,8 @@ const HostelRoomDetails = () => {
                     onClick={() => handleCategoryFilterChange('all')}
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
                       categoryFilter === 'all'
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                        ? 'bg-secondary text-secondary-foreground border-secondary'
+                        : 'bg-muted/50 text-muted-foreground border-border hover:border-secondary/50'
                     }`}
                   >
                     All
@@ -667,8 +667,8 @@ const HostelRoomDetails = () => {
                       onClick={() => handleCategoryFilterChange(cat.name)}
                       className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
                         categoryFilter === cat.name
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                          ? 'bg-secondary text-secondary-foreground border-secondary'
+                          : 'bg-muted/50 text-muted-foreground border-border hover:border-secondary/50'
                       }`}
                     >
                       {cat.name}
@@ -683,7 +683,7 @@ const HostelRoomDetails = () => {
             <Separator className="my-0" />
             <div className="px-3 pt-2">
               <div className="flex items-center gap-2 mb-1.5">
-                <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 3 : 2}</div>
+                <div className="h-6 w-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 3 : 2}</div>
                 <Label className="text-sm font-semibold text-foreground">Stay Duration</Label>
               </div>
 
@@ -698,7 +698,7 @@ const HostelRoomDetails = () => {
                       className={cn(
                         "flex-1 py-2 rounded-lg text-xs font-semibold transition-all",
                         durationType === type
-                          ? "bg-primary text-primary-foreground shadow-sm"
+                          ? "bg-secondary text-secondary-foreground shadow-sm"
                           : "text-muted-foreground hover:text-foreground"
                       )}
                     >
@@ -789,7 +789,7 @@ const HostelRoomDetails = () => {
 
               {/* End date as styled badge */}
               <div className="flex items-center gap-1.5">
-                <span className="inline-flex items-center gap-1 text-xs font-medium bg-primary/10 text-primary rounded-full px-3 py-1">
+                <span className="inline-flex items-center gap-1 text-xs font-medium bg-secondary/10 text-secondary rounded-full px-3 py-1">
                   <CalendarIcon className="h-3 w-3" />
                   Ends: {format(endDate, 'dd MMM yyyy')}
                 </span>
@@ -801,7 +801,7 @@ const HostelRoomDetails = () => {
             <div className="px-3 pt-2" ref={bedMapRef}>
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 4 : 3}</div>
+                  <div className="h-6 w-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 4 : 3}</div>
                   <Label className="text-sm font-semibold text-foreground">Select Your Bed</Label>
                 </div>
                 <div className="flex gap-0.5 bg-muted/50 rounded-lg p-0.5">
@@ -810,7 +810,7 @@ const HostelRoomDetails = () => {
                     className={cn(
                       "p-1.5 rounded-md transition-all",
                       bedViewMode === 'grid'
-                        ? "bg-primary text-primary-foreground shadow-sm"
+                        ? "bg-secondary text-secondary-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >
@@ -821,7 +821,7 @@ const HostelRoomDetails = () => {
                     className={cn(
                       "p-1.5 rounded-md transition-all",
                       bedViewMode === 'layout'
-                        ? "bg-primary text-primary-foreground shadow-sm"
+                        ? "bg-secondary text-secondary-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >
@@ -861,7 +861,7 @@ const HostelRoomDetails = () => {
               <Separator className="my-0" />
               <div className="px-3 pt-2">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 5 : 4}</div>
+                  <div className="h-6 w-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 5 : 4}</div>
                   <Label className="text-sm font-semibold text-foreground">Food Plan</Label>
                 </div>
                 <div className="bg-muted/30 rounded-xl border border-border/50 p-3 space-y-2">
@@ -888,16 +888,16 @@ const HostelRoomDetails = () => {
                     hostelId={hostel.id}
                     menuImage={hostel.food_menu_image}
                     trigger={
-                      <button className="text-xs text-primary font-medium flex items-center gap-1 hover:underline">
+                      <button className="text-xs text-secondary font-medium flex items-center gap-1 hover:underline">
                         <Utensils className="h-3 w-3" /> View Food Menu
                       </button>
                     }
                   />
                   {foodOpted && effectiveFoodPolicy !== 'mandatory' && (
-                    <div className="text-xs bg-primary/5 rounded-lg p-2 border border-primary/10">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Food Charges</span>
-                        <span className="font-semibold text-primary">{formatCurrency(foodAmount)}</span>
+                     <div className="text-xs bg-secondary/5 rounded-lg p-2 border border-secondary/10">
+                       <div className="flex justify-between">
+                         <span className="text-muted-foreground">Food Charges</span>
+                         <span className="font-semibold text-secondary">{formatCurrency(foodAmount)}</span>
                       </div>
                     </div>
                   )}
@@ -910,7 +910,7 @@ const HostelRoomDetails = () => {
               <Separator className="my-0" />
               <div className="px-3 pt-2 pb-6">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? (effectiveFoodPolicy !== 'not_available' ? 6 : 5) : (effectiveFoodPolicy !== 'not_available' ? 5 : 4)}</div>
+                  <div className="h-6 w-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? (effectiveFoodPolicy !== 'not_available' ? 6 : 5) : (effectiveFoodPolicy !== 'not_available' ? 5 : 4)}</div>
                   <Label className="text-sm font-semibold text-foreground">Review & Pay</Label>
                 </div>
 
@@ -931,7 +931,7 @@ const HostelRoomDetails = () => {
                         <span className="text-muted-foreground">Amenities</span>
                         <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
                           {selectedBed.amenities.map((a: string) => (
-                            <span key={a} className="inline-flex items-center text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                            <span key={a} className="inline-flex items-center text-[10px] bg-secondary/10 text-secondary px-1.5 py-0.5 rounded">
                               {a}
                             </span>
                           ))}
@@ -967,7 +967,7 @@ const HostelRoomDetails = () => {
                     <Separator className="my-1.5 opacity-50" />
                     <div className="flex justify-between text-sm">
                       <span className="font-semibold text-foreground">Total Amount</span>
-                      <span className="font-bold text-primary">{formatCurrency(totalPrice)}</span>
+                      <span className="font-bold text-secondary">{formatCurrency(totalPrice)}</span>
                     </div>
                     {hostel.security_deposit > 0 && (
                       <div className="flex justify-between items-center">
@@ -991,8 +991,8 @@ const HostelRoomDetails = () => {
                         </label>
                       </div>
                       {useAdvancePayment && (
-                        <div className="ml-6 space-y-1 text-xs bg-primary/5 rounded-lg p-2.5 border border-primary/10">
-                          <div className="flex justify-between"><span className="text-muted-foreground">Pay now</span><span className="font-semibold text-primary">{formatCurrency(advanceAmount)}</span></div>
+                         <div className="ml-6 space-y-1 text-xs bg-secondary/5 rounded-lg p-2.5 border border-secondary/10">
+                          <div className="flex justify-between"><span className="text-muted-foreground">Pay now</span><span className="font-semibold text-secondary">{formatCurrency(advanceAmount)}</span></div>
                           <div className="flex justify-between"><span className="text-muted-foreground">Remaining due</span><span className="font-medium text-foreground">{formatCurrency(totalPrice - advanceAmount)}</span></div>
                           <div className="flex justify-between"><span className="text-muted-foreground">Due by</span><span className="font-medium text-foreground">{format(endDate, 'dd MMM yyyy')}</span></div>
                         </div>
@@ -1004,7 +1004,7 @@ const HostelRoomDetails = () => {
                   <div className="p-3 space-y-2">
                     {hostel.refund_policy && (
                       <Collapsible open={rulesOpen} onOpenChange={setRulesOpen}>
-                        <CollapsibleTrigger className="flex items-center gap-1 text-xs text-primary font-medium w-full">
+                        <CollapsibleTrigger className="flex items-center gap-1 text-xs text-secondary font-medium w-full">
                           {rulesOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                           Hostel Rules & Refund Policy
                         </CollapsibleTrigger>

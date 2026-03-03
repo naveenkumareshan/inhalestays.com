@@ -124,7 +124,7 @@ export default function Hostels() {
           {genderFilter !== 'all' && (
             <div className="flex gap-1.5 pb-1">
               <span
-                className="inline-flex items-center gap-1 text-[10px] font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-lg cursor-pointer"
+                className="inline-flex items-center gap-1 text-[10px] font-medium bg-secondary/10 text-secondary px-2 py-0.5 rounded-lg cursor-pointer"
                 onClick={() => setGenderFilter('all')}
               >
                 {genderFilter}
@@ -204,7 +204,7 @@ export default function Hostels() {
                     </div>
                   )}
                   {hostel.gender && (
-                    <span className="absolute top-1 left-1 text-[9px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-md">
+                    <span className="absolute top-1 left-1 text-[9px] font-bold bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded-md">
                       {hostel.gender === 'Male' ? 'M' : hostel.gender === 'Female' ? 'F' : 'Co'}
                     </span>
                   )}
@@ -260,7 +260,7 @@ export default function Hostels() {
                         </span>
                       )}
                     </div>
-                    <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-lg flex-shrink-0">View Rooms</span>
+                    <span className="text-[11px] font-semibold text-secondary bg-secondary/10 px-2 py-0.5 rounded-lg flex-shrink-0">View Rooms</span>
                   </div>
                 </div>
               </div>
@@ -282,10 +282,10 @@ export default function Hostels() {
                 <button
                   key={g.id}
                   onClick={() => setDraftGenderFilter(g.id)}
-                  className={`px-3 py-1.5 rounded-xl border text-[11px] font-medium transition-colors ${
+                 className={`px-3 py-1.5 rounded-xl border text-[11px] font-medium transition-colors ${
                     draftGenderFilter === g.id
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-card text-foreground border-border hover:bg-muted'
+                       ? 'bg-secondary text-secondary-foreground border-secondary'
+                       : 'bg-card text-foreground border-border hover:bg-muted'
                   }`}
                 >
                   {g.label}
