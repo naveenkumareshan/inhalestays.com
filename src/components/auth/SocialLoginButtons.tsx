@@ -18,7 +18,7 @@ export function SocialLoginButtons({ onLoginSuccess, onLoginError }: SocialLogin
     setIsLoading(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + '/student/login',
+        redirect_uri: window.location.origin,
       });
 
       if (result.redirected) return; // Page is navigating to Google

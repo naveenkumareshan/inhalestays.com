@@ -114,9 +114,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
-        if (error.message?.includes('Email not confirmed')) {
-          return { success: false, error: 'Please verify your email address before logging in. Check your inbox for a confirmation link.' };
-        }
         return { success: false, error: error.message };
       }
 

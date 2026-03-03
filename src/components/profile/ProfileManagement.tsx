@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock, BookMarked, ChevronRight, ChevronDown, Info, MessageSquareWarning, Headphones, Phone, Camera, Loader2 } from 'lucide-react';
+import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock, BookMarked, ChevronRight, ChevronDown, Info, MessageSquareWarning, Headphones, Phone, Camera, Loader2, BadgeCheck, Mail } from 'lucide-react';
 import { userProfileService } from '@/api/userProfileService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,6 +78,8 @@ export const ProfileManagement = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+  const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
+  const [isSendingVerification, setIsSendingVerification] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,7 +118,29 @@ export const ProfileManagement = () => {
   useEffect(() => {
     loadProfile();
     loadBookings();
+    checkEmailVerification();
   }, []);
+
+  const checkEmailVerification = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setEmailVerified(!!user.email_confirmed_at);
+    }
+  };
+
+  const handleSendVerification = async () => {
+    if (!profile.email) return;
+    setIsSendingVerification(true);
+    try {
+      const { error } = await supabase.auth.resend({ type: 'signup', email: profile.email });
+      if (error) throw error;
+      toast({ title: 'Verification Sent', description: 'Check your email for the verification link.' });
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'Failed to send verification email', variant: 'destructive' });
+    } finally {
+      setIsSendingVerification(false);
+    }
+  };
 
   const loadProfile = async () => {
     try {
@@ -409,7 +433,24 @@ export const ProfileManagement = () => {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-foreground">{profile.name || 'Your Name'}</p>
-            <p className="text-[11px] text-muted-foreground truncate">{profile.email}</p>
+            <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
+              {profile.email}
+              {emailVerified === true && (
+                <span className="inline-flex items-center gap-0.5 text-green-600">
+                  <BadgeCheck className="h-3 w-3" />
+                </span>
+              )}
+              {emailVerified === false && (
+                <button
+                  onClick={handleSendVerification}
+                  disabled={isSendingVerification}
+                  className="inline-flex items-center gap-0.5 text-amber-600 hover:text-amber-700 text-[10px] font-medium ml-1"
+                >
+                  <Mail className="h-3 w-3" />
+                  {isSendingVerification ? 'Sending…' : 'Verify'}
+                </button>
+              )}
+            </p>
             {profile.phone && (
               <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
                 <Phone className="h-3 w-3" /> {profile.phone}
