@@ -7,18 +7,18 @@ const AdminForgotPassword = lazy(() => import("./pages/AdminForgotPassword"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminHostels = lazy(() => import("./pages/hotelManager/HostelManagement"));
 const SeatManagement = lazy(() => import("./pages/SeatManagement"));
-import PageNotFound from "./pages/NotFound";
+const PageNotFound = lazy(() => import("./pages/NotFound"));
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Toaster } from "@/components/ui/toaster";
 const AdminLayout = lazy(() => import("./components/AdminLayout"));
 const MobileAppLayout = lazy(() => import("./components/student/MobileAppLayout"));
 import { AuthProvider } from "./contexts/AuthContext";
-import HostelDetails from "./pages/HostelRoomDetails";
-import HostelRooms from "./pages/HostelRooms";
-import HostelRoomView from "./pages/HostelRoomView";
-import BookSharedRoom from "./pages/BookSharedRoom";
-import HostelBooking from "./pages/HostelBooking";
-import LaundryAgentPage from "./pages/LaundryAgentPage";
+const HostelDetails = lazy(() => import("./pages/HostelRoomDetails"));
+const HostelRooms = lazy(() => import("./pages/HostelRooms"));
+const HostelRoomView = lazy(() => import("./pages/HostelRoomView"));
+const BookSharedRoom = lazy(() => import("./pages/BookSharedRoom"));
+const HostelBooking = lazy(() => import("./pages/HostelBooking"));
+const LaundryAgentPage = lazy(() => import("./pages/LaundryAgentPage"));
 
 
 const BookingReportsPage = lazy(() => import("./components/admin/reports/BookingReportsPage"));
@@ -113,7 +113,16 @@ const StudentSuspense = ({ children }: { children: React.ReactNode }) => (
   </ErrorBoundary>
 );
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 min
+      gcTime: 10 * 60 * 1000,   // 10 min
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const ReferralCaptureWrapper = () => { useReferralCapture(); return null; };
 

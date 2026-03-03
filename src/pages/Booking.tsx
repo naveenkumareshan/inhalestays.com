@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { format } from 'date-fns';
-import { Seat } from '../data/bookingData';
+import { Seat } from '../components/SeatMap';
 import { toast } from '@/hooks/use-toast';
 import { cabinsService } from '@/api/cabinsService';
 import { PaymentTimer } from '@/components/booking/PaymentTimer';
