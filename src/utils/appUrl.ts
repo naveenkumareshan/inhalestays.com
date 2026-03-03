@@ -1,1 +1,1 @@
-export const getPublicAppUrl = () => "https://bookmynook.com";
+export const getPublicAppUrl = () => "https://inhalestays.com";

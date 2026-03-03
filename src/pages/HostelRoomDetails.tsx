@@ -483,7 +483,17 @@ const HostelRoomDetails = () => {
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <div className="absolute top-3 right-3 flex items-center gap-2">
+                <div className="absolute top-3 right-3">
+                  <Badge className={`${getGenderColor(hostel.gender)} border-0 text-xs shadow-lg`}>
+                    {hostel.gender?.charAt(0).toUpperCase() + hostel.gender?.slice(1)}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Name, Rating & Location */}
+              <div className="px-3 pt-2 pb-1">
+                <div className="flex items-center justify-between">
+                  <h1 className="text-lg font-bold text-foreground leading-tight">{hostel.name}</h1>
                   <ShareButton
                     {...generateHostelShareText({
                       id: hostel.id,
@@ -495,16 +505,9 @@ const HostelRoomDetails = () => {
                       location: hostel.location,
                       serial_number: hostel.serial_number,
                     }, lowestPrice, user?.id)}
+                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10"
                   />
-                  <Badge className={`${getGenderColor(hostel.gender)} border-0 text-xs shadow-lg`}>
-                    {hostel.gender?.charAt(0).toUpperCase() + hostel.gender?.slice(1)}
-                  </Badge>
                 </div>
-              </div>
-
-              {/* Name, Rating & Location */}
-              <div className="px-3 pt-2 pb-1">
-                <h1 className="text-lg font-bold text-foreground leading-tight">{hostel.name}</h1>
                 {hostel.average_rating > 0 && (
                   <div className="flex items-center gap-1 mt-1">
                     <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />

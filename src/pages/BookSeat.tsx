@@ -253,7 +253,17 @@ const BookSeat = () => {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               {/* Category badge */}
-              <div className="absolute top-3 right-3 flex items-center gap-2">
+              <div className="absolute top-3 right-3">
+                <Badge className={`${getCategoryColor(cabin.category)} border-0 text-xs shadow-lg`}>
+                  {cabin.category.charAt(0).toUpperCase() + cabin.category.slice(1)}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Name, Rating & Address - Below the image */}
+            <div className="px-3 pt-2 pb-1">
+              <div className="flex items-center justify-between">
+                <h1 className="text-lg font-bold text-foreground leading-tight">{cabin.name}</h1>
                 <ShareButton
                   {...generateCabinShareText({
                     id: cabin.id,
@@ -263,16 +273,9 @@ const BookSeat = () => {
                     averageRating: cabin.averageRating,
                     serialNumber: cabin.serialNumber,
                   }, user?.id)}
+                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10"
                 />
-                <Badge className={`${getCategoryColor(cabin.category)} border-0 text-xs shadow-lg`}>
-                  {cabin.category.charAt(0).toUpperCase() + cabin.category.slice(1)}
-                </Badge>
               </div>
-            </div>
-
-            {/* Name, Rating & Address - Below the image */}
-            <div className="px-3 pt-2 pb-1">
-              <h1 className="text-lg font-bold text-foreground leading-tight">{cabin.name}</h1>
               {cabin.averageRating && cabin.averageRating > 0 && (
                 <div className="flex items-center gap-1 mt-1">
                   <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
