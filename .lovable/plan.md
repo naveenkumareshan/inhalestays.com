@@ -1,80 +1,60 @@
 
-# Clean URLs: Replace UUIDs with Serial Numbers in Admin/Partner Hostel and Cabin Pages
 
-## Problem
-URLs like `/admin/hostels/a1b2c3d4-3333-3333-3333-333333333333/beds` show raw UUIDs, which look messy and unprofessional. This affects:
-- Hostel bed management pages (admin + partner)
-- Hostel room view pages (admin + partner)
-- Seat management pages (admin + partner)
+# Add Due Amount Column to Deposit and Refund Pages
 
-## Solution
-Apply the same dual-lookup pattern (serial_number first, UUID fallback) already used in student-facing pages.
+## What Changes
+A new "Due Amount" column will appear next to the "Deposit" column in all deposit/refund views (Reading Room and Hostel). This shows the due amount from the due management records for that booking, helping admins/partners decide on refund actions.
 
-## Changes
+## Reading Room Pages
 
-### 1. Navigation Links -- Use serial_number instead of UUID
+### 1. Update `depositRefundService.ts`
+- Add `dues(due_amount, paid_amount, status)` to the select join in `getDeposits()` and `getRefunds()` queries
+- Add a `dueAmount` field to the `DepositRefund` interface
+- In `mapToDepositRefund()`, sum `due_amount` from all linked dues records for the booking
+- Add "Due Amount" to the CSV export in `exportDepositsReport()`
 
-| File | Current | Updated |
-|------|---------|---------|
-| `src/components/admin/HostelItem.tsx` | `navigate(.../hostels/${hostel.id}/beds)` | `navigate(.../hostels/${hostel.serial_number \|\| hostel.id}/beds)` |
-| `src/pages/hotelManager/HostelManagement.tsx` | `navigate(.../hostels/${hostelId}/rooms)` | `navigate(.../hostels/${hostel.serial_number \|\| hostelId}/rooms)` |
-| `src/pages/RoomManagement.tsx` | `navigate(.../cabins/${cabinId}/seats)` | `navigate(.../cabins/${cabin.serial_number \|\| cabinId}/seats)` |
-| `src/components/admin/SeatManagementLink.tsx` | Uses raw `cabinId` prop | Accept + use `serialNumber` prop with fallback |
+### 2. Update `DepositManagement.tsx` (Deposits tab)
+- Add "Due Amount" column header after "Deposit"
+- Show the due amount value; display in red when > 0, or "No Dues" in muted text when 0
+- Update colSpan from 8 to 9
 
-### 2. Detail Pages -- Add dual-lookup resolution
+### 3. Update `RefundManagement.tsx` (Refund Pendings / Refunded tabs)
+- Same "Due Amount" column addition
+- Update colSpan from 9 to 10
 
-**`src/pages/admin/HostelBedManagementPage.tsx`**
-- In `fetchAll()`, replace `supabase.from('hostels').select('*').eq('id', hostelId).single()` with a dual-lookup: try `serial_number` first via `maybeSingle()`, fall back to `id`
-- Similarly update `hostelBedCategoryService`, `hostelFloorService`, `hostelSharingTypeService` calls to use the resolved UUID
-- Update room queries to use resolved ID
+## Hostel Pages
 
-**`src/pages/HostelRoomView.tsx`**
-- In `fetchHostelAndRooms()`, add the same `isUUID` check pattern already used in `HostelRoomDetails.tsx`
-- If not UUID, resolve via `hostelService.getHostelBySerialNumber()`, then use the resolved ID for room queries
+### 4. Update `HostelDeposits.tsx`
 
-**`src/pages/SeatManagement.tsx`**
-- In `fetchCabinData()`, add dual-lookup: try `serial_number` first, fall back to UUID
-- Use resolved UUID for all subsequent seat queries
+**In `HostelDepositList`:**
+- Add `hostel_dues(due_amount, paid_amount, status)` to the select query
+- Add "Due Amount" column after "Deposit"
+- Sum `due_amount` from linked hostel_dues records
+- Update colSpan from 8 to 9
 
-### 3. Helper utility
-Create a small reusable `isUUID` utility (already duplicated in 3 files) in `src/utils/idUtils.ts`:
+**In `HostelRefundManagement`:**
+- Same join with `hostel_dues` in the bookings query
+- Add "Due Amount" column after "Deposit"
+- Update colSpan from 9 to 10
 
-```text
-isUUID(s: string) => /^[0-9a-f]{8}-/.test(s)
-```
-
-Then replace the inline copies in `HostelRooms.tsx`, `HostelRoomDetails.tsx`, `BookSeat.tsx`, and the new files.
-
-## Technical Details
-
-The resolution pattern (same as already used in student pages):
-
-```text
-1. Check if param isUUID
-2. If UUID -> query by .eq('id', param)
-3. If not UUID -> query by .eq('serial_number', param)
-4. Use resolved UUID for all child queries (rooms, beds, seats, etc.)
-```
-
-Routes in `App.tsx` need NO changes -- `:hostelId` and `:cabinId` params accept any string.
-
-## Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/utils/idUtils.ts` | Shared `isUUID()` helper |
+## Display Format
+- When due amount > 0: show in red/orange text (e.g., `₹2,500`) to flag attention
+- When due amount is 0 or no dues: show "No Dues" in muted green text
+- Uses existing `formatCurrency()` helper
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/admin/HostelBedManagementPage.tsx` | Dual-lookup hostel by serial_number/UUID |
-| `src/pages/HostelRoomView.tsx` | Dual-lookup hostel by serial_number/UUID |
-| `src/pages/SeatManagement.tsx` | Dual-lookup cabin by serial_number/UUID |
-| `src/components/admin/HostelItem.tsx` | Use `hostel.serial_number` in nav link |
-| `src/pages/hotelManager/HostelManagement.tsx` | Use `hostel.serial_number` in nav link |
-| `src/pages/RoomManagement.tsx` | Use `cabin.serial_number` in nav link |
-| `src/components/admin/SeatManagementLink.tsx` | Accept serialNumber prop |
-| `src/pages/HostelRooms.tsx` | Use shared `isUUID` from utils |
-| `src/pages/HostelRoomDetails.tsx` | Use shared `isUUID` from utils |
-| `src/pages/BookSeat.tsx` | Use shared `isUUID` from utils |
+| `src/api/depositRefundService.ts` | Add `dues` join, `dueAmount` field, update mapper and export |
+| `src/components/admin/DepositManagement.tsx` | Add "Due Amount" column |
+| `src/components/admin/RefundManagement.tsx` | Add "Due Amount" column |
+| `src/pages/admin/HostelDeposits.tsx` | Add `hostel_dues` join + "Due Amount" column in both sub-components |
+
+## Technical Details
+
+- The `dues` table has a `booking_id` column that references `bookings.id`. The join syntax: `dues!dues_booking_id_fkey(due_amount, paid_amount, status)`
+- The `hostel_dues` table has a `booking_id` column referencing `hostel_bookings.id`. Join: `hostel_dues!hostel_dues_booking_id_fkey(due_amount, paid_amount, status)`
+- A booking may have multiple due records (monthly installments), so we sum all `due_amount` values
+- The column shows the total due amount from the due management system, not a calculated outstanding -- exactly matching what appears in the Due Management pages
+
