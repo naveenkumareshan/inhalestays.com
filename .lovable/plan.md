@@ -1,123 +1,65 @@
 
 
-# Fix Partner Subscriptions Razorpay + Add Discount Model + Create Admin Employees Page
+# Fix Capacity Upgrade Pricing (Per Month) + Diamond Universal Package
 
-## 1. Fix Razorpay Not Working in Partner Subscriptions
+## Changes
 
-**Problem**: `MySubscriptions.tsx` calls `window.Razorpay` directly without first loading the Razorpay SDK script. Other pages (HostelBooking, BookingRenewal, etc.) all have a `loadRazorpayScript()` helper that dynamically injects the `<script>` tag -- this page is missing it.
+### 1. Capacity Upgrade Price = Per Month, Billed Yearly
 
-**Fix**: Add the same `loadRazorpayScript()` helper function to `MySubscriptions.tsx` and call it before opening the Razorpay checkout in `handlePayment()`.
+Currently, `capacity_upgrade_price` (e.g. 300) is treated as a flat one-time amount per slab. The user wants it to be **per month**, so the yearly cost per slab = `capacity_upgrade_price * 12`.
 
-## 2. Add Discount Model to Subscription Plans
+**Files to update:**
 
-**Problem**: Admin cannot offer discounts to partners on subscription plans.
+| File | Change |
+|------|--------|
+| `src/pages/partner/MySubscriptions.tsx` | Update `totalAmount` calculation: `capacityUpgrades * selectedPlan.capacity_upgrade_price * 12` instead of `* price`. Update all display text to show "/month per slab" and the yearly total. |
+| `src/pages/admin/SubscriptionPlans.tsx` | Update label from "Price per Slab" to "Price per Slab/Month". No formula change needed in admin (admin just sets the monthly rate). |
+| `supabase/functions/subscription-create-order/index.ts` | Update: `capacityUpgradeAmount = capacityUpgrades * plan.capacity_upgrade_price * 12` |
 
-**Changes**:
+**Example:** If `capacity_upgrade_price = 300` and partner picks 2 slabs:
+- Monthly cost: 2 x 300 = 600/month
+- Yearly cost: 600 x 12 = 7,200 added to the subscription total
 
-### Database Migration
-Add discount columns to `subscription_plans` table:
-- `discount_percentage` (numeric, default 0) -- percentage discount off yearly price
-- `discount_label` (text, default '') -- e.g. "Launch Offer", "Early Bird"
-- `discount_active` (boolean, default false) -- toggle to enable/disable the discount
+### 2. Diamond Plan = Universal Package (Multiple Properties)
 
-### Admin UI (`SubscriptionPlans.tsx`)
-Add three fields to the plan create/edit form:
-- Discount Percentage input
-- Discount Label input
-- Discount Active toggle
+Currently, subscriptions are **per-property** -- each reading room or hostel needs its own subscription. The Diamond plan should act as a **universal package**: one subscription covers ALL the partner's reading rooms and hostels.
 
-Show the discount info in the plans table (new "Discount" column).
+**Approach:** Add a `is_universal` boolean column to `subscription_plans`. When a plan has `is_universal = true`:
 
-### Partner UI (`MySubscriptions.tsx`)
-- Show original price with strikethrough when discount is active
-- Show discounted price and discount label badge
-- Calculate `totalAmount` using discounted price when applicable
-- Pass discounted amount to the backend
+- In the partner UI, skip property selection -- subscribe at the partner level
+- The subscription record stores `property_id = NULL` and `property_type = 'universal'`
+- The `useSubscriptionAccess` hook checks: if any active subscription with `property_type = 'universal'` exists for the partner, all properties are covered
+- Admin form gets a new "Universal Package" toggle for plans
 
-### Edge Function (`subscription-create-order/index.ts`)
-- Read discount fields from the plan record
-- If discount is active, apply the percentage discount to `price_yearly` before calculating `totalAmount`
-- Store original and discounted amounts in the subscription record
-
-## 3. Create Admin Employees Page
-
-**Problem**: Admin needs a page to manage admin-level employees with sidebar permission controls and password management.
-
-**Approach**: Reuse the exact same pattern as the Partner Employee system (`VendorEmployees.tsx` + `VendorEmployeeForm.tsx`), but scoped to admin employees who get access to admin sidebar items.
-
-### Database Migration
-Create `admin_employees` table:
-- `id` (uuid, PK)
-- `admin_user_id` (uuid) -- the admin who created this employee
-- `employee_user_id` (uuid) -- the auth user ID of the employee
-- `name`, `email`, `phone` (text)
-- `role` (text, default 'staff')
-- `permissions` (text[], default '{}') -- admin sidebar permission keys
-- `status` (text, default 'active')
-- `created_at`, `updated_at` (timestamptz)
-
-Enable RLS with policies:
-- Admins can manage all admin employees
-- Admin employees can view their own record
-
-### New Files
-
-**`src/api/adminEmployeeService.ts`**
-Service layer for CRUD on `admin_employees` table (modeled after `vendorEmployeeService.ts`).
-
-**`src/pages/admin/AdminEmployees.tsx`**
-Main page with:
-- Employee list table (Name, Email, Phone, Role, Status, Permissions, Actions)
-- Add Employee button -- opens form
-- View, Edit, Delete actions per employee
-- Employee creation uses the existing `admin-create-user` Edge Function with role `admin` (or a new `admin_employee` role if needed)
-- Password Change button -- calls `admin-reset-password` Edge Function
-- Shows the login URL for employees (e.g., `/admin/login`)
-
-**`src/components/admin/AdminEmployeeForm.tsx`**
-Form with:
-- Name, Email, Phone, Password (for new employees)
-- Permission grid with View/Edit toggles for all admin sidebar modules:
-  - **General**: Dashboard, Operations
-  - **Reading Rooms**: Seat Map, Due Management, Bookings, Receipts, Key Deposits, Manage Rooms, Reviews
-  - **Hostels**: Bed Map, Due Management, Bookings, Receipts, Deposits, Manage Hostels, Reviews
-  - **Laundry**: Laundry Management
-  - **Users**: All Users, Create User, Import Users, Coupons
-  - **Partners**: All Partners, Property Approvals, Settlements, Payouts
-  - **Reports, Messaging, Locations, Banners, Complaints, Support, Sponsored, Subscriptions**
-
-### Routing
-Add route in `App.tsx`:
-```
-/admin/employees --> AdminEmployees
+**Database migration:**
+```sql
+ALTER TABLE subscription_plans ADD COLUMN is_universal boolean NOT NULL DEFAULT false;
+ALTER TABLE property_subscriptions ALTER COLUMN property_id DROP NOT NULL;
 ```
 
-### Sidebar
-Add "Admin Employees" menu item under Settings or as a standalone item for admin role in `AdminSidebar.tsx`.
+**Files to update:**
 
----
+| File | Change |
+|------|--------|
+| `src/pages/admin/SubscriptionPlans.tsx` | Add "Universal Package" toggle to form; show in table |
+| `src/pages/partner/MySubscriptions.tsx` | When a universal plan is selected, skip property selection step; show a "Subscribe for All Properties" card; pass `propertyType: 'universal', propertyId: null` to edge function |
+| `supabase/functions/subscription-create-order/index.ts` | Handle `propertyType === 'universal'`: skip property ownership check, set `property_id: null` |
+| `src/hooks/useSubscriptionAccess.ts` | Add fallback: if no property-specific subscription, check for any `universal` subscription for the same partner |
 
-## Files to Create
+### 3. Display Changes in Partner Subscription Flow
 
-| File | Purpose |
-|------|---------|
-| `src/pages/admin/AdminEmployees.tsx` | Admin employees management page |
-| `src/components/admin/AdminEmployeeForm.tsx` | Employee form with permission grid |
-| `src/api/adminEmployeeService.ts` | CRUD service for admin_employees |
+**Step 2 (Capacity Upgrades):**
+- Show: "Add upgrade slabs at Rs X/month each (billed yearly: Rs X*12/slab)"
+- Extra capacity line: show monthly and yearly breakdown
+- e.g. "+2 slabs = Rs 600/month (Rs 7,200/year)"
 
-## Files to Modify
+**Step 3 (Order Summary):**
+- Show capacity upgrade as: "Capacity Upgrades (2 slabs x Rs 300/mo x 12)" with yearly total
 
-| File | Changes |
-|------|---------|
-| `src/pages/partner/MySubscriptions.tsx` | Add `loadRazorpayScript()`, apply discount pricing |
-| `src/pages/admin/SubscriptionPlans.tsx` | Add discount fields to form and table |
-| `supabase/functions/subscription-create-order/index.ts` | Apply discount in amount calculation |
-| `src/App.tsx` | Add `/admin/employees` route |
-| `src/components/admin/AdminSidebar.tsx` | Add "Admin Employees" menu item |
-| `src/components/AdminLayout.tsx` | Add page title mapping |
+## Technical Details
 
-## Database Migrations
-
-1. Add `discount_percentage`, `discount_label`, `discount_active` columns to `subscription_plans`
-2. Create `admin_employees` table with RLS policies
+- The `capacity_upgrade_price` column meaning changes from "flat price" to "monthly price per slab" -- existing data (300) already makes sense as a monthly rate
+- Diamond plan in DB already has `hostel_bed_limit: 0` and `reading_room_seat_limit: 0` (unlimited), which is correct for a universal plan
+- The universal subscription uses `property_type = 'universal'` to distinguish from per-property subscriptions
+- `useSubscriptionAccess` will first check property-specific subscription, then fall back to checking universal subscription via partner lookup
 
