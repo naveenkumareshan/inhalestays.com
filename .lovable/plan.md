@@ -1,24 +1,44 @@
 
 
-# Fix: Android Emulator Showing Blank Screen
+# Fix Capacitor Native App: Blank Screen & Lovable Redirect
 
-## Problem
+## Root Cause
 
-The `capacitor.config.ts` has a `server.url` pointing to the remote Lovable preview URL. This causes the Android WebView to try loading from the internet instead of using the local bundled assets. On the emulator, this fails (blank screen, opens Chrome).
+Two issues are causing the blank screen and the redirect to lovable.dev/login:
 
-## Solution
+### Issue 1: Missing `base` path in Vite config
+When Capacitor loads the app from local files (`capacitor://` protocol), asset URLs must be **relative** (e.g., `./assets/index.js`), not absolute (`/assets/index.js`). Vite defaults to `/` which breaks in the Capacitor WebView.
 
-Remove the `server` block from `capacitor.config.ts` so the app loads from the local `dist/` folder instead of a remote URL. This is the correct setup for building a standalone APK.
+### Issue 2: Stale Android project config
+The `android/` directory still contains the old `server.url` pointing to the Lovable preview URL. Running `npx cap sync` alone does not always overwrite the native config. The Android project must be fully removed and recreated.
 
-### `capacitor.config.ts`
-- Remove the entire `server` block (lines 7-10) containing `url` and `cleartext`
-- The app will then load from `webDir: 'dist'` which contains your built assets
+---
 
-After this change, you need to:
-1. Export to GitHub and pull locally
-2. Run `npm run build` to generate the `dist/` folder
-3. Run `npx cap sync android`
-4. Run the app again from Android Studio
+## Changes
 
-The `server.url` option is only useful during development when you want hot-reload from your local dev server — it should never be used for production APK builds.
+### 1. Update `vite.config.ts` — add `base: './'`
+
+Add `base: './'` to the Vite config so all built assets use relative paths, compatible with Capacitor's local file loading.
+
+### 2. User must rebuild locally
+
+After exporting the updated code, the user needs to:
+```
+rm -rf android
+npm run build
+npx cap add android
+npx cap sync android
+npx cap open android
+```
+
+This ensures the old cached config is completely removed and replaced with the correct one.
+
+---
+
+## Technical Details
+
+**File: `vite.config.ts`**
+- Add `base: './'` at the top level of the config object, right after the `server` block
+
+This single line change ensures that all `<script>` and `<link>` tags in the built `index.html` reference assets with relative paths (`./assets/...`) instead of absolute paths (`/assets/...`), which is required for Capacitor's `capacitor://localhost/` origin.
 
