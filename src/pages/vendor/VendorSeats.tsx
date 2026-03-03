@@ -23,8 +23,11 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   LayoutGrid, List, CalendarIcon, Search, Ban, Lock, Unlock,
-  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Download, ArrowLeft, ArrowRightLeft, RotateCcw, Wallet,
+  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Download, ArrowLeft, ArrowRightLeft, RotateCcw, Wallet, LogOut, XCircle,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -131,6 +134,12 @@ const VendorSeats: React.FC = () => {
   const [dueCollectTxnId, setDueCollectTxnId] = useState('');
   const [dueCollectNotes, setDueCollectNotes] = useState('');
   const [collectingDue, setCollectingDue] = useState(false);
+
+  // Release/Cancel booking state
+  const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [actionBookingId, setActionBookingId] = useState<string>('');
+  const [actionLoading, setActionLoading] = useState(false);
 
   const { toast } = useToast();
   const { hasPermission } = useVendorEmployeePermissions();
@@ -326,6 +335,37 @@ const VendorSeats: React.FC = () => {
       toast({ title: 'Error', description: res.error, variant: 'destructive' });
     }
     setCollectingDue(false);
+  };
+
+  // Price edit
+  const handleReleaseSeat = async () => {
+    if (!actionBookingId) return;
+    setActionLoading(true);
+    const res = await vendorSeatsService.releaseSeat(actionBookingId);
+    if (res.success) {
+      toast({ title: 'Seat released successfully' });
+      setReleaseDialogOpen(false);
+      setSheetOpen(false);
+      fetchSeats();
+    } else {
+      toast({ title: 'Error', description: res.error, variant: 'destructive' });
+    }
+    setActionLoading(false);
+  };
+
+  const handleCancelBooking = async () => {
+    if (!actionBookingId) return;
+    setActionLoading(true);
+    const res = await vendorSeatsService.cancelBooking(actionBookingId);
+    if (res.success) {
+      toast({ title: 'Booking cancelled successfully' });
+      setCancelDialogOpen(false);
+      setSheetOpen(false);
+      fetchSeats();
+    } else {
+      toast({ title: 'Error', description: res.error, variant: 'destructive' });
+    }
+    setActionLoading(false);
   };
 
   // Price edit
@@ -983,7 +1023,7 @@ const VendorSeats: React.FC = () => {
                   </div>
                   {/* Action buttons: Renew, Book Future, Transfer, Block */}
                   {canEdit && (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       <Button
                         size="sm"
                         className="h-8 text-xs gap-1"
@@ -1062,6 +1102,28 @@ const VendorSeats: React.FC = () => {
                         onClick={() => openBlockDialog(selectedSeat)}
                       >
                         <Lock className="h-3 w-3" /> Block
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs gap-1 text-amber-600 border-amber-300 hover:bg-amber-50"
+                        onClick={() => {
+                          const activeBooking = currentBookings[0];
+                          if (activeBooking) { setActionBookingId(activeBooking.bookingId); setReleaseDialogOpen(true); }
+                        }}
+                      >
+                        <LogOut className="h-3 w-3" /> Release Seat
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                        onClick={() => {
+                          const activeBooking = currentBookings[0];
+                          if (activeBooking) { setActionBookingId(activeBooking.bookingId); setCancelDialogOpen(true); }
+                        }}
+                      >
+                        <XCircle className="h-3 w-3" /> Cancel Booking
                       </Button>
                     </div>
                   )}
@@ -1905,6 +1967,42 @@ const VendorSeats: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ──── Release Seat Confirmation ──── */}
+      <AlertDialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Release Seat</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will terminate the booking and free the seat immediately. The student will no longer have access. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReleaseSeat} disabled={actionLoading} className="bg-amber-600 hover:bg-amber-700">
+              {actionLoading ? 'Releasing...' : 'Release Seat'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ──── Cancel Booking Confirmation ──── */}
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Booking</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will cancel the booking, free the seat, and cancel any pending dues. Transaction history will be preserved. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelBooking} disabled={actionLoading} className="bg-destructive hover:bg-destructive/90">
+              {actionLoading ? 'Cancelling...' : 'Cancel Booking'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

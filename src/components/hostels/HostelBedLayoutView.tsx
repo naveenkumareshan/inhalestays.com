@@ -88,24 +88,8 @@ export const HostelBedLayoutView: React.FC<HostelBedLayoutViewProps> = ({
           p_end_date: endDate || null,
         });
 
-        const { data: duesData } = await supabase
-          .from('hostel_dues')
-          .select('bed_id, proportional_end_date, booking_id')
-          .eq('hostel_id', hostelId)
-          .eq('status', 'pending')
-          .not('proportional_end_date', 'is', null);
-
-        const duesMap = new Map<string, string>();
-        duesData?.forEach((d: any) => {
-          if (d.bed_id && d.proportional_end_date) duesMap.set(d.bed_id, d.proportional_end_date);
-        });
-
         const bookingMap = new Map<string, string>();
         bookings?.forEach((b: any) => {
-          if (b.payment_status === 'advance_paid' && startDate) {
-            const propEnd = duesMap.get(b.bed_id);
-            if (propEnd && propEnd < startDate) return;
-          }
           bookingMap.set(b.bed_id, b.user_name || 'Occupied');
         });
 

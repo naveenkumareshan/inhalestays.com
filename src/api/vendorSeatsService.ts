@@ -153,14 +153,6 @@ function computeDateStatus(
   );
 
   if (activeBooking) {
-    // For advance_paid bookings, check proportional_end_date
-    if (activeBooking.payment_status === 'advance_paid' && duesMap) {
-      const proportionalEnd = duesMap[activeBooking.id];
-      if (proportionalEnd && selectedDate > proportionalEnd) {
-        return 'available'; // Auto-released after proportional end date
-      }
-    }
-
     const endDate = new Date(activeBooking.end_date);
     const selected = new Date(selectedDate);
     const diffDays = Math.ceil((endDate.getTime() - selected.getTime()) / (1000 * 60 * 60 * 24));
@@ -341,13 +333,8 @@ export const vendorSeatsService = {
         const seatBookings = allBookings.filter(b => b.seat_id === seat.id);
         const dateStatus = computeDateStatus(seat, allBookings, date, dateBlocks, duesMap);
 
-        // For advance_paid bookings past proportional_end_date, don't show as currentBooking
         const currentBookingRaw = seatBookings.find(b => {
           if (b.start_date > date || b.end_date < date) return false;
-          if (b.payment_status === 'advance_paid') {
-            const proportionalEnd = duesMap[b.id];
-            if (proportionalEnd && date > proportionalEnd) return false; // released
-          }
           return true;
         });
 
@@ -899,6 +886,37 @@ export const vendorSeatsService = {
       return { success: true, data };
     } catch (error) {
       return { success: false, data: null };
+    }
+  },
+
+  releaseSeat: async (bookingId: string) => {
+    try {
+      const { error } = await supabase.from('bookings').update({
+        payment_status: 'terminated',
+        end_date: new Date().toISOString().split('T')[0],
+      }).eq('id', bookingId);
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Error releasing seat:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed' };
+    }
+  },
+
+  cancelBooking: async (bookingId: string) => {
+    try {
+      const { error } = await supabase.from('bookings').update({
+        payment_status: 'cancelled',
+      }).eq('id', bookingId);
+      if (error) throw error;
+      // Cancel pending dues (don't delete)
+      await supabase.from('dues').update({
+        status: 'cancelled',
+      }).eq('booking_id', bookingId).eq('status', 'pending');
+      return { success: true };
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed' };
     }
   },
 
