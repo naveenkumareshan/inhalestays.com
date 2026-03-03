@@ -22,7 +22,8 @@ export interface HostelShareData {
 
 const buildUrl = (path: string, userId?: string) => {
   const base = `${getPublicAppUrl()}${path}`;
-  return userId ? `${base}?ref=${userId}` : base;
+  const shortRef = userId ? userId.substring(0, 8) : undefined;
+  return shortRef ? `${base}?ref=${shortRef}` : base;
 };
 
 export const generateCabinShareText = (cabin: CabinShareData, userId?: string) => {

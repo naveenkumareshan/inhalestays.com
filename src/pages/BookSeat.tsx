@@ -174,6 +174,7 @@ const BookSeat = () => {
           is24Hours: (d as any).is_24_hours || false,
           slotsEnabled: (d as any).slots_enabled || false,
           fullAddress: (d as any).full_address || undefined,
+          serialNumber: (d as any).serial_number || undefined,
         });
         setLayoutImage((d as any).layout_image || null);
         setRoomWidth((d as any).room_width || 800);
