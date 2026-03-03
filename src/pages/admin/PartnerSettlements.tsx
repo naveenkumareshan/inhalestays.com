@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { settlementService, SettlementFilters, PaymentData } from '@/api/settlementService';
@@ -15,8 +15,10 @@ import { SettlementDetailDialog } from '@/components/admin/SettlementDetailDialo
 import { PartnerPayoutSettingsDialog } from '@/components/admin/PartnerPayoutSettingsDialog';
 import { AdjustmentManager } from '@/components/admin/AdjustmentManager';
 import { PartnerLedgerView } from '@/components/admin/PartnerLedgerView';
-import { Loader2, Eye, CheckCircle, Lock, CreditCard, Plus, Settings, BookOpen, Wallet, Clock, IndianRupee } from 'lucide-react';
+import { Loader2, Eye, CheckCircle, Lock, CreditCard, Plus, Settings, BookOpen, Wallet, Clock, IndianRupee, Download } from 'lucide-react';
 import { format } from 'date-fns';
+import { formatCurrency } from '@/utils/currency';
+import ExcelJS from 'exceljs';
 
 const PartnerSettlements: React.FC = () => {
   const [settlements, setSettlements] = useState<any[]>([]);
@@ -99,8 +101,49 @@ const PartnerSettlements: React.FC = () => {
     setPaying(false);
   };
 
+  const handleExportForBank = async () => {
+    const bankReady = settlements.filter(s => ['approved', 'locked'].includes(s.status));
+    if (bankReady.length === 0) {
+      toast({ title: 'No Data', description: 'No approved/locked settlements to export', variant: 'destructive' });
+      return;
+    }
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Bank Upload');
+    ws.columns = [
+      { header: 'Beneficiary Name', key: 'name', width: 25 },
+      { header: 'Account Number', key: 'account', width: 22 },
+      { header: 'IFSC Code', key: 'ifsc', width: 15 },
+      { header: 'Amount', key: 'amount', width: 14 },
+      { header: 'Payment Mode', key: 'mode', width: 12 },
+      { header: 'Settlement ID', key: 'settlement', width: 22 },
+      { header: 'Period', key: 'period', width: 25 },
+      { header: 'Partner', key: 'partner', width: 25 },
+    ];
+    ws.getRow(1).font = { bold: true };
+    bankReady.forEach(s => {
+      const bd = s.partners?.bank_details as any;
+      ws.addRow({
+        name: bd?.accountHolderName || s.partners?.business_name || '',
+        account: bd?.accountNumber || '',
+        ifsc: bd?.ifscCode || '',
+        amount: Math.round((s.net_payable || 0) * 100) / 100,
+        mode: 'NEFT',
+        settlement: s.serial_number || s.id.slice(0, 8),
+        period: `${s.period_start} to ${s.period_end}`,
+        partner: s.partners?.business_name || '',
+      });
+    });
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bank-upload-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const getStatusBadge = (status: string) => {
-    const map: Record<string, string> = { draft: 'secondary', generated: 'default', approved: 'default', locked: 'outline', paid: 'default', disputed: 'destructive' };
     const colorMap: Record<string, string> = { draft: 'bg-gray-100 text-gray-700', generated: 'bg-blue-100 text-blue-700', approved: 'bg-green-100 text-green-700', locked: 'bg-orange-100 text-orange-700', paid: 'bg-emerald-100 text-emerald-800', disputed: 'bg-red-100 text-red-700' };
     return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${colorMap[status] || 'bg-gray-100 text-gray-700'}`}>{status.toUpperCase()}</span>;
   };
@@ -113,7 +156,10 @@ const PartnerSettlements: React.FC = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Partner Settlements</h1>
-        <Button size="sm" onClick={() => setShowGenerate(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Generate Settlement</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={handleExportForBank}><Download className="h-3.5 w-3.5 mr-1" /> Export for Bank</Button>
+          <Button size="sm" onClick={() => setShowGenerate(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Generate Settlement</Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -124,7 +170,7 @@ const PartnerSettlements: React.FC = () => {
               <Wallet className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-[10px] text-muted-foreground">Total Paid</p>
-                <p className="text-sm font-bold">₹{stats.totalPaid?.toLocaleString() || 0}</p>
+                <p className="text-sm font-bold">{formatCurrency(stats.totalPaid || 0)}</p>
               </div>
             </div>
           </Card>
@@ -133,7 +179,7 @@ const PartnerSettlements: React.FC = () => {
               <Clock className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-[10px] text-muted-foreground">Pending</p>
-                <p className="text-sm font-bold">₹{stats.pendingAmount?.toLocaleString() || 0}</p>
+                <p className="text-sm font-bold">{formatCurrency(stats.pendingAmount || 0)}</p>
               </div>
             </div>
           </Card>
@@ -203,6 +249,9 @@ const PartnerSettlements: React.FC = () => {
               <TableHead className="px-2 py-1.5">S.No.</TableHead>
               <TableHead className="px-2 py-1.5">Settlement ID</TableHead>
               <TableHead className="px-2 py-1.5">Partner</TableHead>
+              <TableHead className="px-2 py-1.5">A/C Holder</TableHead>
+              <TableHead className="px-2 py-1.5">Account No.</TableHead>
+              <TableHead className="px-2 py-1.5">IFSC</TableHead>
               <TableHead className="px-2 py-1.5">Period</TableHead>
               <TableHead className="px-2 py-1.5 text-right">Receipts</TableHead>
               <TableHead className="px-2 py-1.5 text-right">Collected</TableHead>
@@ -214,33 +263,39 @@ const PartnerSettlements: React.FC = () => {
           </TableHeader>
           <TableBody>
             {settlements.length === 0 ? (
-              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground text-xs">No settlements found</TableCell></TableRow>
-            ) : settlements.map((s, idx) => (
-              <TableRow key={s.id} className="text-[11px]">
-                <TableCell className="px-2 py-1.5">{idx + 1}</TableCell>
-                <TableCell className="px-2 py-1.5 font-mono text-[10px]">{s.serial_number || s.id.slice(0, 8)}</TableCell>
-                <TableCell className="px-2 py-1.5">{s.partners?.business_name || '-'}</TableCell>
-                <TableCell className="px-2 py-1.5 whitespace-nowrap">{s.period_start} → {s.period_end}</TableCell>
-                <TableCell className="px-2 py-1.5 text-right">{s.total_bookings}</TableCell>
-                <TableCell className="px-2 py-1.5 text-right">₹{s.total_collected?.toLocaleString()}</TableCell>
-                <TableCell className="px-2 py-1.5 text-right">₹{s.commission_amount?.toLocaleString()}</TableCell>
-                <TableCell className="px-2 py-1.5 text-right font-medium">₹{s.net_payable?.toLocaleString()}</TableCell>
-                <TableCell className="px-2 py-1.5">{getStatusBadge(s.status)}</TableCell>
-                <TableCell className="px-2 py-1.5">
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setSelectedSettlement(s.id)}><Eye className="h-3 w-3" /></Button>
-                    {s.status === 'generated' && <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-green-600" onClick={() => handleApprove(s.id)}><CheckCircle className="h-3 w-3" /></Button>}
-                    {s.status === 'approved' && <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-orange-600" onClick={() => handleLock(s.id)}><Lock className="h-3 w-3" /></Button>}
-                    {(s.status === 'approved' || s.status === 'locked') && (
-                      <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-emerald-600" onClick={() => { setPaySettlementId(s.id); setShowPayDialog(true); }}><CreditCard className="h-3 w-3" /></Button>
-                    )}
-                    <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowSettings(s.partner_id)}><Settings className="h-3 w-3" /></Button>
-                    <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowAdjustments(s.partner_id)}><Plus className="h-3 w-3" /></Button>
-                    <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowLedger(s.partner_id)}><BookOpen className="h-3 w-3" /></Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+              <TableRow><TableCell colSpan={13} className="text-center py-8 text-muted-foreground text-xs">No settlements found</TableCell></TableRow>
+            ) : settlements.map((s, idx) => {
+              const bd = s.partners?.bank_details as any;
+              return (
+                <TableRow key={s.id} className="text-[11px]">
+                  <TableCell className="px-2 py-1.5">{idx + 1}</TableCell>
+                  <TableCell className="px-2 py-1.5 font-mono text-[10px]">{s.serial_number || s.id.slice(0, 8)}</TableCell>
+                  <TableCell className="px-2 py-1.5">{s.partners?.business_name || '-'}</TableCell>
+                  <TableCell className="px-2 py-1.5 text-[10px]">{bd?.accountHolderName || '-'}</TableCell>
+                  <TableCell className="px-2 py-1.5 font-mono text-[10px]">{bd?.accountNumber || '-'}</TableCell>
+                  <TableCell className="px-2 py-1.5 font-mono text-[10px]">{bd?.ifscCode || '-'}</TableCell>
+                  <TableCell className="px-2 py-1.5 whitespace-nowrap">{s.period_start} → {s.period_end}</TableCell>
+                  <TableCell className="px-2 py-1.5 text-right">{s.total_bookings}</TableCell>
+                  <TableCell className="px-2 py-1.5 text-right">{formatCurrency(s.total_collected || 0)}</TableCell>
+                  <TableCell className="px-2 py-1.5 text-right">{formatCurrency(s.commission_amount || 0)}</TableCell>
+                  <TableCell className="px-2 py-1.5 text-right font-medium">{formatCurrency(s.net_payable || 0)}</TableCell>
+                  <TableCell className="px-2 py-1.5">{getStatusBadge(s.status)}</TableCell>
+                  <TableCell className="px-2 py-1.5">
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setSelectedSettlement(s.id)}><Eye className="h-3 w-3" /></Button>
+                      {s.status === 'generated' && <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-green-600" onClick={() => handleApprove(s.id)}><CheckCircle className="h-3 w-3" /></Button>}
+                      {s.status === 'approved' && <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-orange-600" onClick={() => handleLock(s.id)}><Lock className="h-3 w-3" /></Button>}
+                      {(s.status === 'approved' || s.status === 'locked') && (
+                        <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-emerald-600" onClick={() => { setPaySettlementId(s.id); setShowPayDialog(true); }}><CreditCard className="h-3 w-3" /></Button>
+                      )}
+                      <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowSettings(s.partner_id)}><Settings className="h-3 w-3" /></Button>
+                      <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowAdjustments(s.partner_id)}><Plus className="h-3 w-3" /></Button>
+                      <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowLedger(s.partner_id)}><BookOpen className="h-3 w-3" /></Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>

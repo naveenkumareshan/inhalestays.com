@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 import { settlementService } from '@/api/settlementService';
+import { formatCurrency } from '@/utils/currency';
 
 interface Props {
   settlementId: string;
@@ -49,15 +50,15 @@ export const SettlementDetailDialog: React.FC<Props> = ({ settlementId, open, on
 
             {/* Financial Summary */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs border rounded-md p-3 bg-muted/30">
-              <div><p className="text-muted-foreground">Total Collected</p><p className="font-bold">₹{data.settlement.total_collected?.toLocaleString()}</p></div>
-              <div><p className="text-muted-foreground">Commission</p><p className="font-bold text-red-600">-₹{data.settlement.commission_amount?.toLocaleString()}</p></div>
-              <div><p className="text-muted-foreground">Gateway Fees</p><p className="font-bold text-red-600">-₹{data.settlement.gateway_fees?.toLocaleString()}</p></div>
-              <div><p className="text-muted-foreground">Adjustments</p><p className="font-bold text-red-600">-₹{data.settlement.adjustment_amount?.toLocaleString()}</p></div>
-              {data.settlement.tds_amount > 0 && <div><p className="text-muted-foreground">TDS</p><p className="font-bold text-red-600">-₹{data.settlement.tds_amount?.toLocaleString()}</p></div>}
-              {data.settlement.security_hold_amount > 0 && <div><p className="text-muted-foreground">Security Hold</p><p className="font-bold text-orange-600">-₹{data.settlement.security_hold_amount?.toLocaleString()}</p></div>}
+              <div><p className="text-muted-foreground">Total Collected</p><p className="font-bold">{formatCurrency(data.settlement.total_collected || 0)}</p></div>
+              <div><p className="text-muted-foreground">Commission</p><p className="font-bold text-red-600">-{formatCurrency(data.settlement.commission_amount || 0)}</p></div>
+              <div><p className="text-muted-foreground">Gateway Fees</p><p className="font-bold text-red-600">-{formatCurrency(data.settlement.gateway_fees || 0)}</p></div>
+              <div><p className="text-muted-foreground">Adjustments</p><p className="font-bold text-red-600">-{formatCurrency(data.settlement.adjustment_amount || 0)}</p></div>
+              {data.settlement.tds_amount > 0 && <div><p className="text-muted-foreground">TDS</p><p className="font-bold text-red-600">-{formatCurrency(data.settlement.tds_amount || 0)}</p></div>}
+              {data.settlement.security_hold_amount > 0 && <div><p className="text-muted-foreground">Security Hold</p><p className="font-bold text-orange-600">-{formatCurrency(data.settlement.security_hold_amount || 0)}</p></div>}
               <div className="col-span-2 md:col-span-4 border-t pt-2 mt-2">
                 <p className="text-muted-foreground">Net Payable</p>
-                <p className="font-bold text-lg text-green-700">₹{data.settlement.net_payable?.toLocaleString()}</p>
+                <p className="font-bold text-lg text-green-700">{formatCurrency(data.settlement.net_payable || 0)}</p>
               </div>
             </div>
 
@@ -101,10 +102,10 @@ export const SettlementDetailDialog: React.FC<Props> = ({ settlementId, open, on
                         <TableCell className="px-2 py-1">{item.student_name}</TableCell>
                         <TableCell className="px-2 py-1">{item.property_name}</TableCell>
                         <TableCell className="px-2 py-1 whitespace-nowrap">{item.payment_date ? new Date(item.payment_date).toLocaleDateString() : '-'}</TableCell>
-                        <TableCell className="px-2 py-1 text-right">₹{item.total_amount?.toLocaleString()}</TableCell>
-                        <TableCell className="px-2 py-1 text-right text-red-600">-₹{item.commission_amount?.toLocaleString()}</TableCell>
-                        <TableCell className="px-2 py-1 text-right text-red-600">-₹{item.gateway_fee?.toLocaleString()}</TableCell>
-                        <TableCell className="px-2 py-1 text-right font-medium">₹{item.net_amount?.toLocaleString()}</TableCell>
+                        <TableCell className="px-2 py-1 text-right">{formatCurrency(item.total_amount || 0)}</TableCell>
+                        <TableCell className="px-2 py-1 text-right text-red-600">-{formatCurrency(item.commission_amount || 0)}</TableCell>
+                        <TableCell className="px-2 py-1 text-right text-red-600">-{formatCurrency(item.gateway_fee || 0)}</TableCell>
+                        <TableCell className="px-2 py-1 text-right font-medium">{formatCurrency(item.net_amount || 0)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -130,7 +131,7 @@ export const SettlementDetailDialog: React.FC<Props> = ({ settlementId, open, on
                       {data.adjustments.map((adj: any) => (
                         <TableRow key={adj.id} className="text-[10px]">
                           <TableCell className="px-2 py-1">{adj.type}</TableCell>
-                          <TableCell className="px-2 py-1 text-right">₹{adj.amount?.toLocaleString()}</TableCell>
+                          <TableCell className="px-2 py-1 text-right">{formatCurrency(adj.amount || 0)}</TableCell>
                           <TableCell className="px-2 py-1">{adj.description}</TableCell>
                           <TableCell className="px-2 py-1"><Badge variant="outline" className="text-[9px]">{adj.status}</Badge></TableCell>
                         </TableRow>

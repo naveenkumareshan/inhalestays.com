@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { roundPrice } from '@/utils/currency';
 
 export interface PartnerPayoutSettings {
   id?: string;
@@ -231,10 +232,10 @@ export const settlementService = {
 
     for (const r of rrReceipts) {
       const receiptAmount = r.amount || 0;
-      const commission = calcCommission(receiptAmount);
-      const gatewayFee = gatewayMode === 'pass_to_partner' ? receiptAmount * 0.02 :
-        gatewayMode === 'split' ? receiptAmount * 0.02 * (gatewaySplit / 100) : 0;
-      const netAmount = receiptAmount - commission - gatewayFee;
+      const commission = roundPrice(calcCommission(receiptAmount));
+      const gatewayFee = roundPrice(gatewayMode === 'pass_to_partner' ? receiptAmount * 0.02 :
+        gatewayMode === 'split' ? receiptAmount * 0.02 * (gatewaySplit / 100) : 0);
+      const netAmount = roundPrice(receiptAmount - commission - gatewayFee);
 
       items.push({
         booking_type: 'reading_room',
@@ -259,10 +260,10 @@ export const settlementService = {
 
     for (const r of hostelReceipts) {
       const receiptAmount = r.amount || 0;
-      const commission = calcCommission(receiptAmount);
-      const gatewayFee = gatewayMode === 'pass_to_partner' ? receiptAmount * 0.02 :
-        gatewayMode === 'split' ? receiptAmount * 0.02 * (gatewaySplit / 100) : 0;
-      const netAmount = receiptAmount - commission - gatewayFee;
+      const commission = roundPrice(calcCommission(receiptAmount));
+      const gatewayFee = roundPrice(gatewayMode === 'pass_to_partner' ? receiptAmount * 0.02 :
+        gatewayMode === 'split' ? receiptAmount * 0.02 * (gatewaySplit / 100) : 0);
+      const netAmount = roundPrice(receiptAmount - commission - gatewayFee);
 
       items.push({
         booking_type: 'hostel',
@@ -295,10 +296,10 @@ export const settlementService = {
     const adjustmentTotal = (adjustments || []).reduce((sum, a) => sum + (a.amount || 0), 0);
 
     // 9. TDS & Security Hold
-    const tdsAmount = tdsEnabled ? (totalCollected - totalCommission) * (tdsPct / 100) : 0;
-    const securityHold = securityEnabled ? (totalCollected - totalCommission) * (securityPct / 100) : 0;
+    const tdsAmount = roundPrice(tdsEnabled ? (totalCollected - totalCommission) * (tdsPct / 100) : 0);
+    const securityHold = roundPrice(securityEnabled ? (totalCollected - totalCommission) * (securityPct / 100) : 0);
 
-    const netPayable = totalCollected - totalCommission - totalGateway - adjustmentTotal - tdsAmount - securityHold;
+    const netPayable = roundPrice(totalCollected - totalCommission - totalGateway - adjustmentTotal - tdsAmount - securityHold);
 
     // 10. Create settlement
     const { data: settlement, error: settError } = await supabase

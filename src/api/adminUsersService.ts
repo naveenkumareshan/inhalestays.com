@@ -49,6 +49,18 @@ export const adminUsersService = {
       const from = (page - 1) * limit;
       const role = filters?.role;
 
+      // Check if current user is a partner (non-admin) — filter students by property bookings
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      let isPartner = false;
+      if (authUser) {
+        const { data: userRoles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', authUser.id);
+        const roles = (userRoles || []).map(r => r.role);
+        isPartner = !roles.includes('admin') && !roles.includes('super_admin');
+      }
+
       let roleUserIds: string[] | null = null;
       if (role) {
         const { data: roleRows, error: roleError } = await supabase
@@ -57,6 +69,67 @@ export const adminUsersService = {
           .eq('role', role as any);
         if (roleError) throw roleError;
         roleUserIds = (roleRows || []).map(r => r.user_id);
+        if (roleUserIds.length === 0) {
+          return { success: true, data: [], count: 0, totalCount: 0, pagination: { totalPages: 1, currentPage: page } };
+        }
+      }
+
+      // For partners viewing students, restrict to students who have bookings at partner's properties
+      if (isPartner && authUser && role === 'student') {
+        const [cabinsRes, hostelsRes] = await Promise.all([
+          supabase.from('cabins').select('id').eq('created_by', authUser.id),
+          supabase.from('hostels').select('id').eq('created_by', authUser.id),
+        ]);
+        const cabinIds = (cabinsRes.data || []).map(c => c.id);
+        const hostelIds = (hostelsRes.data || []).map(h => h.id);
+
+        const studentIdSet = new Set<string>();
+
+        if (cabinIds.length > 0) {
+          const { data: rrBookings } = await supabase
+            .from('bookings')
+            .select('user_id')
+            .in('cabin_id', cabinIds);
+          (rrBookings || []).forEach(b => studentIdSet.add(b.user_id));
+        }
+        if (hostelIds.length > 0) {
+          const { data: hostelBookings } = await supabase
+            .from('hostel_bookings')
+            .select('user_id')
+            .in('hostel_id', hostelIds);
+          (hostelBookings || []).forEach(b => studentIdSet.add(b.user_id));
+        }
+
+        const partnerStudentIds = Array.from(studentIdSet);
+        if (partnerStudentIds.length === 0) {
+          return { success: true, data: [], count: 0, totalCount: 0, pagination: { totalPages: 1, currentPage: page } };
+        }
+        // Intersect with roleUserIds
+        if (roleUserIds) {
+          roleUserIds = roleUserIds.filter(id => partnerStudentIds.includes(id));
+        } else {
+          roleUserIds = partnerStudentIds;
+        }
+        if (roleUserIds.length === 0) {
+          return { success: true, data: [], count: 0, totalCount: 0, pagination: { totalPages: 1, currentPage: page } };
+        }
+      }
+
+      // For partners viewing employees, restrict to their own employees
+      if (isPartner && authUser && role === 'vendor_employee') {
+        const { data: empRows } = await supabase
+          .from('vendor_employees')
+          .select('user_id')
+          .eq('partner_user_id', authUser.id);
+        const empIds = (empRows || []).map((e: any) => e.user_id).filter(Boolean);
+        if (empIds.length === 0) {
+          return { success: true, data: [], count: 0, totalCount: 0, pagination: { totalPages: 1, currentPage: page } };
+        }
+        if (roleUserIds) {
+          roleUserIds = roleUserIds.filter(id => empIds.includes(id));
+        } else {
+          roleUserIds = empIds;
+        }
         if (roleUserIds.length === 0) {
           return { success: true, data: [], count: 0, totalCount: 0, pagination: { totalPages: 1, currentPage: page } };
         }

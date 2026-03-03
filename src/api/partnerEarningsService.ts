@@ -59,6 +59,31 @@ export const partnerEarningsService = {
     return { data, error };
   },
 
+  getMySettlementDetail: async (settlementId: string) => {
+    const [settlementRes, itemsRes, adjustmentsRes] = await Promise.all([
+      supabase
+        .from('partner_settlements')
+        .select('*')
+        .eq('id', settlementId)
+        .single(),
+      supabase
+        .from('settlement_items')
+        .select('*')
+        .eq('settlement_id', settlementId)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('adjustment_entries')
+        .select('*')
+        .eq('settlement_id', settlementId)
+        .order('created_at', { ascending: true }),
+    ]);
+    return {
+      settlement: settlementRes.data,
+      items: itemsRes.data || [],
+      adjustments: adjustmentsRes.data || [],
+    };
+  },
+
   getMyLedger: async (partnerId: string, filters?: { startDate?: string; endDate?: string }) => {
     let query = supabase
       .from('partner_ledger')
