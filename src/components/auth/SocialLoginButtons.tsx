@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { FcGoogle } from 'react-icons/fc';
 import { useToast } from '@/hooks/use-toast';
 import { lovable } from '@/integrations/lovable/index';
+import { getPublicAppUrl } from '@/utils/appUrl';
 
 interface SocialLoginButtonsProps {
   onLoginSuccess?: (data: any) => void;
@@ -17,8 +18,14 @@ export function SocialLoginButtons({ onLoginSuccess, onLoginError }: SocialLogin
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
+      // In Capacitor, window.location.origin is capacitor://localhost which breaks OAuth redirects
+      const isCapacitor = !!(window as any).Capacitor;
+      const redirectUri = isCapacitor
+        ? 'https://inhalestays-com.lovable.app/student-login'
+        : window.location.origin;
+
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: redirectUri,
       });
 
       if (result.redirected) return; // Page is navigating to Google

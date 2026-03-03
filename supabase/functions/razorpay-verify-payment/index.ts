@@ -53,10 +53,30 @@ Deno.serve(async (req) => {
     const isLaundry = bookingType === "laundry";
     const tableName = isHostel ? "hostel_bookings" : isLaundry ? "laundry_orders" : "bookings";
 
+    // Helper: insert receipt only if no duplicate exists
+    async function insertReceiptIfNotExists(
+      table: string,
+      matchKey: string,
+      matchValue: string,
+      transactionId: string,
+      receiptData: Record<string, any>
+    ) {
+      const { data: existing } = await adminClient
+        .from(table)
+        .select("id")
+        .eq(matchKey, matchValue)
+        .eq("transaction_id", transactionId)
+        .maybeSingle();
+
+      if (!existing) {
+        await adminClient.from(table).insert(receiptData);
+      }
+    }
+
     // Test mode: skip signature verification, directly confirm booking
     if (testMode) {
+      const testTxnId = `test_pay_${Date.now()}`;
       const updateData: Record<string, any> = { payment_status: "completed" };
-      // Only hostel_bookings and laundry_orders have a 'status' column
       if (isHostel || isLaundry) {
         updateData.status = "confirmed";
       }
@@ -83,14 +103,14 @@ Deno.serve(async (req) => {
           .single();
 
         if (booking) {
-          await adminClient.from("receipts").insert({
+          await insertReceiptIfNotExists("receipts", "booking_id", bookingId, testTxnId, {
             booking_id: bookingId,
             user_id: booking.user_id,
             cabin_id: booking.cabin_id,
             seat_id: booking.seat_id,
             amount: booking.total_price,
             payment_method: "online",
-            transaction_id: `test_pay_${Date.now()}`,
+            transaction_id: testTxnId,
             receipt_type: "booking_payment",
             collected_by_name: "InhaleStays.com",
           });
@@ -106,13 +126,13 @@ Deno.serve(async (req) => {
           .single();
 
         if (booking) {
-          await adminClient.from("hostel_receipts").insert({
+          await insertReceiptIfNotExists("hostel_receipts", "booking_id", bookingId, testTxnId, {
             booking_id: bookingId,
             user_id: booking.user_id,
             hostel_id: booking.hostel_id,
             amount: booking.advance_amount > 0 ? booking.advance_amount : booking.total_price,
             payment_method: "online",
-            transaction_id: `test_pay_${Date.now()}`,
+            transaction_id: testTxnId,
             receipt_type: "booking_payment",
             collected_by_name: "InhaleStays.com",
           });
@@ -128,13 +148,13 @@ Deno.serve(async (req) => {
           .single();
 
         if (order) {
-          await adminClient.from("laundry_receipts").insert({
+          await insertReceiptIfNotExists("laundry_receipts", "order_id", bookingId, testTxnId, {
             order_id: bookingId,
             user_id: order.user_id,
             partner_id: order.partner_id,
             amount: order.total_amount,
             payment_method: "online",
-            transaction_id: `test_pay_${Date.now()}`,
+            transaction_id: testTxnId,
             receipt_type: "laundry_payment",
             collected_by_name: "InhaleStays.com",
           });
@@ -190,7 +210,6 @@ Deno.serve(async (req) => {
       razorpay_signature,
     };
 
-    // Only hostel_bookings and laundry_orders have a 'status' column
     if (isHostel || isLaundry) {
       updateData.status = "confirmed";
     }
@@ -222,7 +241,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create hostel receipt on successful payment
+    // Create hostel receipt on successful payment (with duplicate check)
     if (isHostel) {
       const { data: booking } = await adminClient
         .from("hostel_bookings")
@@ -231,7 +250,7 @@ Deno.serve(async (req) => {
         .single();
 
       if (booking) {
-        await adminClient.from("hostel_receipts").insert({
+        await insertReceiptIfNotExists("hostel_receipts", "booking_id", bookingId, razorpay_payment_id, {
           booking_id: bookingId,
           user_id: booking.user_id,
           hostel_id: booking.hostel_id,
@@ -244,7 +263,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Create laundry receipt on successful payment
+    // Create laundry receipt on successful payment (with duplicate check)
     if (isLaundry) {
       const { data: order } = await adminClient
         .from("laundry_orders")
@@ -253,7 +272,7 @@ Deno.serve(async (req) => {
         .single();
 
       if (order) {
-        await adminClient.from("laundry_receipts").insert({
+        await insertReceiptIfNotExists("laundry_receipts", "order_id", bookingId, razorpay_payment_id, {
           order_id: bookingId,
           user_id: order.user_id,
           partner_id: order.partner_id,
@@ -266,7 +285,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Create receipt for reading room/cabin bookings
+    // Create receipt for reading room/cabin bookings (with duplicate check)
     if (!isHostel && !isLaundry) {
       const { data: booking } = await adminClient
         .from("bookings")
@@ -275,7 +294,7 @@ Deno.serve(async (req) => {
         .single();
 
       if (booking) {
-        await adminClient.from("receipts").insert({
+        await insertReceiptIfNotExists("receipts", "booking_id", bookingId, razorpay_payment_id, {
           booking_id: bookingId,
           user_id: booking.user_id,
           cabin_id: booking.cabin_id,

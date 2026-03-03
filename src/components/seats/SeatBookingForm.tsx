@@ -153,6 +153,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [bookingCreated, setBookingCreated] = useState<boolean>(false);
   const [bookingId, setBookingId] = useState<string>("");
+  const bookingIdRef = useRef<string>("");
   const [CHECK_IN_HOUR, setCHECK_IN_HOUR] = useState(9);
   const [CHECK_OUT_HOUR, setCHECK_OUT_HOUR] = useState(18);
   const bookingSuccessRef = useRef<HTMLDivElement | null>(null);
@@ -538,9 +539,11 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
           description: "Your booking has been created successfully",
         });
         setBookingCreated(true);
-        setBookingId((response.data as any).id || '');
+        const newBookingId = (response.data as any).id || '';
+        setBookingId(newBookingId);
+        bookingIdRef.current = newBookingId;
         setBookingCreatedAt(new Date().toISOString());
-        hideSeatSelection(bookingId, true);
+        hideSeatSelection(newBookingId, true);
         setTimeout(() => {
           bookingSuccessRef.current?.scrollIntoView({
             behavior: 'smooth',
@@ -569,7 +572,14 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
       title: "Payment Successful",
       description: "Your booking has been confirmed!",
     });
-    onBookingComplete(bookingId);
+    // Use ref to avoid stale closure — bookingId state may not have updated yet
+    const id = bookingIdRef.current || bookingId;
+    if (id) {
+      onBookingComplete(id);
+    } else {
+      console.error('No bookingId available after payment success');
+      navigate('/student/bookings');
+    }
   };
 
   const handlePaymentError = (error) => {

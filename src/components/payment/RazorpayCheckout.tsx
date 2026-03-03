@@ -148,6 +148,16 @@ export function RazorpayCheckout({
           contact: user.phone || ''
         },
         theme: { color: "#1fa763" },
+        config: {
+          display: {
+            blocks: {
+              utib: { name: "Pay using UPI", instruments: [{ method: "upi" }] },
+              other: { name: "Other Methods", instruments: [{ method: "card" }, { method: "netbanking" }, { method: "wallet" }] },
+            },
+            sequence: ["block.utib", "block.other"],
+            preferences: { show_default_blocks: true },
+          },
+        },
         handler: async (paymentResponse: any) => {
           try {
             const verifyResponse = await razorpayService.verifyPayment({
@@ -182,8 +192,10 @@ export function RazorpayCheckout({
           ondismiss: () => {
             setIsLoading(false);
             toast({ title: "Payment Cancelled", description: "You cancelled the payment", variant: "destructive" });
-          }
-        }
+          },
+          animation: false,
+          backdropclose: false,
+        },
       };
 
       const razorpay = new (window as any).Razorpay(options);
