@@ -1,105 +1,52 @@
 
+# Fix: Subscription Coupons in Coupon Management + Layout Alignment
 
-# Theme Colors + Dashboard Error Fix + Coupon in Partner Subscriptions
+## 1. Add "Subscription" Option to Coupon Management
 
-## 1. Fix "Invalid time value" Error in Dashboard
+Currently, the "Applicable For" dropdown in the coupon form only has: All, Reading Room, Hostel. There is no option to create coupons specifically for partner subscriptions.
 
-**Root Cause**: `DashboardExpiringBookings.tsx` uses old MongoDB-style field names (`booking._id`, `booking.studentName`, `booking.cabinId?.name`, `booking.seatId?.number`) but the Supabase schema uses `booking.id`, `booking.customer_name`, and joined relations `profiles.name`, `cabins.name`, `seats.number`.
+**Changes to `src/components/admin/CouponManagement.tsx`:**
 
-The `getExpiringBookings` query in `adminBookingsService.ts` joins with `profiles`, `cabins`, and `seats` using aliases. The component needs to map these correctly.
+- Add a new tab "Subscription" in the TabsList (alongside All, Reading Room, Hostel)
+- Add a new SelectItem `subscription` in the "Applicable For" dropdown: `<SelectItem value="subscription">Subscription</SelectItem>`
+- This option should only appear when the user is an admin (partners should not see or create subscription coupons)
+- In the table's "For" column badge, add a case for `subscription` to display "Subscription"
 
-**Fix `DashboardExpiringBookings.tsx`:**
-- Change `booking._id` to `booking.id`
-- Change `booking.studentName` to `booking.profiles?.name || booking.customer_name`
-- Change `booking.studentPhone` / `booking.studentEmail` to `booking.profiles?.phone` / `booking.profiles?.email`
-- Change `booking.cabinId?.name` to `booking.cabins?.name`
-- Change `booking.seatId?.number` to `booking.seats?.number`
-- Change `booking.endDate` to `booking.end_date`
-- Add null guard in `formatDate` to prevent "Invalid time value" when `end_date` is null
-- Change `booking.bookingId` in navigation to `booking.id`
+No backend changes needed -- the `applicable_for` column is a text array and already accepts any string value. The edge function `subscription-create-order` already validates against `applicable_for` containing `'subscription'` or `'all'`.
 
-**Fix `adminBookingsService.ts` `getActiveResidents`:**
-- Currently returns raw data instead of the expected `{ activeResidents, totalCapacity, occupancyPercentage }` object that `DynamicStatisticsCards` expects
-- Calculate counts from the returned bookings array and return the proper structure
+## 2. Fix Layout Misalignment (Double Scrollbars)
 
-## 2. Add Theme Colors to Admin and Partner Pages
+The image shows the sidebar is narrow on the left and the content area has two scrollbars -- one for the page and one for the inner content. This is caused by nested scroll containers.
 
-Apply the brand color palette (primary deep blue, secondary green, accent teal) across admin/partner pages that are currently plain white/black. Changes to these key files:
+**Root cause in `src/components/AdminLayout.tsx`:**
 
-**`DynamicStatisticsCards.tsx`:**
-- Add subtle gradient headers or colored left-border accents to each stat card
-- Use primary/secondary/accent colors for the stat icons instead of `text-muted-foreground`
+- The outer `div` has `min-h-screen flex flex-col`
+- Inside, `SidebarInset` (which is a `<main>` element) has `min-h-svh` from the sidebar UI component
+- Then the inner `<main>` tag (line 100) also exists, creating a nested main-inside-main situation
+- The `SidebarInset` already IS a `<main>` tag, so wrapping content in another `<main>` is incorrect and creates double scrolling
 
-**`DashboardStatistics.tsx`:**
-- Add primary-colored header gradient to Top Filling Reading Rooms card
-- Color the occupancy progress bars with gradient from primary to accent
+**Fix in `src/components/AdminLayout.tsx`:**
 
-**`DashboardExpiringBookings.tsx`:**
-- Add a primary-tinted header section
-- Use brand badge colors for expiry dates
+- Change the outer wrapper from `min-h-screen flex flex-col` to just `min-h-screen`
+- On the inner flex container (`div.flex.flex-1.w-full`), remove `overflow-x-hidden` and ensure it uses `min-h-screen` properly
+- Change the inner `<main>` to a `<div>` since `SidebarInset` already renders as `<main>`
+- Add `overflow-hidden` to the outer container to prevent double scrollbars
+- Ensure `SidebarInset` has `overflow-y-auto` so only the content area scrolls, not the whole page alongside the sidebar
 
-**`AdminDashboard.tsx`:**
-- Add a gradient header banner (primary to accent) for the greeting area
+**Specific changes:**
 
-**`RevenueChart.tsx` and `OccupancyChart.tsx`:**
-- Update chart colors from hardcoded purples (#7E69AB, #6E59A5) to brand primary/secondary colors
+```text
+Line 82: Change to: <div className="min-h-screen">
+Line 84: Change to: <div className="flex min-h-screen w-full">
+Line 86: Add overflow-y-auto to SidebarInset
+Line 100: Change <main> to <div>
+```
 
-**`AdminLayout.tsx`:**
-- The header already has a subtle gradient; enhance slightly with brand colors
-
-**General pattern applied to admin pages:**
-- Card headers get subtle `bg-primary/5` or `border-l-4 border-primary` accents
-- Page titles use `text-primary` where appropriate
-- Stat numbers use brand color highlights
-- Empty states use brand-colored icons
-
-## 3. Add Coupon Application to Partner Subscriptions
-
-Allow admin to assign specific coupons to partner subscriptions so partners can apply them during checkout.
-
-**Changes to `MySubscriptions.tsx`:**
-- Add a "Have a coupon?" input field in Step 3 (Order Summary) before the Pay button
-- On coupon entry, validate using `couponService.validateCoupon(code, 'subscription', totalAmount)`
-- If valid, show the coupon discount line in the order summary and deduct from total
-- Pass `couponCode` in the edge function request body
-
-**Changes to `subscription-create-order/index.ts`:**
-- Accept optional `couponCode` parameter
-- If provided, look up the coupon in the `coupons` table, validate it (active, within dates, applicable_for includes 'subscription' or 'all', min_order_amount check)
-- Apply the coupon discount after plan discount and capacity upgrades
-- Store `coupon_id` and `coupon_discount` in the subscription record
-- After successful order creation, increment the coupon's `usage_count`
-
-**Database migration:**
-- Add `coupon_id` (uuid, nullable, references coupons) and `coupon_discount` (numeric, default 0) columns to `property_subscriptions` table
-
-**Changes to `SubscriptionPlans.tsx` (Admin):**
-- No changes needed here -- admin can already create coupons with `applicable_for: ['subscription']` via the Coupon Management page. The coupon system already supports targeting by booking type.
-
----
-
-## Files to Create
-None
+This ensures only one scrollbar exists for the content area, and the sidebar stays fixed alongside it.
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/admin/DashboardExpiringBookings.tsx` | Fix field mappings from MongoDB to Supabase schema, add null guards |
-| `src/api/adminBookingsService.ts` | Fix `getActiveResidents` to return proper aggregated object |
-| `src/components/admin/DynamicStatisticsCards.tsx` | Add brand color accents to stat cards |
-| `src/components/admin/DashboardStatistics.tsx` | Add brand colors to top filling rooms card |
-| `src/components/admin/RevenueChart.tsx` | Update chart colors to brand palette |
-| `src/components/admin/OccupancyChart.tsx` | Update chart colors to brand palette |
-| `src/pages/AdminDashboard.tsx` | Add gradient header banner with brand colors |
-| `src/pages/partner/MySubscriptions.tsx` | Add coupon input in Step 3, validate and apply discount |
-| `supabase/functions/subscription-create-order/index.ts` | Accept couponCode, validate, apply discount, store coupon_id |
-
-## Database Migration
-
-```sql
-ALTER TABLE property_subscriptions
-  ADD COLUMN coupon_id uuid REFERENCES coupons(id) DEFAULT NULL,
-  ADD COLUMN coupon_discount numeric NOT NULL DEFAULT 0;
-```
-
+| `src/components/admin/CouponManagement.tsx` | Add "Subscription" tab and dropdown option (admin-only) |
+| `src/components/AdminLayout.tsx` | Fix nested main/scroll structure to eliminate double scrollbars |
