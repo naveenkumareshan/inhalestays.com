@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { FcGoogle } from 'react-icons/fc';
 import { useToast } from '@/hooks/use-toast';
 import { lovable } from '@/integrations/lovable/index';
-import { getPublicAppUrl } from '@/utils/appUrl';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SocialLoginButtonsProps {
   onLoginSuccess?: (data: any) => void;
@@ -18,30 +18,47 @@ export function SocialLoginButtons({ onLoginSuccess, onLoginError }: SocialLogin
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      // In Capacitor, window.location.origin is capacitor://localhost which breaks OAuth redirects
       const isCapacitor = !!(window as any).Capacitor;
-      const redirectUri = isCapacitor
-        ? 'https://inhalestays-com.lovable.app/student-login'
-        : window.location.origin;
 
+      if (isCapacitor) {
+        // Capacitor: bypass Lovable wrapper (needs server routes unavailable in native builds)
+        // Opens system browser for Google login, redirects to published URL
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: 'https://inhalestays-com.lovable.app/student-login',
+          },
+        });
+
+        if (error) {
+          toast({
+            title: "Login Failed",
+            description: "Failed to login with Google. Please try again.",
+            variant: "destructive"
+          });
+          onLoginError?.(error);
+        }
+        // Browser will navigate away; session picked up by onAuthStateChange on return
+        return;
+      }
+
+      // Web: use Lovable managed OAuth wrapper
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: redirectUri,
+        redirect_uri: window.location.origin,
       });
 
-      if (result.redirected) return; // Page is navigating to Google
+      if (result.redirected) return;
 
       if (result.error) {
-        const error = result.error;
         toast({
           title: "Login Failed",
           description: "Failed to login with Google. Please try again.",
           variant: "destructive"
         });
-        onLoginError?.(error);
+        onLoginError?.(result.error);
         return;
       }
 
-      // OAuth succeeded -- session was set by lovable module
       onLoginSuccess?.({ success: true });
     } catch (error) {
       console.error('Google login error:', error);
