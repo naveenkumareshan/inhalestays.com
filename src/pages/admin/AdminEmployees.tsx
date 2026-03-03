@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Eye, Trash2, Users, KeyRound } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, Users, KeyRound, Copy } from 'lucide-react';
+import { getPublicAppUrl } from '@/utils/appUrl';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { adminEmployeeService, AdminEmployeeData } from '@/api/adminEmployeeService';
@@ -118,10 +119,16 @@ const AdminEmployees: React.FC = () => {
         </Button>
       </div>
 
-      <div className="bg-muted/30 border rounded-lg p-3">
+      <div className="bg-muted/30 border rounded-lg p-3 flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          Employee login URL: <span className="font-mono font-medium text-foreground">/admin/login</span>
+          Employee login URL: <span className="font-mono font-medium text-foreground">{getPublicAppUrl()}/admin/login</span>
         </p>
+        <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1 shrink-0" onClick={() => {
+          navigator.clipboard.writeText(`${getPublicAppUrl()}/admin/login`);
+          toast({ title: "Copied!", description: "Login URL copied to clipboard" });
+        }}>
+          <Copy className="h-3 w-3" /> Copy
+        </Button>
       </div>
 
       {employees.length === 0 ? (

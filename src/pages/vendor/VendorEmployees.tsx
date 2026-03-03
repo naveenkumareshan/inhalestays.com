@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Eye, Trash2, Users } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, Users, Copy } from 'lucide-react';
+import { getPublicAppUrl } from '@/utils/appUrl';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { vendorEmployeeService, VendorEmployeeData } from '@/api/vendorEmployeeService';
@@ -111,6 +112,18 @@ const VendorEmployees: React.FC = () => {
         <Button size="sm" className="h-7 text-xs" onClick={() => { setEditingEmployee(null); setShowForm(true); }}>
           <Plus className="mr-1 h-3.5 w-3.5" />
           Add Employee
+        </Button>
+      </div>
+
+      <div className="bg-muted/30 border rounded-lg p-3 flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          Employee login URL: <span className="font-mono font-medium text-foreground">{getPublicAppUrl()}/partner/login</span>
+        </p>
+        <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1 shrink-0" onClick={() => {
+          navigator.clipboard.writeText(`${getPublicAppUrl()}/partner/login`);
+          toast({ title: "Copied!", description: "Login URL copied to clipboard" });
+        }}>
+          <Copy className="h-3 w-3" /> Copy
         </Button>
       </div>
 
