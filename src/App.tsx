@@ -32,6 +32,7 @@ const StudentExcelImport = lazy(() => import("./components/admin/StudentExcelImp
 const CreateStudentForm = lazy(() => import("./components/admin/CreateStudentForm"));
 const VendorLogin = lazy(() => import("./pages/vendor/VendorLogin"));
 const VendorRegister = lazy(() => import("./pages/vendor/VendorRegister"));
+const PartnerOnboard = lazy(() => import("./pages/partner/PartnerOnboard"));
 const VendorEmployees = lazy(() => import("./pages/vendor/VendorEmployees"));
 const VendorPayouts = lazy(() => import("./components/vendor/VendorPayouts"));
 const AdminPayouts = lazy(() => import("./pages/admin/AdminPayouts"));
@@ -256,12 +257,13 @@ function App() {
 
             {/* ── Partner routes (formerly vendor/host) ── */}
             <Route path="/partner/login" element={<VendorLogin />} />
-            <Route path="/partner/register" element={<VendorRegister />} />
+            <Route path="/partner/register" element={<Suspense fallback={<div className="p-6 text-center">Loading...</div>}><PartnerOnboard /></Suspense>} />
+            <Route path="/partner/onboard" element={<Suspense fallback={<div className="p-6 text-center">Loading...</div>}><PartnerOnboard /></Suspense>} />
             <Route path="/partner/forgot-password" element={<Suspense fallback={<div className="p-6 text-center">Loading...</div>}><ForgotPassword /></Suspense>} />
             <Route path="/vendor/login" element={<VendorLogin />} />
-            <Route path="/vendor/register" element={<VendorRegister />} />
+            <Route path="/vendor/register" element={<Suspense fallback={<div className="p-6 text-center">Loading...</div>}><PartnerOnboard /></Suspense>} />
             <Route path="/host/login" element={<VendorLogin />} />
-            <Route path="/host/register" element={<VendorRegister />} />
+            <Route path="/host/register" element={<Suspense fallback={<div className="p-6 text-center">Loading...</div>}><PartnerOnboard /></Suspense>} />
 
             {/* ── Laundry agent ── */}
             <Route
