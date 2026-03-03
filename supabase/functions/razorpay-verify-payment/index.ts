@@ -92,6 +92,7 @@ Deno.serve(async (req) => {
             payment_method: "online",
             transaction_id: `test_pay_${Date.now()}`,
             receipt_type: "booking_payment",
+            collected_by_name: "InhaleStays.com",
           });
         }
       }
@@ -113,6 +114,7 @@ Deno.serve(async (req) => {
             payment_method: "online",
             transaction_id: `test_pay_${Date.now()}`,
             receipt_type: "booking_payment",
+            collected_by_name: "InhaleStays.com",
           });
         }
       }
@@ -134,6 +136,7 @@ Deno.serve(async (req) => {
             payment_method: "online",
             transaction_id: `test_pay_${Date.now()}`,
             receipt_type: "laundry_payment",
+            collected_by_name: "InhaleStays.com",
           });
         }
       }
@@ -236,6 +239,7 @@ Deno.serve(async (req) => {
           payment_method: "online",
           transaction_id: razorpay_payment_id,
           receipt_type: "booking_payment",
+          collected_by_name: "InhaleStays.com",
         });
       }
     }
@@ -257,6 +261,7 @@ Deno.serve(async (req) => {
           payment_method: "online",
           transaction_id: razorpay_payment_id,
           receipt_type: "laundry_payment",
+          collected_by_name: "InhaleStays.com",
         });
       }
     }
@@ -279,6 +284,7 @@ Deno.serve(async (req) => {
           payment_method: "online",
           transaction_id: razorpay_payment_id,
           receipt_type: "booking_payment",
+          collected_by_name: "InhaleStays.com",
         });
       }
     }

@@ -393,7 +393,7 @@ const VendorSeats: React.FC = () => {
   const computedEndDate = useMemo(() => {
     if (selectedDuration.type === 'monthly') return addMonths(bookingStartDate, selectedDuration.count);
     if (selectedDuration.type === 'weekly') return addWeeks(bookingStartDate, selectedDuration.count);
-    return addDays(bookingStartDate, selectedDuration.count);
+    return addDays(bookingStartDate, Math.max(0, selectedDuration.count - 1));
   }, [selectedDuration, bookingStartDate]);
 
   // Computed total with locker
@@ -937,7 +937,16 @@ const VendorSeats: React.FC = () => {
                       <span className="font-medium">{statusLabel(selectedSeat.dateStatus)}</span>
                       <span className="text-muted-foreground ml-auto">
                         {(selectedSeat.dateStatus === 'booked' || selectedSeat.dateStatus === 'expiring_soon') && selectedSeat.currentBooking
-                          ? `till ${format(new Date(selectedSeat.currentBooking.endDate), 'dd MMM yyyy')}`
+                          ? (() => {
+                              // Use latest end date from all bookings (current + future)
+                              const allBkgs = [...(selectedSeat.allBookings || [])];
+                              let latestEnd = new Date(selectedSeat.currentBooking.endDate);
+                              allBkgs.forEach(b => {
+                                const bEnd = new Date(b.endDate);
+                                if (bEnd > latestEnd) latestEnd = bEnd;
+                              });
+                              return `till ${format(latestEnd, 'dd MMM yyyy')}`;
+                            })()
                           : `for ${format(selectedDate, 'dd MMM yyyy')}`}
                       </span>
                     </div>
@@ -999,9 +1008,10 @@ const VendorSeats: React.FC = () => {
                               serialNumber: '',
                               profilePicture: selectedSeat.currentBooking.profilePicture,
                             });
-                            setStudentQuery(selectedSeat.currentBooking.studentName);
+                          setStudentQuery(selectedSeat.currentBooking.studentName);
                           }
                           setIsRenewMode(true);
+                          setLockerIncluded(false);
                           setShowFutureBooking(true);
                         }}
                       >
@@ -1265,7 +1275,7 @@ const VendorSeats: React.FC = () => {
                           <Label htmlFor="slot-full-day" className="text-xs cursor-pointer flex-1">
                             Full Day
                           </Label>
-                          <span className="text-xs text-muted-foreground">₹{selectedSeat?.price || 0}</span>
+                          <span className="text-xs text-muted-foreground">₹{selectedDuration.type === 'daily' ? Math.round((selectedSeat?.price || 0) / 30) : selectedDuration.type === 'weekly' ? Math.round((selectedSeat?.price || 0) / 4) : (selectedSeat?.price || 0)}{selectedDuration.type === 'daily' ? '/day' : selectedDuration.type === 'weekly' ? '/wk' : ''}</span>
                         </div>
                         {availableSlots.map(slot => (
                           <div key={slot.id} className="flex items-center space-x-2 border rounded px-2 py-1.5">
@@ -1273,7 +1283,7 @@ const VendorSeats: React.FC = () => {
                             <Label htmlFor={`slot-${slot.id}`} className="text-xs cursor-pointer flex-1">
                               {slot.name} <span className="text-muted-foreground">({slot.start_time}–{slot.end_time})</span>
                             </Label>
-                            <span className="text-xs text-muted-foreground">₹{slot.price}</span>
+                            <span className="text-xs text-muted-foreground">₹{selectedDuration.type === 'daily' ? Math.round(slot.price / 30) : selectedDuration.type === 'weekly' ? Math.round(slot.price / 4) : slot.price}{selectedDuration.type === 'daily' ? '/day' : selectedDuration.type === 'weekly' ? '/wk' : ''}</span>
                           </div>
                         ))}
                       </RadioGroup>
@@ -1293,8 +1303,8 @@ const VendorSeats: React.FC = () => {
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar mode="single" selected={bookingStartDate} onSelect={d => d && setBookingStartDate(d)} className="p-3 pointer-events-auto" disabled={(date) => {
-                            if (showFutureBooking && selectedSeat?.currentBooking?.endDate) {
-                              return date <= new Date(selectedSeat.currentBooking.endDate);
+                            if (isRenewMode || showFutureBooking) {
+                              return date < bookingStartDate;
                             }
                             return date < new Date(new Date().toDateString());
                           }} />
@@ -1312,7 +1322,7 @@ const VendorSeats: React.FC = () => {
                   {/* Booking Summary with Locker & Discount */}
                   <div className="border rounded p-3 text-[11px] space-y-2 bg-muted/30">
                     <div className="flex justify-between"><span>Seat Amount</span><span>₹{parseFloat(bookingPrice) || 0}</span></div>
-                    {selectedCabinInfo?.lockerAvailable && (
+                    {selectedCabinInfo?.lockerAvailable && !isRenewMode && (
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-1.5">
                           <Checkbox

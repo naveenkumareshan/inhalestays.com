@@ -459,7 +459,7 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
           receipt_type: 'booking_payment',
           transaction_id: paymentResponse.razorpay_payment_id || '',
           collected_by: user.id,
-          collected_by_name: 'Online Payment',
+           collected_by_name: 'InhaleStays.com',
           notes: `Renewal for ${selectedDuration} month(s)`,
         });
 
@@ -477,7 +477,7 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
             receipt_type: 'due_payment',
             transaction_id: paymentResponse.razorpay_payment_id || '',
             collected_by: user.id,
-            collected_by_name: 'Online Payment',
+            collected_by_name: 'InhaleStays.com',
             notes: 'Previous due cleared via renewal payment',
           });
 

@@ -765,7 +765,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                 {selectedSlot && (
                   <p className="text-[11px] text-muted-foreground">
                     {formatTime(selectedSlot.start_time)} – {formatTime(selectedSlot.end_time)}
-                    {selectedSlot.id !== 'full_day' && <span className="ml-1.5 font-medium text-primary">₹{selectedSlot.price}/mo</span>}
+                    {selectedSlot.id !== 'full_day' && <span className="ml-1.5 font-medium text-primary">₹{selectedDuration.type === 'daily' ? Math.round(selectedSlot.price / 30) : selectedDuration.type === 'weekly' ? Math.round(selectedSlot.price / 4) : selectedSlot.price}/{selectedDuration.type === 'daily' ? 'day' : selectedDuration.type === 'weekly' ? 'wk' : 'mo'}</span>}
                   </p>
                 )}
               </div>

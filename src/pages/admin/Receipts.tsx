@@ -154,9 +154,36 @@ const Receipts: React.FC = () => {
           <h1 className="text-lg font-semibold">Receipts</h1>
           <Badge variant="secondary" className="text-xs">{filtered.length} receipts</Badge>
         </div>
-        <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={fetchReceipts}>
-          <RefreshCw className="h-3 w-3" /> Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={() => {
+            const headers = ['S.No,Receipt #,Student,Phone,Room / Seat,Amount,Method,Type,Booking ID,Collected By,Txn ID,Date'];
+            const rows = filtered.map((r, i) => [
+              i + 1,
+              r.serial_number || '',
+              `"${(r.studentName || '').replace(/"/g, '""')}"`,
+              r.studentPhone || '',
+              `"${r.cabinName || ''}${r.seatNumber !== undefined ? ` / #${r.seatNumber}` : ''}"`,
+              r.amount,
+              methodLabel(r.payment_method),
+              r.receipt_type === 'booking_payment' ? 'Booking' : 'Due',
+              r.bookingSerial || '',
+              `"${(r.collected_by_name || '').replace(/"/g, '""')}"`,
+              r.transaction_id || '',
+              new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            ].join(','));
+            const csv = [headers, ...rows].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `receipts_${format(new Date(), 'yyyy-MM-dd')}.csv`; a.click();
+            URL.revokeObjectURL(url);
+          }}>
+            <Download className="h-3 w-3" /> Export CSV
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={fetchReceipts}>
+            <RefreshCw className="h-3 w-3" /> Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Summary */}
@@ -242,7 +269,7 @@ const Receipts: React.FC = () => {
                   <div><span className="text-muted-foreground">Receipt: </span><span className="font-mono">{r.serial_number}</span></div>
                   <div><span className="text-muted-foreground">Amount: </span><span className="font-semibold">{formatCurrency(r.amount)}</span></div>
                   <div><span className="text-muted-foreground">Method: </span>{methodLabel(r.payment_method)}</div>
-                  <div><span className="text-muted-foreground">Date: </span>{new Date(r.created_at).toLocaleDateString('en-IN')}</div>
+                  <div><span className="text-muted-foreground">Date: </span>{new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
                 {r.cabinName && <p className="text-[10px] text-muted-foreground">Room: {r.cabinName}{r.seatNumber !== undefined ? ` / #${r.seatNumber}` : ''}</p>}
               </div>
@@ -292,7 +319,7 @@ const Receipts: React.FC = () => {
                     {r.notes ? <div className="text-muted-foreground text-[10px] italic truncate">{r.notes}</div> : null}
                     {!r.transaction_id && !r.notes ? '-' : null}
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString('en-IN')}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

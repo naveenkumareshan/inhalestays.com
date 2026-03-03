@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { addDays, addWeeks, addMonths } from 'date-fns';
 import { adminManualBookingService } from '../../api/adminManualBookingService';
 import { adminUsersService } from '../../api/adminUsersService';
 import { seatsService } from '../../api/seatsService';
@@ -266,8 +267,14 @@ useEffect(() => {
 
     if (startDate) {
       const startDateObj = new Date(startDate);
-      const endDateObj = new Date(startDateObj);
-      endDateObj.setMonth(endDateObj.getMonth() + months);
+      let endDateObj: Date;
+      if (bookingDuration === 'daily') {
+        endDateObj = addDays(startDateObj, Math.max(0, months - 1));
+      } else if (bookingDuration === 'weekly') {
+        endDateObj = addWeeks(startDateObj, months);
+      } else {
+        endDateObj = addMonths(startDateObj, months);
+      }
       setEndDate(endDateObj.toISOString().split('T')[0]);
     }
   };
@@ -275,8 +282,14 @@ useEffect(() => {
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setStartDate(e.target.value);
     const startDateObj = new Date(e.target.value);
-    const endDateObj = new Date(startDateObj);
-    endDateObj.setMonth(endDateObj.getMonth() + months);
+    let endDateObj: Date;
+    if (bookingDuration === 'daily') {
+      endDateObj = addDays(startDateObj, Math.max(0, months - 1));
+    } else if (bookingDuration === 'weekly') {
+      endDateObj = addWeeks(startDateObj, months);
+    } else {
+      endDateObj = addMonths(startDateObj, months);
+    }
     setEndDate(endDateObj.toISOString().split('T')[0]);
   };
 
@@ -286,8 +299,14 @@ useEffect(() => {
     
     if (startDate) {
       const startDateObj = new Date(startDate);
-      const endDateObj = new Date(startDateObj);
-      endDateObj.setMonth(endDateObj.getMonth() + monthsValue);
+      let endDateObj: Date;
+      if (bookingDuration === 'daily') {
+        endDateObj = addDays(startDateObj, Math.max(0, monthsValue - 1));
+      } else if (bookingDuration === 'weekly') {
+        endDateObj = addWeeks(startDateObj, monthsValue);
+      } else {
+        endDateObj = addMonths(startDateObj, monthsValue);
+      }
       setEndDate(endDateObj.toISOString().split('T')[0]);
     }
     
