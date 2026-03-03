@@ -6,6 +6,7 @@ import { Building2 } from 'lucide-react';
 
 interface SeatManagementLinkProps {
   cabinId: string | number;
+  serialNumber?: string | null;
   isAdmin?: boolean;
   variant?: 'default' | 'outline' | 'secondary';
   size?: 'default' | 'sm' | 'lg';
@@ -13,11 +14,13 @@ interface SeatManagementLinkProps {
 
 export function SeatManagementLink({ 
   cabinId, 
+  serialNumber,
   isAdmin = false,
   variant = 'default',
   size = 'default'
 }: SeatManagementLinkProps) {
-  const path = isAdmin ? `/admin/rooms/${cabinId}/seats` : `/seat-management/${cabinId}/seats`;
+  const identifier = serialNumber || cabinId;
+  const path = isAdmin ? `/admin/rooms/${identifier}/seats` : `/seat-management/${identifier}/seats`;
   
   return (
     <Button 

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { getImageUrl } from '@/lib/utils';
 import { useParams } from 'react-router-dom';
+import { isUUID } from '@/utils/idUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -70,8 +71,15 @@ const HostelRoomView = () => {
       setLoading(true);
       setError(null);
       
+      // Resolve serial number to UUID if needed
+      let resolvedId = hostelId!;
+      if (!isUUID(hostelId!)) {
+        const hostelData = await hostelService.getHostelBySerialNumber(hostelId!);
+        resolvedId = hostelData.id;
+      }
+      
       // Fetch hostel details
-      const hostelResponse = await hostelService.getHostelById(hostelId!) as any;
+      const hostelResponse = await hostelService.getHostelById(resolvedId) as any;
       if (hostelResponse) {
         setHostel(hostelResponse);
       } else {
@@ -79,7 +87,7 @@ const HostelRoomView = () => {
       }
       
       // Fetch hostel rooms
-      const roomsResponse = await (hostelService as any).getHostelRooms?.(hostelId!) || await hostelRoomService.getHostelRooms(hostelId!);
+      const roomsResponse = await (hostelService as any).getHostelRooms?.(resolvedId) || await hostelRoomService.getHostelRooms(resolvedId);
       if (Array.isArray(roomsResponse)) {
         setRooms(roomsResponse as any);
       } else {

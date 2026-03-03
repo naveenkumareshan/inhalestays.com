@@ -21,6 +21,7 @@ import { hostelBedCategoryService, HostelBedCategory } from '@/api/hostelBedCate
 import { hostelFloorService, HostelFloor } from '@/api/hostelFloorService';
 import { hostelSharingTypeService, HostelSharingType } from '@/api/hostelSharingTypeService';
 import { formatCurrency } from '@/utils/currency';
+import { isUUID } from '@/utils/idUtils';
 import { ArrowLeft, Plus, Trash2, Pencil, BedDouble, Lock, Unlock, Settings, Layers, Eye, LayoutGrid, Map as MapIcon, Building, Users, Tag, RotateCw } from 'lucide-react';
 import { HostelBedPlanDesigner, DesignerBed } from '@/components/hostels/HostelBedPlanDesigner';
 import { HostelBedDetailsDialog } from '@/components/admin/HostelBedDetailsDialog';
@@ -131,13 +132,19 @@ const HostelBedManagementPage = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const { data: h } = await supabase.from('hostels').select('*').eq('id', hostelId).single();
+      // Resolve hostelId: try serial_number first, fall back to UUID
+      let resolvedId = hostelId!;
+      if (!isUUID(hostelId!)) {
+        const { data: h } = await supabase.from('hostels').select('id').eq('serial_number', hostelId).maybeSingle();
+        if (h) resolvedId = h.id;
+      }
+      const { data: h } = await supabase.from('hostels').select('*').eq('id', resolvedId).single();
       setHostel(h);
 
       const [catResult, floorResult, sharingResult] = await Promise.all([
-        hostelBedCategoryService.getCategories(hostelId!),
-        hostelFloorService.getFloors(hostelId!),
-        hostelSharingTypeService.getSharingTypes(hostelId!),
+        hostelBedCategoryService.getCategories(resolvedId),
+        hostelFloorService.getFloors(resolvedId),
+        hostelSharingTypeService.getSharingTypes(resolvedId),
       ]);
       if (catResult.success) setCategories(catResult.data);
       if (floorResult.success) setFloors(floorResult.data);
@@ -146,7 +153,7 @@ const HostelBedManagementPage = () => {
       const { data: roomsData } = await supabase
         .from('hostel_rooms')
         .select('id, room_number, floor, category, room_width, room_height, layout_image, layout_image_opacity, floor_id, category_id, sharing_type_id')
-        .eq('hostel_id', hostelId)
+        .eq('hostel_id', resolvedId)
         .eq('is_active', true)
         .order('floor')
         .order('room_number');
@@ -171,7 +178,7 @@ const HostelBedManagementPage = () => {
         const { data: bookings } = await supabase
           .from('hostel_bookings')
           .select('bed_id, profiles:user_id(name)')
-          .eq('hostel_id', hostelId)
+          .eq('hostel_id', resolvedId)
           .in('status', ['confirmed', 'pending']);
 
         const bookingMap = new Map<string, string>();

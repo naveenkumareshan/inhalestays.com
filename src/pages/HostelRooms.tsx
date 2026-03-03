@@ -10,6 +10,7 @@ import { hostelService } from '@/api/hostelService';
 import { roomSharingService, HostelAvailability } from '@/api/roomSharingService';
 import { useToast } from '@/hooks/use-toast';
 import { Bed } from 'lucide-react';
+import { isUUID } from '@/utils/idUtils';
 
 export default function HostelRooms() {
   const { hostelId } = useParams<{ hostelId: string }>();
@@ -22,7 +23,6 @@ export default function HostelRooms() {
   useEffect(() => {
     if (!hostelId) return;
     
-    const isUUID = (s: string) => /^[0-9a-f]{8}-/.test(s);
     const fetchData = async () => {
       try {
         setLoading(true);

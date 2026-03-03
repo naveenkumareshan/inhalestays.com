@@ -5,8 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { adminCabinsService } from "@/api/adminCabinsService";
+import { cabinsService } from "@/api/cabinsService";
 import { adminSeatsService, SeatData } from "@/api/adminSeatsService";
 import { seatCategoryService, SeatCategory } from "@/api/seatCategoryService";
+import { isUUID } from "@/utils/idUtils";
 import { ArrowLeft, Plus, Trash2, Pencil } from "lucide-react";
 import { FloorPlanDesigner, FloorPlanSeat } from "@/components/seats/FloorPlanDesigner";
 import {
@@ -45,18 +47,25 @@ const SeatManagement = () => {
   useEffect(() => {
     if (cabinId) {
       fetchCabinData(cabinId);
-      fetchCategories(cabinId);
     }
   }, [cabinId]);
 
   useEffect(() => {
-    if (cabinId && selectedFloor) fetchSeats(cabinId, selectedFloor);
-  }, [selectedFloor]);
+    if (cabin?.id && selectedFloor) fetchSeats(cabin.id, selectedFloor);
+  }, [selectedFloor, cabin?.id]);
 
   const fetchCabinData = async (id: string) => {
     try {
       setLoading(true);
-      const res = await adminCabinsService.getCabinById(id);
+      // Resolve serial number to UUID if needed
+      let resolvedId = id;
+      if (!isUUID(id)) {
+        const snRes = await cabinsService.getCabinBySerialNumber(id);
+        if (snRes.success && snRes.data) {
+          resolvedId = snRes.data.id;
+        }
+      }
+      const res = await adminCabinsService.getCabinById(resolvedId);
       if (res.success) {
         const d = res.data;
         setCabin(d);
@@ -72,6 +81,9 @@ const SeatManagement = () => {
         } else {
           setLayoutImage(d.layout_image || null);
         }
+        // Fetch seats and categories using the resolved UUID
+        fetchSeats(resolvedId, selectedFloor);
+        fetchCategories(resolvedId);
       }
     } catch (e) {
       console.error(e);
@@ -112,7 +124,7 @@ const SeatManagement = () => {
   }, [selectedFloor, floors]);
 
   const handleSave = async () => {
-    if (!cabinId) return;
+    if (!cabin?.id) return;
     setIsSaving(true);
     try {
       // Save per-floor layout image into floors JSONB
@@ -123,7 +135,7 @@ const SeatManagement = () => {
       );
       setFloors(updatedFloors);
 
-      await adminCabinsService.updateCabinLayout(cabinId, [], roomWidth, roomHeight, 20, [], undefined, updatedFloors);
+      await adminCabinsService.updateCabinLayout(cabin.id, [], roomWidth, roomHeight, 20, [], undefined, updatedFloors);
       const seatsToUpdate = seats.map(s => ({ _id: s._id, position: s.position }));
       await adminSeatsService.updateSeatPositions(seatsToUpdate);
       // Update local cabin state with new floors so floor switches use correct data
@@ -148,10 +160,10 @@ const SeatManagement = () => {
   };
 
   const handlePlaceSeat = async (position: { x: number; y: number }, number: number, price: number, category: string) => {
-    if (!cabinId) return;
+    if (!cabin?.id) return;
     try {
       const seatData: SeatData = {
-        number, floor: selectedFloor, cabinId, price, position,
+        number, floor: selectedFloor, cabinId: cabin.id, price, position,
         isAvailable: true, category,
       };
       const res = await adminSeatsService.createSeat(seatData);
@@ -180,11 +192,11 @@ const SeatManagement = () => {
         toast({ title: "Seat updated" });
 
         // Sync price to category if changed
-        if (updates.price !== undefined && updates.category && cabinId) {
+        if (updates.price !== undefined && updates.category && cabin?.id) {
           const matchingCat = categories.find(c => c.name === updates.category);
           if (matchingCat && matchingCat.price !== updates.price) {
             await seatCategoryService.updateCategory(matchingCat.id, { price: updates.price });
-            fetchCategories(cabinId);
+            fetchCategories(cabin.id);
           }
         }
       }
@@ -217,7 +229,7 @@ const SeatManagement = () => {
     setEditingCategory(cat); setCatName(cat.name); setCatPrice(cat.price); setShowCategoryDialog(true);
   };
   const handleSaveCategory = async () => {
-    if (!catName.trim() || !cabinId) return;
+    if (!catName.trim() || !cabin?.id) return;
     const minPrice = cabin?.price || 0;
     if (catPrice < minPrice) {
       toast({ title: `Price cannot be below starting price ₹${minPrice}`, variant: "destructive" });
@@ -227,23 +239,23 @@ const SeatManagement = () => {
       const res = await seatCategoryService.updateCategory(editingCategory.id, { name: catName, price: catPrice });
       if (res.success) {
         toast({ title: "Category updated" });
-        fetchCategories(cabinId);
+        fetchCategories(cabin.id);
       }
     } else {
-      const res = await seatCategoryService.createCategory(cabinId, catName, catPrice);
+      const res = await seatCategoryService.createCategory(cabin.id, catName, catPrice);
       if (res.success) {
         toast({ title: "Category added" });
-        fetchCategories(cabinId);
+        fetchCategories(cabin.id);
       }
     }
     setShowCategoryDialog(false);
   };
   const handleDeleteCategory = async (id: string) => {
-    if (!cabinId) return;
+    if (!cabin?.id) return;
     const res = await seatCategoryService.deleteCategory(id);
     if (res.success) {
       toast({ title: "Category deleted" });
-      fetchCategories(cabinId);
+      fetchCategories(cabin.id);
     }
   };
 
@@ -338,7 +350,7 @@ const SeatManagement = () => {
 
       {/* Floor Plan Designer - no card wrapper */}
       <FloorPlanDesigner
-        cabinId={cabinId || ""}
+        cabinId={cabin?.id || ""}
         roomWidth={roomWidth}
         roomHeight={roomHeight}
         seats={seats}

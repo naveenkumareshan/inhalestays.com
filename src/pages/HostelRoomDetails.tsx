@@ -54,7 +54,7 @@ import { StayPackage, DurationType, hostelStayPackageService } from '@/api/hoste
 import { FoodMenuModal } from "@/components/hostels/FoodMenuModal";
 import { ShareButton } from "@/components/ShareButton";
 import { generateHostelShareText } from "@/utils/shareUtils";
-
+import { isUUID } from "@/utils/idUtils";
 /* ─── Skeleton ─── */
 const HostelDetailSkeleton = () => (
   <div className="min-h-screen bg-background pb-24">
@@ -133,7 +133,7 @@ const HostelRoomDetails = () => {
   const [rulesOpen, setRulesOpen] = useState(false);
   const [foodOpted, setFoodOpted] = useState(false);
 
-  const isUUID = (s: string) => /^[0-9a-f]{8}-/.test(s);
+  
 
   /* ─── Data fetch ─── */
   useEffect(() => {

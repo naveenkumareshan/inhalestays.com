@@ -85,7 +85,10 @@ const HostelManagement = () => {
     }
   };
 
-  const handleManageBeds = (hostelId: string) => { navigate(`/admin/hostels/${hostelId}/rooms`); };
+  const handleManageBeds = (hostelId: string) => {
+    const hostel = hostels.find(h => h.id === hostelId);
+    navigate(`/admin/hostels/${hostel?.serial_number || hostelId}/rooms`);
+  };
 
   const handleManagePackages = (hostel: any) => { setSelectedHostel(hostel); setIsPackagesOpen(true); };
 

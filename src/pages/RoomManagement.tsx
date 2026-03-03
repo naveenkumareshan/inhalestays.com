@@ -280,7 +280,8 @@ const RoomManagement = () => {
   };
   
   const handleManageSeats = (cabinId: string) => {
-    navigate(`/admin/cabins/${cabinId}/seats`);
+    const cabin = cabins.find(c => c._id === cabinId || c.id === cabinId);
+    navigate(`/admin/cabins/${cabin?.serialNumber || cabinId}/seats`);
   };
   
   const handleToggleActive = async (roomId: string, isActive: boolean) => {

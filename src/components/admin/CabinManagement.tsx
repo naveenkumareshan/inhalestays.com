@@ -119,6 +119,7 @@ export function CabinManagement({
               <div className="mt-4 flex flex-wrap gap-2">
                 <SeatManagementLink 
                   cabinId={cabin.id}
+                  serialNumber={cabin.serialNumber}
                   isAdmin={isAdmin}
                 />
                 

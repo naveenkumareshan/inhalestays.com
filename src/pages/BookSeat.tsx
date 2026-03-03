@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { ShareButton } from "@/components/ShareButton";
 import { generateCabinShareText } from "@/utils/shareUtils";
 import { useAuth } from "@/hooks/use-auth";
+import { isUUID } from "@/utils/idUtils";
 
 const SeatBookingForm = lazy(() =>
   import("@/components/seats/SeatBookingForm").then((m) => ({
@@ -133,7 +134,7 @@ const BookSeat = () => {
     return () => observer.disconnect();
   }, [showDetails]);
 
-  const isUUID = (s: string) => /^[0-9a-f]{8}-/.test(s);
+  
 
   const fetchCabinDetails = async () => {
     try {
