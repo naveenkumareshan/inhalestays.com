@@ -1,174 +1,88 @@
 
 
-# Performance Optimization Audit and Cleanup
+# Performance Optimization -- Remaining Phases
 
-## 1. Dead Code and Unused Files to Remove
+Continuing from Phase 1 (completed: dead file removal, lazy loading, React Query defaults). This covers Phases 2, 3, and 4.
 
-### Completely Unused Components (zero imports elsewhere)
-| File | Reason |
-|------|--------|
-| `src/components/ImageGallery.tsx` | Not imported anywhere |
-| `src/components/CabinCard.tsx` | Not imported anywhere |
-| `src/components/LaundryComplaint.tsx` | Not imported anywhere |
-| `src/components/LaundryLocationModal.tsx` | Not imported anywhere |
-| `src/components/LaundryMapLocation.tsx` | Not imported anywhere |
-| `src/components/LaundryPriceList.tsx` | Not imported anywhere |
-| `src/services/paymentService.ts` | Not imported anywhere (dead class) |
-| `src/services/emailService.ts` | Not imported anywhere (dead class, calls non-existent `/api/emails/send`) |
+---
 
-### Legacy/Dead Data Files
-| File | Reason |
-|------|--------|
-| `src/data/bookingData.ts` | Legacy file with localStorage-based seat management from pre-Supabase era. Used only by the old `Booking.tsx` flow and its sub-components |
-| `src/utils/roomSeatUtils.ts` | Hardcoded 100-seat demo layout with random prices. Only used by `RoomSeatMap.tsx` which itself is never used as a top-level import |
+## Phase 2: Console Log Cleanup
 
-### Old Booking Flow (Legacy, replaced by BookSeat + SeatBookingForm)
-These files form a chain only used by `src/pages/Booking.tsx` (the old booking page). The new flow uses `BookSeat.tsx` -> `SeatBookingForm`. These can be flagged for removal but need confirmation since `Booking.tsx` is still routed:
-| File | Notes |
-|------|-------|
-| `src/components/BookingForm.tsx` | Only used by old Booking.tsx |
-| `src/components/CustomerForm.tsx` | Only used by BookingForm.tsx |
-| `src/components/PricingSummary.tsx` | Only used by BookingForm.tsx |
-| `src/components/BookingSummary.tsx` | Only used by old Booking.tsx |
-| `src/components/RoomSeatMap.tsx` | Not imported by any page |
-| `src/components/RoomSeatMapView.tsx` | Only used by RoomSeatMap |
-| `src/components/EditSeatView.tsx` | Only used by RoomSeatMap |
-| `src/components/RoomSeatButton.tsx` | Used by RoomSeatMap chain + SeatSelectionMap |
-| `src/components/RoomSeatLegend.tsx` | Only used by RoomSeatMapView |
-| `src/components/SelectedSeatInfo.tsx` | Only used by RoomSeatMapView |
+Remove all `console.log()` statements from 13 files (97 occurrences total). Keep `console.error()` in catch blocks.
 
-### Entire `backend/` Directory
-The `backend/` folder contains Express.js/Mongoose code (Node.js server). This is NOT used by the Vite frontend -- all data access now goes through Supabase directly via the `src/api/*` services. This entire directory is dead weight in the bundle (though Vite likely tree-shakes it since nothing imports from it). It can safely be removed.
+| File | Lines to clean |
+|------|---------------|
+| `src/components/SeatMap.tsx` | Lines 47, 55, 71 |
+| `src/components/search/CabinMapView.tsx` | Line 220 |
+| `src/components/hostel-manager/HostelBookingsList.tsx` | Line 106 |
+| `src/components/admin/StudentExcelImport.tsx` | Line 176 (change to `console.error`) |
+| `src/components/admin/HostelRoomForm.tsx` | Line 260 |
+| `src/pages/BookingDetail.tsx` | Lines 35, 78 |
+| `src/components/ImageUpload.tsx` | Line 114 |
+| `src/pages/StudentLogin.tsx` | Line 106 |
+| `src/components/vendor/VendorPayouts.tsx` | Lines 102, 104 |
+| `src/components/search/LocationSearch.tsx` | Line 66 |
+| `src/contexts/AuthContext.tsx` | Line 215 |
+| `src/pages/Booking.tsx` | Line 60 |
+| `src/api/bookingEmailService.ts` | Lines 47, 69, 79, 99 |
 
-### Old Axios-Based API Services
-25 service files in `src/api/` still import from `axiosConfig.ts` (which points to `http://localhost:5000/api`). These call a non-existent Express backend. They should be audited individually -- some may already be superseded by Supabase-based equivalents, while others may still be in active use via UI components. Key candidates for removal or migration:
-- `src/api/roomRestrictionService.ts` (axios)
-- `src/api/roomSharingService.ts` (axios)
-- `src/api/hostelManagerService.ts` (axios)
-- `src/api/hostelBedService.ts` (axios -- but hostel bed operations exist in Supabase services too)
-- `src/api/vendorRegistrationService.ts` (axios)
-- `src/api/adminManualBookingService.ts` (axios)
-- `src/api/bulkBookingService.ts` (axios)
-- `src/api/bookingManagementService.ts` (axios)
-- `src/api/laundryService.ts` (axios -- cloud version exists as `laundryCloudService.ts`)
-- `src/api/adminLaundryService.ts` (axios)
-- `src/api/reportsExportService.ts` (axios)
-- `src/api/transactionReportsService.ts` (axios)
-- `src/api/jobProcessingService.ts` (axios)
-- `src/api/emailTemplatesService.ts` (axios)
-- `src/api/errorLogsService.ts` (axios)
-- `src/api/notificationService.ts` (axios)
-- `src/api/adminPayoutService.ts` (axios)
-- `src/api/vendorService.ts` (axios)
-- `src/api/adminVendorService.ts` (axios)
-- `src/api/adminVendorDocumentService.ts` (axios)
-- `src/api/vendorDocumentService.ts` (axios)
-- `src/api/userSessionService.ts` (axios)
-- `src/api/passwordResetService.ts` (axios)
-- `src/api/settingsService.ts` (axios)
-- `src/api/authService.ts` (axios -- auth now handled by Supabase Auth)
+---
 
-**This is a large migration task.** For this phase, we will focus on removing clearly dead files and optimizing what exists. The axios service migration should be a separate, careful effort.
+## Phase 3: Performance Gains
 
-## 2. Non-Lazy Imports in App.tsx (Bundle Size Impact)
+### 3a. Image Lazy Loading
+Add `loading="lazy"` to `<img>` tags in list/card views across 10+ files. Key targets:
+- `src/components/search/CabinSearchResults.tsx` -- cabin card images
+- `src/pages/Hostels.tsx` -- hostel card images
+- `src/components/booking/BookingsList.tsx` -- booking list images
+- `src/components/hostel-manager/HostelRoomsList.tsx` -- room list images
+- `src/pages/HostelBooking.tsx` -- room images in booking flow
+- `src/components/hostels/FoodMenuModal.tsx` -- food menu image
+- `src/components/ImageUpload.tsx` -- uploaded image previews
 
-These are eagerly loaded on every page visit, even if the user never visits those routes:
+Will NOT add to: logo images (above fold), layout background images (functional), or small icons.
 
-| Import | Fix |
-|--------|-----|
-| `HostelDetails` (HostelRoomDetails) | Convert to `lazy()` |
-| `HostelRooms` | Convert to `lazy()` |
-| `HostelRoomView` | Convert to `lazy()` |
-| `BookSharedRoom` | Convert to `lazy()` |
-| `HostelBooking` | Convert to `lazy()` |
-| `LaundryAgentPage` | Convert to `lazy()` |
-| `PageNotFound` (NotFound) | Convert to `lazy()` |
-| `ScrollToTop` | Keep eager (lightweight) |
+### 3b. SeatMap Memoization
+The `SeatMap.tsx` component re-renders all seat buttons on every state change. Wrap with `React.memo` and use `useCallback` for `onSeatSelect` handler to prevent unnecessary re-renders when parent state changes.
 
-## 3. Heavy Dependencies to Optimize
+### 3c. FloorPlanViewer Seat Button Memoization
+The `FloorPlanViewer` renders 100+ individual seat buttons. Ensure the seat button rendering uses `React.memo` with a custom comparator to skip re-renders when only unrelated seats change.
 
-| Package | Size | Current Usage | Optimization |
-|---------|------|---------------|--------------|
-| `firebase` | ~200KB+ | Only used by `FirebaseNotificationSetup.tsx` (unconfigured, env vars empty) | Remove entirely -- Firebase is not configured |
-| `maplibre-gl` | ~200KB+ | Used by 2 components (MapPicker, CabinMapView) | Already lazy-loaded via admin routes -- OK |
-| `exceljs` | ~150KB | Used by 1 component (StudentExcelImport) | Already lazy-loaded -- OK |
-| `pdfkit` | ~100KB+ | Not imported anywhere in src | Remove from dependencies |
-| `moment-timezone` | ~200KB | Not imported anywhere in src | Remove from dependencies |
-| `@capacitor/*` (4 packages) | ~50KB | Only `splashScreen.ts` uses core + splash-screen | Keep if mobile app planned, otherwise remove |
-| `axios` | ~30KB | Used by 25 legacy services | Keep for now until axios services migrated |
+---
 
-## 4. Console Log Cleanup
+## Phase 4: Safe Risky Removals
 
-**1,907 console statements across 164 files.** Plan:
-- Remove all `console.log()` calls (debugging leftovers) -- approximately 400+ instances
-- Keep `console.error()` in catch blocks (useful for production debugging)
-- Remove `console.warn()` that are just informational
+### 4a. Delete `backend/` Directory
+The entire `backend/` directory (Express.js + Mongoose) is dead code -- all data flows through Supabase now. No file in `src/` imports from `backend/`. Files to delete:
+- `backend/server.js`
+- `backend/package.json`
+- `backend/package-lock.json`
+- `backend/config/` (entire directory)
+- `backend/controllers/` (entire directory)
+- `backend/middleware/` (entire directory)
+- `backend/models/` (entire directory)
+- `backend/routes/` (entire directory)
+- `backend/services/` (entire directory)
 
-## 5. Performance Optimizations
+### 4b. Old Booking Flow Cleanup
+Remove the legacy `Booking.tsx` route and related dead components that were partially cleaned in Phase 1. The old booking page at `/booking/:id` uses the legacy `SeatMap` and `BookingSummary` stub. The active flow uses `BookSeat.tsx` -> `SeatBookingForm` -> `DateBasedSeatMap`. Files to remove:
+- `src/pages/Booking.tsx`
+- `src/components/BookingSummary.tsx` (stub created in Phase 1)
+- `src/components/SeatMap.tsx` (only used by Booking.tsx)
+- Remove the `/booking/:id` route from `App.tsx`
 
-### 5a. React Query Configuration
-Add sensible defaults to `QueryClient`:
-```typescript
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 min
-      gcTime: 10 * 60 * 1000,   // 10 min  
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
-```
+---
 
-### 5b. Seat Map Rendering (High-Volume)
-The `DateBasedSeatMap.tsx` and `SeatMap.tsx` render potentially 100+ seat buttons. Optimizations:
-- Memoize individual seat buttons with `React.memo`
-- Use `useCallback` for click handlers passed to seats
-- Virtualize if seat count exceeds ~200
+## Summary
 
-### 5c. Financial Dashboards (Dues, Receipts, Settlements)
-- Ensure server-side pagination (most admin list pages load ALL records)
-- Add `limit` and `offset` to Supabase queries in admin services
-- Add pagination controls to heavy tables (AdminBookings, DueManagement, Receipts)
+| Phase | Action | Impact |
+|-------|--------|--------|
+| 2 | Remove 97 `console.log` across 13 files | Cleaner logs, tiny perf gain |
+| 3a | Add `loading="lazy"` to ~20 list-view images | Faster initial page loads |
+| 3b | Memoize SeatMap component | Fewer re-renders for 100+ seats |
+| 3c | Memoize FloorPlanViewer seat buttons | Smoother seat map interactions |
+| 4a | Delete `backend/` directory (~50+ files) | Cleaner repo, no bundle impact |
+| 4b | Remove old Booking.tsx flow (4 files + 1 route) | Less dead code |
 
-### 5d. Image Optimization
-- Add `loading="lazy"` to all `<img>` tags in list views (cabin cards, hostel cards)
-- Use Supabase image transforms for thumbnails where possible
-
-## 6. Implementation Priority (Phases)
-
-### Phase 1 -- Safe Removals (No risk)
-1. Delete unused component files (ImageGallery, CabinCard, LaundryComplaint, LaundryLocationModal, LaundryMapLocation, LaundryPriceList)
-2. Delete dead services (paymentService.ts, emailService.ts)
-3. Remove unused npm packages (pdfkit, moment-timezone, firebase, @types/mapbox-gl)
-4. Convert non-lazy App.tsx imports to lazy()
-
-### Phase 2 -- Console Cleanup
-5. Remove ~400+ `console.log()` statements across all files
-6. Keep `console.error()` in catch blocks
-
-### Phase 3 -- Performance Gains
-7. Add React Query staleTime/gcTime defaults
-8. Memoize seat map rendering components
-9. Add pagination to admin list endpoints that fetch all records
-
-### Phase 4 -- Risky Removals (Need Confirmation)
-10. Remove `backend/` directory (Express/Mongoose code)
-11. Remove old Booking.tsx flow + its chain of components
-12. Migrate remaining axios-based services to Supabase (large effort, separate task)
-
-## Summary of Expected Impact
-
-| Area | Before | After |
-|------|--------|-------|
-| Unused component files | 6+ dead files | 0 |
-| Dead npm packages | 4 packages (~550KB) | Removed |
-| Non-lazy route imports | 6 heavy pages eager-loaded | All lazy |
-| Console.log statements | ~1,900 | ~1,500 (keep errors) |
-| React Query caching | No staleTime (refetches constantly) | 5-min stale window |
-| Initial bundle size | Includes firebase (~200KB) | Reduced significantly |
-| Seat map re-renders | Every parent render | Memoized |
-
-**No UI design or business logic changes.** Only performance and cleanup.
+No UI design or business logic changes. Only performance and cleanup.
 
