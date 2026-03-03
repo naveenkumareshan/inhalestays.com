@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { Crown, Building, Hotel, Check, ArrowRight, CreditCard, Calendar, Loader2 } from 'lucide-react';
+import { Crown, Building, Hotel, Check, ArrowRight, CreditCard, Calendar, Loader2, Tag, X } from 'lucide-react';
+import { couponService } from '@/api/couponService';
 
 const PLAN_ICONS: Record<string, string> = { silver: '🥈', gold: '🥇', platinum: '💎', diamond: '👑' };
 
@@ -35,6 +36,9 @@ export default function MySubscriptions() {
   const [capacityUpgrades, setCapacityUpgrades] = useState(0);
   const [step, setStep] = useState(0);
   const [processing, setProcessing] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponValidation, setCouponValidation] = useState<any>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const { data: partner } = useQuery({
     queryKey: ['my-partner', user?.id],
@@ -103,6 +107,8 @@ export default function MySubscriptions() {
     setSelectedProperty(property);
     setSelectedPlan(null);
     setCapacityUpgrades(0);
+    setCouponCode('');
+    setCouponValidation(null);
     setStep(1);
   };
 
@@ -110,6 +116,8 @@ export default function MySubscriptions() {
     setSelectedProperty({ id: null, name: 'All Properties', type: 'universal', icon: Crown });
     setSelectedPlan(null);
     setCapacityUpgrades(0);
+    setCouponCode('');
+    setCouponValidation(null);
     setStep(1);
   };
 
@@ -129,6 +137,31 @@ export default function MySubscriptions() {
     return plan.price_yearly;
   };
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim() || !selectedPlan) return;
+    setCouponLoading(true);
+    try {
+      const preTotal = getDiscountedPrice(selectedPlan) + (capacityUpgrades > 0 && selectedPlan?.capacity_upgrade_enabled ? capacityUpgrades * (selectedPlan?.capacity_upgrade_price || 0) * 12 : 0);
+      const result = await couponService.validateCoupon(couponCode, 'subscription', preTotal);
+      if (result.success && result.data) {
+        setCouponValidation(result.data);
+        toast({ title: '✅ Coupon Applied', description: `You save ₹${Math.round(result.data.discountAmount)}` });
+      } else {
+        toast({ title: 'Invalid Coupon', description: result.message || 'Could not apply coupon', variant: 'destructive' });
+        setCouponValidation(null);
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Failed to validate coupon', variant: 'destructive' });
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setCouponCode('');
+    setCouponValidation(null);
+  };
+
   const handlePayment = async () => {
     if (!selectedPlan || !selectedProperty) return;
     setProcessing(true);
@@ -145,6 +178,7 @@ export default function MySubscriptions() {
           propertyId: selectedProperty.type === 'universal' ? null : selectedProperty.id,
           propertyType: selectedProperty.type === 'universal' ? 'universal' : selectedProperty.type,
           capacityUpgrades,
+          couponCode: couponValidation ? couponCode.toUpperCase() : undefined,
         },
       });
 
@@ -187,7 +221,7 @@ export default function MySubscriptions() {
             toast({ title: 'Verification failed', description: e.message, variant: 'destructive' });
           }
         },
-        theme: { color: '#6366f1' },
+        theme: { color: '#3b7b8a' },
       };
 
       const rzp = new (window as any).Razorpay(options);
@@ -201,8 +235,9 @@ export default function MySubscriptions() {
 
   const planYearlyPrice = selectedPlan ? getDiscountedPrice(selectedPlan) : 0;
   const capacityUpgradeYearly = capacityUpgrades > 0 && selectedPlan?.capacity_upgrade_enabled ? capacityUpgrades * (selectedPlan?.capacity_upgrade_price || 0) * 12 : 0;
+  const couponDiscount = couponValidation ? Math.round(couponValidation.discountAmount) : 0;
   const totalAmount = selectedPlan
-    ? planYearlyPrice + capacityUpgradeYearly
+    ? Math.max(0, planYearlyPrice + capacityUpgradeYearly - couponDiscount)
     : 0;
 
   return (
@@ -446,7 +481,42 @@ export default function MySubscriptions() {
                       <span>₹{capacityUpgradeYearly}</span>
                     </div>
                   )}
+
+                  {/* Coupon Section */}
+                  <div className="border rounded-md p-3 bg-muted/30 space-y-2">
+                    <p className="text-xs font-medium flex items-center gap-1"><Tag className="h-3 w-3" /> Have a coupon?</p>
+                    {couponValidation ? (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">{couponCode.toUpperCase()}</Badge>
+                          <span className="text-xs text-secondary font-medium">-₹{couponDiscount}</span>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={removeCoupon} className="h-6 w-6 p-0">
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Enter coupon code"
+                          value={couponCode}
+                          onChange={e => setCouponCode(e.target.value)}
+                          className="h-8 text-sm flex-1"
+                        />
+                        <Button size="sm" variant="outline" onClick={handleApplyCoupon} disabled={couponLoading || !couponCode.trim()} className="h-8 text-xs">
+                          {couponLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Apply'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
                   <hr />
+                  {couponDiscount > 0 && (
+                    <div className="flex justify-between text-sm text-secondary">
+                      <span>Coupon Discount</span>
+                      <span>-₹{couponDiscount}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm font-bold">
                     <span>Total (Yearly)</span>
                     <span>₹{Math.round(totalAmount)}</span>

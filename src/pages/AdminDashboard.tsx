@@ -53,29 +53,29 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="flex flex-col gap-3">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-br from-primary via-primary/90 to-accent/80 rounded-lg p-4 text-primary-foreground">
         <div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+          <div className="flex items-center gap-1.5 text-xs text-primary-foreground/70 mb-1">
             <span>{getRoleLabel()} Panel</span>
             <span>/</span>
-            <span className="text-foreground font-medium">Dashboard</span>
+            <span className="text-primary-foreground font-medium">Dashboard</span>
           </div>
           <h1 className="text-lg font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground text-xs mt-0.5">
+          <p className="text-primary-foreground/80 text-xs mt-0.5">
             {getGreeting()}, {user?.name?.split(' ')[0] || 'there'} — here's your operational overview.
           </p>
         </div>
         <div className="flex items-center gap-2">
           {user?.role === 'admin' && (
             <a href="/partner/login" target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" className="flex items-center gap-1.5">
+              <Button variant="outline" size="sm" className="flex items-center gap-1.5 bg-primary-foreground/10 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/20">
                 <ExternalLink className="h-4 w-4" />
                 Partner Portal
               </Button>
             </a>
           )}
           <Link to="/admin/reports">
-            <Button variant="outline" size="sm" className="flex items-center gap-1.5">
+            <Button variant="outline" size="sm" className="flex items-center gap-1.5 bg-primary-foreground/10 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/20">
               <FileText className="h-4 w-4" />
               Reports
             </Button>

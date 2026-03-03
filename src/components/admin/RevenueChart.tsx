@@ -44,14 +44,14 @@ useEffect(() => {
   const config = {
     revenue: {
       label: 'Revenue',
-      color: '#7E69AB',
+      color: 'hsl(207, 52%, 33%)',
     }
   };
 
   return (
     <Card>
-      <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-sm font-semibold">Monthly Revenue</CardTitle>
+      <CardHeader className="pb-2 pt-4 px-4 bg-primary/5">
+        <CardTitle className="text-sm font-semibold text-primary">Monthly Revenue</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="h-[220px] w-full">
@@ -78,7 +78,7 @@ useEffect(() => {
                   <Legend />
                   <Bar 
                     dataKey="revenue" 
-                    fill="#7E69AB" 
+                    fill="hsl(207, 52%, 33%)" 
                     name="Monthly Revenue"
                     radius={[4, 4, 0, 0]}
                   />

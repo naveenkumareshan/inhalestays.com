@@ -42,14 +42,14 @@ export function OccupancyChart() {
   const config = {
     occupancy: {
       label: 'Occupancy',
-      color: '#6E59A5',
+      color: 'hsl(105, 35%, 55%)',
     }
   };
 
   return (
     <Card>
-      <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-sm font-semibold">Occupancy Rate</CardTitle>
+      <CardHeader className="pb-2 pt-4 px-4 bg-secondary/5">
+        <CardTitle className="text-sm font-semibold text-secondary">Occupancy Rate</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="h-[220px] w-full">
@@ -77,7 +77,7 @@ export function OccupancyChart() {
                   <Line 
                     type="monotone" 
                     dataKey="occupancy" 
-                    stroke="#6E59A5" 
+                    stroke="hsl(105, 35%, 55%)" 
                     strokeWidth={2} 
                     dot={{ r: 4 }} 
                     activeDot={{ r: 6 }}

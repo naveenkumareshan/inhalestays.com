@@ -2645,6 +2645,8 @@ export type Database = {
           amount_paid: number
           capacity_upgrade_amount: number
           capacity_upgrades: number
+          coupon_discount: number
+          coupon_id: string | null
           created_at: string
           end_date: string | null
           id: string
@@ -2665,6 +2667,8 @@ export type Database = {
           amount_paid?: number
           capacity_upgrade_amount?: number
           capacity_upgrades?: number
+          coupon_discount?: number
+          coupon_id?: string | null
           created_at?: string
           end_date?: string | null
           id?: string
@@ -2685,6 +2689,8 @@ export type Database = {
           amount_paid?: number
           capacity_upgrade_amount?: number
           capacity_upgrades?: number
+          coupon_discount?: number
+          coupon_id?: string | null
           created_at?: string
           end_date?: string | null
           id?: string
@@ -2702,6 +2708,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "property_subscriptions_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "property_subscriptions_partner_id_fkey"
             columns: ["partner_id"]

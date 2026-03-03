@@ -21,10 +21,10 @@ export function DashboardExpiringBookings() {
     const fetchExpiringBookings = async () => {
       try {
         setLoading(true);
-        const response = await adminBookingsService.getExpiringBookings(7); // Get bookings expiring in 7 days
+        const response = await adminBookingsService.getExpiringBookings(7);
         
         if (response.success && response.data) {
-          setExpiringBookings(response.data.slice(0, 5)); // Show only top 5
+          setExpiringBookings(response.data.slice(0, 5));
         }
       } catch (error) {
         console.error('Error fetching expiring bookings:', error);
@@ -40,19 +40,24 @@ export function DashboardExpiringBookings() {
     navigate('/admin/reports');
   };
 
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'MMM dd, yyyy');
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    try {
+      return format(new Date(dateString), 'MMM dd, yyyy');
+    } catch {
+      return 'N/A';
+    }
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-1 pt-3 px-4">
+    <Card className="border-l-4 border-l-primary">
+      <CardHeader className="pb-1 pt-3 px-4 bg-primary/5">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
+            <Calendar className="h-4 w-4 text-primary" />
             Expiring Bookings
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={handleViewAll}>
+          <Button variant="ghost" size="sm" onClick={handleViewAll} className="text-primary hover:text-primary/80">
             View All
           </Button>
         </div>
@@ -72,30 +77,41 @@ export function DashboardExpiringBookings() {
           </p>
         ) : (
           <div className="space-y-2">
-            {expiringBookings.map((booking) => (
+            {expiringBookings.map((booking) => {
+              const profile = booking.profiles as any;
+              const cabin = booking.cabins as any;
+              const seat = booking.seats as any;
+              const studentName = profile?.name || booking.customer_name || 'Student';
+              const studentPhone = profile?.phone || '';
+              const studentEmail = profile?.email || '';
+              const cabinName = cabin?.name || 'Cabin';
+              const seatNumber = seat?.number || 'N/A';
+
+              return (
                 <div 
-                key={booking._id} 
-                className="flex justify-between items-center p-1.5 rounded-md hover:bg-muted cursor-pointer"
-                onClick={() => navigate(`/admin/bookings/${booking.bookingId || booking._id}/cabin`)}
-              >
-                <div>
-                  <p className="font-medium">{booking.studentName || 'Student'}</p>
-                  {(booking.studentPhone || booking.studentEmail) && (
-                    <p className="text-xs text-muted-foreground">
-                      {booking.studentPhone}{booking.studentPhone && booking.studentEmail ? ' · ' : ''}{booking.studentEmail}
+                  key={booking.id} 
+                  className="flex justify-between items-center p-1.5 rounded-md hover:bg-primary/5 cursor-pointer transition-colors"
+                  onClick={() => navigate(`/admin/bookings/${booking.id}/cabin`)}
+                >
+                  <div>
+                    <p className="font-medium">{studentName}</p>
+                    {(studentPhone || studentEmail) && (
+                      <p className="text-xs text-muted-foreground">
+                        {studentPhone}{studentPhone && studentEmail ? ' · ' : ''}{studentEmail}
+                      </p>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                      {cabinName} - Seat {seatNumber}
                     </p>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    {booking.cabinId?.name || 'Cabin'} - Seat {booking.seatId?.number || 'N/A'}
-                  </p>
+                  </div>
+                  <div className="text-right">
+                    <Badge variant="outline" className="border-amber-500 text-amber-500">
+                      Expires {formatDate(booking.end_date)}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <Badge variant="outline" className="border-amber-500 text-amber-500">
-                    Expires {formatDate(booking.endDate)}
-                  </Badge>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>

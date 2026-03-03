@@ -366,16 +366,26 @@ export const adminBookingsService = {
   getActiveResidents: async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from('bookings')
-        .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture), cabins:cabin_id(name), seats:seat_id(number)')
+        .select('id', { count: 'exact' })
         .eq('payment_status', 'completed')
         .lte('start_date', today)
         .gte('end_date', today);
       if (error) throw error;
-      return { success: true, data: data || [] };
+
+      // Get total seat capacity
+      const { data: cabinsData } = await supabase
+        .from('cabins')
+        .select('capacity')
+        .eq('is_active', true);
+      const totalCapacity = (cabinsData || []).reduce((sum, c) => sum + (c.capacity || 0), 0);
+      const activeResidents = count || 0;
+      const occupancyPercentage = totalCapacity > 0 ? Math.round((activeResidents / totalCapacity) * 100) : 0;
+
+      return { success: true, data: { activeResidents, totalCapacity, occupancyPercentage } };
     } catch (error) {
-      return { success: false, data: [] };
+      return { success: false, data: { activeResidents: 0, totalCapacity: 0, occupancyPercentage: 0 } };
     }
   }
 };

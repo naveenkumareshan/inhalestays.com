@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     }
 
     const userId = claims.claims.sub as string;
-    const { planId, propertyId, propertyType, capacityUpgrades = 0 } = await req.json();
+    const { planId, propertyId, propertyType, capacityUpgrades = 0, couponCode } = await req.json();
 
     if (!planId || !propertyType) {
       return new Response(JSON.stringify({ error: "Missing planId or propertyType" }), {
@@ -134,23 +134,97 @@ Deno.serve(async (req) => {
       totalAmount += capacityUpgradeAmount;
     }
 
+    // Validate and apply coupon if provided
+    let couponId: string | null = null;
+    let couponDiscountAmount = 0;
+    if (couponCode) {
+      const { data: coupon, error: couponError } = await adminClient
+        .from("coupons")
+        .select("*")
+        .eq("code", couponCode.toUpperCase())
+        .eq("is_active", true)
+        .single();
+
+      if (couponError || !coupon) {
+        return new Response(JSON.stringify({ error: "Invalid or expired coupon code" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const now = new Date();
+      if (now < new Date(coupon.start_date) || now > new Date(coupon.end_date)) {
+        return new Response(JSON.stringify({ error: "Coupon has expired" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const applicableFor = coupon.applicable_for || ['all'];
+      if (!applicableFor.includes('all') && !applicableFor.includes('subscription')) {
+        return new Response(JSON.stringify({ error: "Coupon not applicable for subscriptions" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (coupon.min_order_amount && totalAmount < coupon.min_order_amount) {
+        return new Response(JSON.stringify({ error: `Minimum order amount is ₹${coupon.min_order_amount}` }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (coupon.usage_limit && (coupon.usage_count || 0) >= coupon.usage_limit) {
+        return new Response(JSON.stringify({ error: "Coupon usage limit reached" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Calculate coupon discount
+      if (coupon.type === 'percentage') {
+        couponDiscountAmount = Math.round(totalAmount * coupon.value / 100);
+        if (coupon.max_discount_amount && couponDiscountAmount > coupon.max_discount_amount) {
+          couponDiscountAmount = coupon.max_discount_amount;
+        }
+      } else {
+        couponDiscountAmount = Math.min(coupon.value, totalAmount);
+      }
+      couponDiscountAmount = Math.round(couponDiscountAmount);
+      couponId = coupon.id;
+      totalAmount = Math.max(0, totalAmount - couponDiscountAmount);
+
+      // Increment usage count
+      await adminClient
+        .from("coupons")
+        .update({ usage_count: (coupon.usage_count || 0) + 1 })
+        .eq("id", coupon.id);
+    }
+
     // Create subscription row
+    const insertData: any = {
+      partner_id: partner.id,
+      property_type: propertyType,
+      property_id: propertyType === 'universal' ? null : propertyId,
+      plan_id: planId,
+      status: "pending_payment",
+      amount_paid: totalAmount,
+      capacity_upgrades: capacityUpgrades,
+      capacity_upgrade_amount: capacityUpgradeAmount,
+      payment_status: "pending",
+      previous_plan_id: currentSub?.plan_id || null,
+      start_date: new Date().toISOString().split("T")[0],
+      end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+    };
+    if (couponId) {
+      insertData.coupon_id = couponId;
+      insertData.coupon_discount = couponDiscountAmount;
+    }
+
     const { data: subscription, error: subError } = await adminClient
       .from("property_subscriptions")
-      .insert({
-        partner_id: partner.id,
-        property_type: propertyType,
-        property_id: propertyType === 'universal' ? null : propertyId,
-        plan_id: planId,
-        status: "pending_payment",
-        amount_paid: totalAmount,
-        capacity_upgrades: capacityUpgrades,
-        capacity_upgrade_amount: capacityUpgradeAmount,
-        payment_status: "pending",
-        previous_plan_id: currentSub?.plan_id || null,
-        start_date: new Date().toISOString().split("T")[0],
-        end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-      })
+      .insert(insertData)
       .select()
       .single();
 
