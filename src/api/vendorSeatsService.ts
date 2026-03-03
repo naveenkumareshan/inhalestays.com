@@ -432,7 +432,7 @@ export const vendorSeatsService = {
         }
       }
 
-      const { data: serialData } = await supabase.rpc('generate_serial_number', { p_entity_type: 'booking' });
+      const { data: serialData } = await supabase.rpc('generate_serial_number', { p_entity_type: 'BOOK' });
 
       let paymentStatus = 'completed';
       if (data.isAdvanceBooking) {
