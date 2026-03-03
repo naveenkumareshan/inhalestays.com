@@ -1,11 +1,21 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Seat, initializeSeats } from '../data/bookingData';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { ScrollArea } from './ui/scroll-area';
 import { Button } from './ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { seatsService } from '@/api/seatsService';
+
+export interface Seat {
+  _id?: string;
+  id: string;
+  number: number;
+  cabinId: string;
+  price: number;
+  position: { x: number; y: number };
+  isAvailable: boolean;
+  unavailableUntil?: string;
+}
 
 interface SeatMapProps {
   seats?: Seat[];
@@ -25,7 +35,6 @@ export function SeatMap({ cabinId, onSeatSelect, selectedSeat, onGoBack, isAdmin
   
   // Fetch seats when component mounts or cabinId changes
   useEffect(() => {
-    initializeSeats();
     fetchSeats();
   }, [cabinId, startDate, endDate]);
 
