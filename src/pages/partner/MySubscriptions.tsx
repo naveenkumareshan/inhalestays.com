@@ -92,6 +92,8 @@ export default function MySubscriptions() {
   const getPropertySub = (propertyId: string) =>
     subscriptions.find((s: any) => s.property_id === propertyId && s.status === 'active');
 
+  const universalSub = subscriptions.find((s: any) => s.property_type === 'universal' && s.status === 'active');
+
   const allProperties = [
     ...cabins.map((c: any) => ({ ...c, type: 'reading_room' as const, icon: Building })),
     ...hostels.map((h: any) => ({ ...h, type: 'hostel' as const, icon: Hotel })),
@@ -104,12 +106,21 @@ export default function MySubscriptions() {
     setStep(1);
   };
 
+  const openUniversalSubscribe = () => {
+    setSelectedProperty({ id: null, name: 'All Properties', type: 'universal', icon: Crown });
+    setSelectedPlan(null);
+    setCapacityUpgrades(0);
+    setStep(1);
+  };
+
   const currentPlanOrder = () => {
     const sub = getPropertySub(selectedProperty?.id);
     return (sub as any)?.subscription_plans?.display_order || 0;
   };
 
-  const availablePlans = plans.filter((p: any) => p.display_order > currentPlanOrder());
+  const availablePlans = selectedProperty?.type === 'universal'
+    ? plans.filter((p: any) => (p as any).is_universal)
+    : plans.filter((p: any) => p.display_order > currentPlanOrder() && !(p as any).is_universal);
 
   const getDiscountedPrice = (plan: any) => {
     if (plan.discount_active && plan.discount_percentage > 0) {
@@ -131,8 +142,8 @@ export default function MySubscriptions() {
       const { data, error } = await supabase.functions.invoke('subscription-create-order', {
         body: {
           planId: selectedPlan.id,
-          propertyId: selectedProperty.id,
-          propertyType: selectedProperty.type,
+          propertyId: selectedProperty.type === 'universal' ? null : selectedProperty.id,
+          propertyType: selectedProperty.type === 'universal' ? 'universal' : selectedProperty.type,
           capacityUpgrades,
         },
       });
@@ -189,8 +200,9 @@ export default function MySubscriptions() {
   };
 
   const planYearlyPrice = selectedPlan ? getDiscountedPrice(selectedPlan) : 0;
+  const capacityUpgradeYearly = capacityUpgrades > 0 && selectedPlan?.capacity_upgrade_enabled ? capacityUpgrades * (selectedPlan?.capacity_upgrade_price || 0) * 12 : 0;
   const totalAmount = selectedPlan
-    ? planYearlyPrice + (capacityUpgrades > 0 && selectedPlan.capacity_upgrade_enabled ? capacityUpgrades * selectedPlan.capacity_upgrade_price : 0)
+    ? planYearlyPrice + capacityUpgradeYearly
     : 0;
 
   return (
@@ -200,56 +212,95 @@ export default function MySubscriptions() {
       {allProperties.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No properties found. Add a Reading Room or Hostel first.</CardContent></Card>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
-          {allProperties.map((property) => {
-            const sub = getPropertySub(property.id);
-            const plan = (sub as any)?.subscription_plans;
-            const endDate = sub?.end_date ? new Date(sub.end_date) : null;
-            const daysLeft = endDate ? Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / 86400000)) : 0;
-
-            return (
-              <Card key={property.id} className="relative overflow-hidden">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <property.icon className="h-4 w-4 text-muted-foreground" />
-                      {property.name}
-                    </CardTitle>
-                    <Badge variant="outline" className="text-[10px] capitalize">{property.type.replace('_', ' ')}</Badge>
+        <>
+          {/* Universal Package Card */}
+          <Card className="border-primary/30 bg-primary/5 mb-3">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Crown className="h-4 w-4 text-primary" />
+                  Universal Package
+                </CardTitle>
+                <Badge variant="outline" className="text-[10px]">All Properties</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {universalSub ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">👑</span>
+                    <span className="font-semibold text-sm">{(universalSub as any)?.subscription_plans?.name} Plan</span>
+                    <Badge className="text-[10px]">Active</Badge>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {plan ? (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{PLAN_ICONS[plan.slug] || '📋'}</span>
-                        <span className="font-semibold text-sm">{plan.name} Plan</span>
-                        <Badge className="text-[10px]">Active</Badge>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Expires: {sub?.end_date}</span>
-                        <Badge variant={daysLeft > 30 ? 'default' : 'destructive'} className="text-[10px]">{daysLeft} days left</Badge>
-                      </div>
-                      {sub?.capacity_upgrades > 0 && (
-                        <p className="text-xs text-muted-foreground">+{sub.capacity_upgrades} capacity upgrade slab(s)</p>
-                      )}
-                      <Button size="sm" variant="outline" onClick={() => openSubscribe(property)} className="text-xs mt-1">
-                        <ArrowRight className="h-3 w-3 mr-1" />Upgrade
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-xs text-muted-foreground">No active plan</p>
-                      <Button size="sm" onClick={() => openSubscribe(property)} className="text-xs">
-                        <CreditCard className="h-3 w-3 mr-1" />Subscribe Now
-                      </Button>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Expires: {universalSub.end_date}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Covers all your reading rooms & hostels</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground">Subscribe once to cover all your reading rooms & hostels</p>
+                  <Button size="sm" onClick={openUniversalSubscribe} className="text-xs">
+                    <CreditCard className="h-3 w-3 mr-1" />Subscribe for All Properties
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {allProperties.map((property) => {
+              const sub = universalSub || getPropertySub(property.id);
+              const plan = (sub as any)?.subscription_plans;
+              const endDate = sub?.end_date ? new Date(sub.end_date) : null;
+              const daysLeft = endDate ? Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / 86400000)) : 0;
+
+              return (
+                <Card key={property.id} className="relative overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <property.icon className="h-4 w-4 text-muted-foreground" />
+                        {property.name}
+                      </CardTitle>
+                      <Badge variant="outline" className="text-[10px] capitalize">{property.type.replace('_', ' ')}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {plan ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{PLAN_ICONS[plan.slug] || '📋'}</span>
+                          <span className="font-semibold text-sm">{plan.name} Plan</span>
+                          <Badge className="text-[10px]">Active</Badge>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Expires: {sub?.end_date}</span>
+                          <Badge variant={daysLeft > 30 ? 'default' : 'destructive'} className="text-[10px]">{daysLeft} days left</Badge>
+                        </div>
+                        {sub?.capacity_upgrades > 0 && (
+                          <p className="text-xs text-muted-foreground">+{sub.capacity_upgrades} capacity upgrade slab(s)</p>
+                        )}
+                        {!universalSub && (
+                          <Button size="sm" variant="outline" onClick={() => openSubscribe(property)} className="text-xs mt-1">
+                            <ArrowRight className="h-3 w-3 mr-1" />Upgrade
+                          </Button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs text-muted-foreground">No active plan</p>
+                        <Button size="sm" onClick={() => openSubscribe(property)} className="text-xs">
+                          <CreditCard className="h-3 w-3 mr-1" />Subscribe Now
+                        </Button>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </>
       )}
 
       <Dialog open={step > 0} onOpenChange={() => setStep(0)}>
@@ -328,7 +379,7 @@ export default function MySubscriptions() {
           {step === 2 && selectedPlan && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Need more capacity? Add upgrade slabs at ₹{selectedPlan.capacity_upgrade_price} each.
+                Need more capacity? Add upgrade slabs at ₹{selectedPlan.capacity_upgrade_price}/month each (billed yearly: ₹{selectedPlan.capacity_upgrade_price * 12}/slab).
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="text-xs text-muted-foreground">
@@ -348,7 +399,7 @@ export default function MySubscriptions() {
               </div>
               {capacityUpgrades > 0 && (
                 <p className="text-xs font-medium">
-                  Extra capacity: +{capacityUpgrades * selectedPlan.capacity_upgrade_slab_beds} beds / +{capacityUpgrades * selectedPlan.capacity_upgrade_slab_seats} seats = ₹{capacityUpgrades * selectedPlan.capacity_upgrade_price}
+                  Extra capacity: +{capacityUpgrades * selectedPlan.capacity_upgrade_slab_beds} beds / +{capacityUpgrades * selectedPlan.capacity_upgrade_slab_seats} seats = ₹{capacityUpgrades * selectedPlan.capacity_upgrade_price * capacityUpgrades}/month (₹{capacityUpgrades * selectedPlan.capacity_upgrade_price * 12}/year)
                 </p>
               )}
               <div className="flex justify-between">
@@ -391,8 +442,8 @@ export default function MySubscriptions() {
                   )}
                   {capacityUpgrades > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span>Capacity Upgrades ({capacityUpgrades} slabs)</span>
-                      <span>₹{capacityUpgrades * selectedPlan.capacity_upgrade_price}</span>
+                      <span>Capacity Upgrades ({capacityUpgrades} slabs × ₹{selectedPlan.capacity_upgrade_price}/mo × 12)</span>
+                      <span>₹{capacityUpgradeYearly}</span>
                     </div>
                   )}
                   <hr />

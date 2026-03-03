@@ -38,8 +38,8 @@ Deno.serve(async (req) => {
     const userId = claims.claims.sub as string;
     const { planId, propertyId, propertyType, capacityUpgrades = 0 } = await req.json();
 
-    if (!planId || !propertyId || !propertyType) {
-      return new Response(JSON.stringify({ error: "Missing planId, propertyId, or propertyType" }), {
+    if (!planId || !propertyType) {
+      return new Response(JSON.stringify({ error: "Missing planId or propertyType" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -64,19 +64,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify partner owns the property
-    const propertyTable = propertyType === "hostel" ? "hostels" : "cabins";
-    const { data: property, error: propError } = await adminClient
-      .from(propertyTable)
-      .select("id, created_by")
-      .eq("id", propertyId)
-      .single();
+    // Verify partner owns the property (skip for universal plans)
+    if (propertyType !== 'universal' && propertyId) {
+      const propertyTable = propertyType === "hostel" ? "hostels" : "cabins";
+      const { data: property, error: propError } = await adminClient
+        .from(propertyTable)
+        .select("id, created_by")
+        .eq("id", propertyId)
+        .single();
 
-    if (propError || !property || property.created_by !== userId) {
-      return new Response(JSON.stringify({ error: "Property not found or not owned by you" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (propError || !property || property.created_by !== userId) {
+        return new Response(JSON.stringify({ error: "Property not found or not owned by you" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Get plan
@@ -95,14 +97,18 @@ Deno.serve(async (req) => {
     }
 
     // Check no downgrade: current active subscription must have lower display_order
-    const { data: currentSub } = await adminClient
-      .from("property_subscriptions")
-      .select("plan_id, subscription_plans(display_order)")
-      .eq("property_id", propertyId)
-      .eq("status", "active")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    let currentSub: any = null;
+    if (propertyType !== 'universal' && propertyId) {
+      const { data } = await adminClient
+        .from("property_subscriptions")
+        .select("plan_id, subscription_plans(display_order)")
+        .eq("property_id", propertyId)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      currentSub = data;
+    }
 
     if (currentSub) {
       const currentOrder = (currentSub as any).subscription_plans?.display_order || 0;
@@ -124,7 +130,7 @@ Deno.serve(async (req) => {
     let totalAmount = basePrice;
     let capacityUpgradeAmount = 0;
     if (capacityUpgrades > 0 && plan.capacity_upgrade_enabled) {
-      capacityUpgradeAmount = capacityUpgrades * plan.capacity_upgrade_price;
+      capacityUpgradeAmount = capacityUpgrades * plan.capacity_upgrade_price * 12;
       totalAmount += capacityUpgradeAmount;
     }
 
@@ -134,7 +140,7 @@ Deno.serve(async (req) => {
       .insert({
         partner_id: partner.id,
         property_type: propertyType,
-        property_id: propertyId,
+        property_id: propertyType === 'universal' ? null : propertyId,
         plan_id: planId,
         status: "pending_payment",
         amount_paid: totalAmount,

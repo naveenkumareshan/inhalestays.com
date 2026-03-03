@@ -46,6 +46,7 @@ const defaultForm = {
   capacity_upgrade_slab_beds: 50, capacity_upgrade_slab_seats: 75,
   display_order: 0, description: '', is_active: true,
   discount_percentage: 0, discount_label: '', discount_active: false,
+  is_universal: false,
 };
 
 export default function SubscriptionPlans() {
@@ -117,6 +118,7 @@ export default function SubscriptionPlans() {
       discount_percentage: plan.discount_percentage || 0,
       discount_label: plan.discount_label || '',
       discount_active: plan.discount_active || false,
+      is_universal: plan.is_universal || false,
     });
     setDialogOpen(true);
   };
@@ -310,13 +312,17 @@ export default function SubscriptionPlans() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <Switch checked={form.is_universal} onCheckedChange={v => setForm(p => ({ ...p, is_universal: v }))} />
+              <Label className="text-xs">Universal Package (covers all partner properties)</Label>
+            </div>
+            <div className="flex items-center gap-3">
               <Switch checked={form.capacity_upgrade_enabled} onCheckedChange={v => setForm(p => ({ ...p, capacity_upgrade_enabled: v }))} />
               <Label className="text-xs">Enable Capacity Upgrades</Label>
             </div>
             {form.capacity_upgrade_enabled && (
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <Label className="text-xs">Price per Slab (₹)</Label>
+                  <Label className="text-xs">Price per Slab/Month (₹)</Label>
                   <Input type="number" value={form.capacity_upgrade_price} onChange={e => setForm(p => ({ ...p, capacity_upgrade_price: Number(e.target.value) }))} className="h-8 text-sm" />
                 </div>
                 <div>

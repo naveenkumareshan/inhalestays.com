@@ -13,6 +13,7 @@ interface SubscriptionPlan {
   capacity_upgrade_price: number;
   capacity_upgrade_slab_beds: number;
   capacity_upgrade_slab_seats: number;
+  is_universal: boolean;
 }
 
 interface PropertySubscription {
@@ -25,8 +26,9 @@ interface PropertySubscription {
   plan?: SubscriptionPlan;
 }
 
-export function useSubscriptionAccess(propertyId?: string, propertyType?: 'hostel' | 'reading_room') {
-  const { data: subscription, isLoading } = useQuery({
+export function useSubscriptionAccess(propertyId?: string, propertyType?: 'hostel' | 'reading_room', partnerId?: string) {
+  // Check property-specific subscription
+  const { data: propertySub, isLoading: propLoading } = useQuery({
     queryKey: ['property-subscription', propertyId],
     queryFn: async () => {
       if (!propertyId) return null;
@@ -59,6 +61,43 @@ export function useSubscriptionAccess(propertyId?: string, propertyType?: 'hoste
     enabled: !!propertyId,
   });
 
+  // Check universal subscription (fallback)
+  const { data: universalSub, isLoading: uniLoading } = useQuery({
+    queryKey: ['universal-subscription', partnerId],
+    queryFn: async () => {
+      if (!partnerId) return null;
+
+      const { data, error } = await supabase
+        .from('property_subscriptions')
+        .select('*, subscription_plans(*)')
+        .eq('partner_id', partnerId)
+        .eq('property_type', 'universal')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching universal subscription:', error);
+        return null;
+      }
+
+      if (!data) return null;
+
+      const plan = (data as any).subscription_plans as SubscriptionPlan | null;
+      return {
+        ...data,
+        plan: plan ? {
+          ...plan,
+          features: Array.isArray(plan.features) ? plan.features : [],
+        } : undefined,
+      } as PropertySubscription;
+    },
+    enabled: !!partnerId && !propertySub,
+  });
+
+  const isLoading = propLoading || uniLoading;
+  const subscription = propertySub || universalSub || null;
   const currentPlan = subscription?.plan || null;
 
   const hasFeature = (featureKey: string): boolean => {

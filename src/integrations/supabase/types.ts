@@ -2652,7 +2652,7 @@ export type Database = {
           payment_status: string
           plan_id: string
           previous_plan_id: string | null
-          property_id: string
+          property_id: string | null
           property_type: string
           razorpay_order_id: string
           razorpay_payment_id: string
@@ -2672,7 +2672,7 @@ export type Database = {
           payment_status?: string
           plan_id: string
           previous_plan_id?: string | null
-          property_id: string
+          property_id?: string | null
           property_type?: string
           razorpay_order_id?: string
           razorpay_payment_id?: string
@@ -2692,7 +2692,7 @@ export type Database = {
           payment_status?: string
           plan_id?: string
           previous_plan_id?: string | null
-          property_id?: string
+          property_id?: string | null
           property_type?: string
           razorpay_order_id?: string
           razorpay_payment_id?: string
@@ -3334,6 +3334,7 @@ export type Database = {
           hostel_bed_limit: number
           id: string
           is_active: boolean
+          is_universal: boolean
           name: string
           price_monthly_display: number
           price_yearly: number
@@ -3357,6 +3358,7 @@ export type Database = {
           hostel_bed_limit?: number
           id?: string
           is_active?: boolean
+          is_universal?: boolean
           name: string
           price_monthly_display?: number
           price_yearly?: number
@@ -3380,6 +3382,7 @@ export type Database = {
           hostel_bed_limit?: number
           id?: string
           is_active?: boolean
+          is_universal?: boolean
           name?: string
           price_monthly_display?: number
           price_yearly?: number
