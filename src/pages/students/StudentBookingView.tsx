@@ -13,6 +13,9 @@ import {
   ChevronUp,
   Receipt,
   Clock,
+  Phone,
+  Building2,
+  Mail,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -113,6 +116,7 @@ export default function StudentBookingView() {
   const [dueRecord, setDueRecord] = useState<DueRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [partnerInfo, setPartnerInfo] = useState<{ business_name: string; contact_person: string; phone: string; email: string } | null>(null);
 
   const fetchData = async () => {
     if (!bookingId) return;
@@ -121,7 +125,7 @@ export default function StudentBookingView() {
       const [bookingRes, receiptsRes, duesRes] = await Promise.all([
         supabase
           .from("bookings")
-          .select("*, cabins(name, opening_time, closing_time, working_days, is_24_hours, slots_enabled), seats:seat_id(price, number, category), cabin_slots:slot_id(name, start_time, end_time, price)")
+          .select("*, cabins(name, opening_time, closing_time, working_days, is_24_hours, slots_enabled, created_by), seats:seat_id(price, number, category), cabin_slots:slot_id(name, start_time, end_time, price)")
           .eq("id", bookingId)
           .single(),
         supabase
@@ -141,6 +145,17 @@ export default function StudentBookingView() {
       setBooking(bookingRes.data);
       setReceipts((receiptsRes.data as ReceiptItem[]) || []);
       setDueRecord(duesRes.data as DueRecord | null);
+
+      // Fetch partner info if cabin has created_by
+      const createdBy = bookingRes.data.cabins?.created_by;
+      if (createdBy) {
+        const { data: partner } = await supabase
+          .from("partners")
+          .select("business_name, contact_person, phone, email")
+          .eq("user_id", createdBy)
+          .maybeSingle();
+        setPartnerInfo(partner);
+      }
     } catch {
       toast({ title: "Error", description: "Failed to load booking", variant: "destructive" });
     } finally {
@@ -470,6 +485,34 @@ export default function StudentBookingView() {
             </div>
           )}
         </CollapsibleSection>
+
+        {/* Property Contact - only show for confirmed bookings (has receipts) */}
+        {partnerInfo && receipts.length > 0 && (
+          <CollapsibleSection title="Property Contact" icon={Building2} defaultOpen={false}>
+            {partnerInfo.business_name && <InfoRow label="Property Name" value={partnerInfo.business_name} />}
+            {partnerInfo.contact_person && <InfoRow label="Contact Person" value={partnerInfo.contact_person} />}
+            {partnerInfo.email && (
+              <InfoRow
+                label="Email"
+                value={
+                  <a href={`mailto:${partnerInfo.email}`} className="text-primary underline text-[12px]">
+                    {partnerInfo.email}
+                  </a>
+                }
+              />
+            )}
+            {partnerInfo.phone && (
+              <div className="mt-3">
+                <a href={`tel:${partnerInfo.phone}`}>
+                  <Button size="sm" className="w-full text-[12px]">
+                    <Phone className="h-3.5 w-3.5 mr-1" />
+                    Call Property ({partnerInfo.phone})
+                  </Button>
+                </a>
+              </div>
+            )}
+          </CollapsibleSection>
+        )}
       </div>
     </div>
   );
