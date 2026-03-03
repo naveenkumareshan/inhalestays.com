@@ -1,108 +1,45 @@
 
 
-# Payment Proof Upload for Non-Cash Offline Payments
+# Show Property Owner Details in Student Booking View
 
-## Summary
-Add payment proof (screenshot) upload when collecting non-cash payments (UPI, bank transfer). Skip for cash. Show proof links beside receipt numbers in all booking detail views.
+## What Changes
+After a booking is confirmed, the student's booking detail page will show the property owner's contact information (name, phone, email) in a new collapsible section at the bottom, with a "Call Property" button.
 
-## Database Changes
+## How It Works
 
-### 1. Add `payment_proof_url` column to receipt tables
-- `receipts` -- add `payment_proof_url TEXT DEFAULT ''`
-- `hostel_receipts` -- add `payment_proof_url TEXT DEFAULT ''`
-- `due_payments` -- add `payment_proof_url TEXT DEFAULT ''`
-- `hostel_due_payments` -- add `payment_proof_url TEXT DEFAULT ''`
-- `bookings` -- add `payment_proof_url TEXT DEFAULT ''`
-- `hostel_bookings` -- add `payment_proof_url TEXT DEFAULT ''`
+### 1. Update data fetch in `StudentBookingView.tsx`
 
-### 2. Add `payment_proof_required` setting to property tables
-- `cabins` -- add `payment_proof_required BOOLEAN DEFAULT false`
-- `hostels` -- add `payment_proof_required BOOLEAN DEFAULT false`
-
-### 3. Storage bucket
-- Create `payment-proofs` public bucket with authenticated upload RLS
-
-## New Component
-
-### `src/components/payment/PaymentProofUpload.tsx`
-A small reusable component:
-- File input accepting images (JPEG, PNG, WebP) with camera capture on mobile
-- Uploads to `payment-proofs` bucket
-- Shows thumbnail preview with remove option
-- Props: `required`, `value`, `onChange`
-- Only rendered when payment method is NOT cash
-
-## Payment Form Changes
-
-### `src/pages/vendor/VendorSeats.tsx`
-- Add `paymentProofUrl` state
-- After the Transaction ID field (line ~1515), conditionally show `PaymentProofUpload` when `paymentMethod !== 'cash'`
-- Check property's `payment_proof_required` to set `required` prop
-- Pass `paymentProofUrl` into the booking/receipt insert calls
-
-### Due collection forms (same file, ~line 1653)
-- Add proof upload after the due collection payment method selection, when method is not cash
-
-### `src/pages/admin/HostelBedMap.tsx`
-- Same pattern: show proof upload for non-cash payments in booking and due collection forms
-
-### `src/components/admin/BookingExtensionDialog.tsx`
-- Add proof upload for non-cash extension payments
-
-### `src/pages/admin/ManualBookingManagement.tsx`
-- Add proof upload for non-cash manual bookings
-
-### `src/pages/admin/HostelDueManagement.tsx`
-- Add proof upload for non-cash due collections
-
-## Display Changes -- Proof Links in Receipts
-
-### `src/pages/AdminBookingDetail.tsx` (Receipts Table)
-- Add a "Proof" column header after "Txn ID"
-- For each receipt row, if `payment_proof_url` exists, show a clickable camera/image icon that opens the screenshot in a new tab
-- If no proof, show "-"
-
-### `src/components/booking/BookingTransactionView.tsx` (Receipt Cards)
-- Beside each receipt's `serial_number` (line 220), if `payment_proof_url` exists, add a small clickable "View Proof" link/icon
-- Clicking opens the image in a dialog or new tab
-
-## Property Settings
-
-### `src/components/admin/CabinForm.tsx`
-- Add "Require Payment Proof for Non-Cash Payments" switch
-
-### `src/components/admin/HostelEditor.tsx`
-- Add same switch
-
-## Logic Summary
-
-```text
-When payment method is selected:
-  - If "cash" -> NO proof upload shown
-  - If "upi" or "bank_transfer" -> Show PaymentProofUpload
-    - If property.payment_proof_required = true -> field is mandatory
-    - If false -> field is optional
-
-In receipt display views:
-  - Beside receipt serial number, show camera icon linking to proof image
-  - Only visible when payment_proof_url is not empty
+Currently the booking query fetches:
+```
+cabins(name, opening_time, closing_time, working_days, is_24_hours, slots_enabled)
 ```
 
-## Files to Create
-| File | Purpose |
-|------|---------|
-| `src/components/payment/PaymentProofUpload.tsx` | Reusable upload component |
+This will be updated to also fetch `created_by` from the cabin, and then a second query will fetch the partner's contact details from the `partners` table using `user_id = cabins.created_by`.
 
-## Files to Modify
+### 2. Add "Property Contact" collapsible section
+
+A new `CollapsibleSection` will be added after the "Payment Receipts" section (at the bottom of the page) showing:
+- **Property Name** (from `partners.business_name`)
+- **Contact Person** (from `partners.contact_person`)
+- **Phone** (from `partners.phone`) -- with a clickable "Call Property" button
+- **Email** (from `partners.email`)
+
+The "Call Property" button will use `tel:` link so it works natively on mobile.
+
+### 3. Only show for confirmed bookings
+
+The property contact section will only appear when the booking has at least one receipt (i.e., payment has been made), so that contact info isn't exposed for unpaid/pending bookings.
+
+## File to Modify
+
 | File | Change |
 |------|--------|
-| Migration SQL | Add columns + storage bucket |
-| `src/pages/vendor/VendorSeats.tsx` | Add proof upload for non-cash bookings and due collections |
-| `src/pages/admin/HostelBedMap.tsx` | Add proof upload for non-cash hostel payments |
-| `src/components/admin/BookingExtensionDialog.tsx` | Add proof upload for non-cash extensions |
-| `src/pages/admin/ManualBookingManagement.tsx` | Add proof upload for non-cash manual bookings |
-| `src/pages/admin/HostelDueManagement.tsx` | Add proof upload for non-cash due collections |
-| `src/pages/AdminBookingDetail.tsx` | Add "Proof" column with clickable link in receipts table |
-| `src/components/booking/BookingTransactionView.tsx` | Add proof icon beside receipt serial numbers |
-| `src/components/admin/CabinForm.tsx` | Add "Require Payment Proof" toggle |
-| `src/components/admin/HostelEditor.tsx` | Add "Require Payment Proof" toggle |
+| `src/pages/students/StudentBookingView.tsx` | Fetch partner info via `created_by`, add Property Contact section with Call button |
+
+## Technical Details
+
+- After fetching the booking, extract `cabins.created_by` and run a second query: `supabase.from('partners').select('business_name, contact_person, phone, email').eq('user_id', createdBy).single()`
+- Add a `Phone` icon import from lucide-react
+- New section uses the existing `CollapsibleSection` and `InfoRow` components already in the file
+- The "Call Property" action is a simple `<a href="tel:...">`-wrapped button
+- Section defaults to collapsed (`defaultOpen={false}`) to keep the page clean
