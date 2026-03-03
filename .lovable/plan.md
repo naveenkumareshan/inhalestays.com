@@ -1,87 +1,53 @@
 
 
-# Fix Payment Verification and Receipt Creation
+# Fix Review and Pay Display Issues and Confirmation Page Crash
 
-## Root Cause (from edge function logs)
+## Issues Found
 
-The error log is explicit:
+### Issue 1: Confirmation page crashes with "Cannot read properties of undefined (reading 'cabinCode')"
+The `Confirmation.tsx` page (line 134) accesses `booking?.cabinId.cabinCode` -- but the data returned from the database uses Supabase naming: the cabin join is under `booking.cabins` (not `cabinId`), and there is no `cabinCode` column. The entire page uses old API field names (`cabinId`, `seatId`, `bookingId`, `startDate`, `paymentStatus`, etc.) that don't match the actual Supabase response (`cabins`, `seat_id`, `start_date`, `payment_status`, etc.).
 
-```
-"Could not find the 'status' column of 'bookings' in the schema cache"
-```
+**Fix**: Rewrite `Confirmation.tsx` to use the correct Supabase field names from `getBookingById()` which returns: `booking.cabins.name`, `booking.serial_number`, `booking.seats.number`, `booking.start_date`, `booking.end_date`, `booking.payment_status`, `booking.total_price`, `booking.booking_duration`, `booking.duration_count`, etc.
 
-The `razorpay-verify-payment` edge function has **two bugs**:
+### Issue 2: Seat Price shows "₹2000 / month" for daily bookings
+Line 872 of `SeatBookingForm.tsx` always displays `selectedSeat.price` (the monthly base price). For daily bookings it should show the calculated daily rate (e.g., ₹67 / day), not ₹2000 / month.
 
-### Bug 1: Non-existent column
-On line 162, the function sets `status: "confirmed"` in the update data for ALL booking types. But the `bookings` table does NOT have a `status` column -- it only has `payment_status`. The `hostel_bookings` table has both `status` and `payment_status`, so it works for hostels but **fails for reading room bookings**.
+**Fix**: Display the calculated `seatPrice` (which is already rounded correctly) instead of `selectedSeat.price`, and ensure the label suffix matches the duration type.
 
-This means: Razorpay charges the user, signature verification passes, but the database update fails, so the booking stays as "pending" and appears as "Overdue."
+### Issue 3: Coupon discount shows floating-point garbage (₹359.33660000000003)
+In `couponService.ts` line 251, percentage discounts are calculated as `(amount * coupon.value) / 100` which can produce floating-point errors. The `discountAmount` is passed through without rounding.
 
-### Bug 2: No receipt for reading room bookings
-The function creates receipts for hostel bookings (into `hostel_receipts`) and laundry orders (into `laundry_receipts`), but there is **no code** to create a receipt in the `receipts` table for regular reading room/cabin bookings. So even if Bug 1 is fixed, no receipt would appear in the Receipts page.
+**Fix**: Round `discountAmount` to 2 decimal places in `couponService.ts` before returning, and also round in the display at `SeatBookingForm.tsx` line 908 and the coupon badge.
 
----
+### Issue 4: Daily booking shows different check-in and check-out dates
+Line 292 of `SeatBookingForm.tsx`: `addDays(startDate, 1)` for a 1-day booking gives the next day as end date. For a same-day booking, the end date should equal the start date.
 
-## Fix
-
-### File: `supabase/functions/razorpay-verify-payment/index.ts`
-
-**Change 1 -- Line 160-165**: Build `updateData` conditionally based on booking type. For regular bookings (cabin), only set `payment_status` (no `status` column). For hostel bookings, set both `status` and `payment_status`.
-
-```typescript
-// For regular bookings (cabin/reading room) - no 'status' column exists
-const updateData: Record<string, any> = {
-  payment_status: "completed",
-  razorpay_payment_id,
-  razorpay_signature,
-};
-
-// Only hostel_bookings and laundry_orders have a 'status' column
-if (isHostel || isLaundry) {
-  updateData.status = "confirmed";
-}
-```
-
-**Change 2 -- After line 213**: Add receipt creation for regular cabin/reading room bookings (the `!isHostel && !isLaundry` case):
-
-```typescript
-// Create receipt for reading room/cabin bookings
-if (!isHostel && !isLaundry) {
-  const { data: booking } = await adminClient
-    .from("bookings")
-    .select("cabin_id, seat_id, user_id, total_price")
-    .eq("id", bookingId)
-    .single();
-
-  if (booking) {
-    await adminClient.from("receipts").insert({
-      booking_id: bookingId,
-      user_id: booking.user_id,
-      cabin_id: booking.cabin_id,
-      seat_id: booking.seat_id,
-      amount: booking.total_price,
-      payment_method: "online",
-      transaction_id: razorpay_payment_id,
-      receipt_type: "booking_payment",
-    });
-  }
-}
-```
-
-**Also fix test mode section (lines 56-65)**: The same `status: "confirmed"` bug exists in the test mode path. Apply the same conditional logic there, and add receipt creation for regular bookings in test mode too.
+**Fix**: Change to `addDays(startDate, Math.max(0, selectedDuration.count - 1))` so 1 day = same date for check-in/check-out. Apply the same fix at line 356.
 
 ---
 
-## Summary
+## Technical Changes
 
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| Payment verification fails | `status` column doesn't exist on `bookings` table | Only set `status` for hostel/laundry, not cabin bookings |
-| Booking stays "Overdue" | DB update fails so `payment_status` stays "pending" | Same fix -- update will now succeed |
-| No receipt created | No code path for regular booking receipts | Add `receipts` table insert for cabin bookings |
+### File 1: `src/pages/Confirmation.tsx` (full rewrite of data fields)
+- Replace all old API field references with correct Supabase column names
+- `booking?.cabinId?.name` becomes `booking?.cabins?.name`
+- Remove `cabinCode` reference entirely (use `serial_number` instead)
+- `booking?.seatId?.number` becomes `booking?.seats?.number`
+- `booking?.startDate` becomes `booking?.start_date`
+- `booking?.endDate` becomes `booking?.end_date`
+- `booking?.paymentStatus` becomes `booking?.payment_status`
+- `booking?.totalPrice` becomes `booking?.total_price`
+- `booking?.bookingDuration` becomes `booking?.booking_duration`
+- `booking?.durationCount` becomes `booking?.duration_count`
+- Add safe null checks with optional chaining throughout
 
-### File modified
-- `supabase/functions/razorpay-verify-payment/index.ts`
+### File 2: `src/components/seats/SeatBookingForm.tsx`
+- **Line 292**: Change `addDays(startDate, selectedDuration.count)` to `addDays(startDate, Math.max(0, selectedDuration.count - 1))` for daily end date
+- **Line 356**: Same fix for the second useEffect
+- **Line 872**: Change `Math.round(selectedSeat?.price || 0)` to display the calculated `seatPrice` state value instead
+- **Line 908**: Wrap `appliedCoupon.discountAmount` with `roundPrice()` before `.toFixed(2)`
+- **Coupon badge area (~line 921-930)**: Also round the discount display
 
-After the fix, the edge function will be redeployed automatically.
+### File 3: `src/api/couponService.ts`
+- **Line 258**: After `discountAmount = Math.min(discountAmount, amount)`, add `discountAmount = Math.round(discountAmount * 100) / 100` to prevent floating-point errors at the source
 
