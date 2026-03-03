@@ -328,6 +328,10 @@ function App() {
                 element={<ProtectedRoute><StudentSuspense><StudentBookingView /></StudentSuspense></ProtectedRoute>}
               />
               <Route
+                path="/student/hostel-bookings/:bookingId"
+                element={<ProtectedRoute><StudentSuspense><StudentBookingView /></StudentSuspense></ProtectedRoute>}
+              />
+              <Route
                 path="/student/complaints"
                 element={<ProtectedRoute><StudentSuspense><ComplaintsPage /></StudentSuspense></ProtectedRoute>}
               />
