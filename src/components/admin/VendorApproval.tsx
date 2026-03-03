@@ -149,6 +149,17 @@ const VendorApproval: React.FC = () => {
             <Link2 className="h-3 w-3" /> Onboarding Link
             <Copy className="h-3 w-3 ml-0.5" />
           </Button>
+          <Button
+            variant="outline" size="sm" className="h-8 text-xs gap-1"
+            onClick={() => {
+              const url = `${getPublicAppUrl()}/partner/login`;
+              navigator.clipboard.writeText(url);
+              toast({ title: "Copied!", description: "Partner login link copied to clipboard" });
+            }}
+          >
+            <Link2 className="h-3 w-3" /> Login Link
+            <Copy className="h-3 w-3 ml-0.5" />
+          </Button>
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={fetchVendors}>
             <RefreshCw className="h-3 w-3" /> Refresh
           </Button>

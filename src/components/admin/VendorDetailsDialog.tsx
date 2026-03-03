@@ -9,10 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { User, Building, CreditCard, Phone, Mail, MapPin, Calendar, Check, X, AlertTriangle, Edit, Save, FileText, Power, Home } from 'lucide-react';
+import { User, Building, CreditCard, Phone, Mail, MapPin, Calendar, Check, X, AlertTriangle, Edit, Save, FileText, Power, Home, KeyRound } from 'lucide-react';
 import { Vendor } from '@/api/vendorApprovalService';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { AdminResetPasswordDialog } from './AdminResetPasswordDialog';
 
 interface VendorDetailsDialogProps {
   vendor: Vendor;
@@ -50,6 +51,7 @@ export const VendorDetailsDialog: React.FC<VendorDetailsDialogProps> = ({
   const [documents, setDocuments] = useState<DocumentFile[]>([]);
   const [properties, setProperties] = useState<PropertyInfo[]>([]);
   const [docApprovals, setDocApprovals] = useState<Record<string, string>>({});
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -447,11 +449,28 @@ export const VendorDetailsDialog: React.FC<VendorDetailsDialogProps> = ({
                     </Button>
                   </div>
                 )}
+
+                {/* Reset Password — always visible */}
+                <div className="space-y-3 p-3 border border-blue-200 rounded-lg bg-blue-50">
+                  <h3 className="font-medium text-blue-800 text-xs">Reset Password</h3>
+                  <p className="text-[10px] text-muted-foreground">Set a new password for this partner's account.</p>
+                  <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => setShowResetPassword(true)}>
+                    <KeyRound className="h-3 w-3 mr-1" /> Reset Password
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </DialogContent>
+
+      <AdminResetPasswordDialog
+        open={showResetPassword}
+        onClose={() => setShowResetPassword(false)}
+        userId={vendor.user_id}
+        userName={vendor.contact_person}
+        userEmail={vendor.email}
+      />
     </Dialog>
   );
 };
