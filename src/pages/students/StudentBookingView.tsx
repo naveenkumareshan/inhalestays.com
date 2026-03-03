@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { razorpayService } from "@/api/razorpayService";
 import { getTimingDisplay, getClosedDaysDisplay, formatTime } from "@/utils/timingUtils";
+import { isUUID } from "@/utils/idUtils";
 
 interface ReceiptItem {
   id: string;
@@ -39,6 +40,8 @@ interface DueRecord {
   paid_amount: number;
   status: string;
 }
+
+type BookingType = "reading_room" | "hostel";
 
 const safeFmt = (dateStr: string | null, fmt: string) => {
   if (!dateStr) return "N/A";
@@ -110,70 +113,104 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 export default function StudentBookingView() {
   const { bookingId } = useParams<{ bookingId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [booking, setBooking] = useState<any>(null);
+  const [bookingType, setBookingType] = useState<BookingType>("reading_room");
   const [receipts, setReceipts] = useState<ReceiptItem[]>([]);
   const [dueRecord, setDueRecord] = useState<DueRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [partnerInfo, setPartnerInfo] = useState<{ business_name: string; contact_person: string; phone: string; email: string } | null>(null);
 
+  // Detect if route is hostel
+  const isHostelRoute = location.pathname.includes("/hostel-bookings/");
+
   const fetchData = async () => {
     if (!bookingId) return;
     try {
       setLoading(true);
-      // Dual-lookup: try serial_number first, then fall back to UUID
-      const selectQuery = "*, cabins(name, opening_time, closing_time, working_days, is_24_hours, slots_enabled, created_by), seats:seat_id(price, number, category), cabin_slots:slot_id(name, start_time, end_time, price)";
-      let bookingRes = await supabase
-        .from("bookings")
-        .select(selectQuery)
-        .eq("serial_number", bookingId)
-        .maybeSingle();
 
-      if (!bookingRes.data) {
-        bookingRes = await supabase
-          .from("bookings")
-          .select(selectQuery)
-          .eq("id", bookingId)
-          .single();
+      let foundBooking: any = null;
+      let detectedType: BookingType = "reading_room";
+
+      if (!isHostelRoute) {
+        // Try reading room first
+        foundBooking = await fetchReadingRoomBooking(bookingId);
       }
 
-      if (bookingRes.error || !bookingRes.data) throw new Error("Not found");
+      if (!foundBooking) {
+        // Try hostel booking
+        foundBooking = await fetchHostelBooking(bookingId);
+        if (foundBooking) detectedType = "hostel";
+      }
 
-      const resolvedId = bookingRes.data.id;
+      if (!foundBooking && isHostelRoute) {
+        // If hostel route but not found in hostel, try reading room as fallback
+        foundBooking = await fetchReadingRoomBooking(bookingId);
+        if (foundBooking) detectedType = "reading_room";
+      }
 
-      const [receiptsRes, duesRes] = await Promise.all([
-        supabase
-          .from("receipts")
-          .select("*")
-          .eq("booking_id", resolvedId)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("dues")
-          .select("id, due_amount, paid_amount, status")
-          .eq("booking_id", resolvedId)
-          .in("status", ["pending", "partial"])
-          .maybeSingle(),
-      ]);
-      setBooking(bookingRes.data);
-      setReceipts((receiptsRes.data as ReceiptItem[]) || []);
-      setDueRecord(duesRes.data as DueRecord | null);
+      if (!foundBooking) throw new Error("Not found");
 
-      // Fetch partner info if cabin has created_by
-      const createdBy = bookingRes.data.cabins?.created_by;
-      if (createdBy) {
-        const { data: partner } = await supabase
-          .from("partners")
-          .select("business_name, contact_person, phone, email")
-          .eq("user_id", createdBy)
-          .maybeSingle();
-        setPartnerInfo(partner);
+      setBooking(foundBooking);
+      setBookingType(detectedType);
+
+      const resolvedId = foundBooking.id;
+
+      // Fetch financial data based on type
+      if (detectedType === "reading_room") {
+        const [receiptsRes, duesRes] = await Promise.all([
+          supabase.from("receipts").select("*").eq("booking_id", resolvedId).order("created_at", { ascending: false }),
+          supabase.from("dues").select("id, due_amount, paid_amount, status").eq("booking_id", resolvedId).in("status", ["pending", "partial"]).maybeSingle(),
+        ]);
+        setReceipts((receiptsRes.data as ReceiptItem[]) || []);
+        setDueRecord(duesRes.data as DueRecord | null);
+
+        // Fetch partner info
+        const createdBy = foundBooking.cabins?.created_by;
+        if (createdBy) {
+          const { data: partner } = await supabase.from("partners").select("business_name, contact_person, phone, email").eq("user_id", createdBy).maybeSingle();
+          setPartnerInfo(partner);
+        }
+      } else {
+        const [receiptsRes, duesRes] = await Promise.all([
+          supabase.from("hostel_receipts").select("*").eq("booking_id", resolvedId).order("created_at", { ascending: false }),
+          supabase.from("hostel_dues").select("id, due_amount, paid_amount, status").eq("booking_id", resolvedId).in("status", ["pending", "partial"]).maybeSingle(),
+        ]);
+        setReceipts((receiptsRes.data as ReceiptItem[]) || []);
+        setDueRecord(duesRes.data as DueRecord | null);
+
+        // Fetch partner info for hostel
+        const createdBy = foundBooking.hostels?.created_by;
+        if (createdBy) {
+          const { data: partner } = await supabase.from("partners").select("business_name, contact_person, phone, email").eq("user_id", createdBy).maybeSingle();
+          setPartnerInfo(partner);
+        }
       }
     } catch {
       toast({ title: "Error", description: "Failed to load booking", variant: "destructive" });
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchReadingRoomBooking = async (id: string) => {
+    const selectQuery = "*, cabins(name, opening_time, closing_time, working_days, is_24_hours, slots_enabled, created_by), seats:seat_id(price, number, category), cabin_slots:slot_id(name, start_time, end_time, price)";
+    let res = await supabase.from("bookings").select(selectQuery).eq("serial_number", id).maybeSingle();
+    if (!res.data && isUUID(id)) {
+      res = await supabase.from("bookings").select(selectQuery).eq("id", id).maybeSingle();
+    }
+    return res.data || null;
+  };
+
+  const fetchHostelBooking = async (id: string) => {
+    const selectQuery = "*, hostels(name, created_by), hostel_rooms(room_number), hostel_beds(bed_number)";
+    let res = await supabase.from("hostel_bookings").select(selectQuery).eq("serial_number", id).maybeSingle();
+    if (!res.data && isUUID(id)) {
+      res = await supabase.from("hostel_bookings").select(selectQuery).eq("id", id).maybeSingle();
+    }
+    return res.data || null;
   };
 
   useEffect(() => {
@@ -193,12 +230,13 @@ export default function StudentBookingView() {
         return;
       }
 
-      // Create Razorpay order
+      const razorpayBookingType = bookingType === "reading_room" ? "cabin" : "hostel";
+
       const orderRes = await razorpayService.createOrder({
         amount: dueRemaining,
         currency: "INR",
         bookingId: booking.id,
-        bookingType: "cabin",
+        bookingType: razorpayBookingType,
         notes: { paymentFor: "due_payment", dueId: dueRecord?.id },
       });
 
@@ -208,7 +246,6 @@ export default function StudentBookingView() {
 
       const order = orderRes.data;
 
-      // Test mode handling
       if (order.testMode) {
         await processPaymentSuccess({
           razorpay_payment_id: `test_pay_${Date.now()}`,
@@ -249,14 +286,15 @@ export default function StudentBookingView() {
 
   const processPaymentSuccess = async (paymentResponse: any) => {
     try {
-      // Verify payment (skip in test mode)
+      const razorpayBookingType = bookingType === "reading_room" ? "cabin" : "hostel";
+
       if (!paymentResponse.testMode) {
         const verifyRes = await razorpayService.verifyPayment({
           razorpay_payment_id: paymentResponse.razorpay_payment_id,
           razorpay_order_id: paymentResponse.razorpay_order_id,
           razorpay_signature: paymentResponse.razorpay_signature,
           bookingId: booking.id,
-          bookingType: "cabin",
+          bookingType: razorpayBookingType,
         });
         if (!verifyRes.success) throw new Error("Payment verification failed");
       }
@@ -264,28 +302,43 @@ export default function StudentBookingView() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Insert receipt
-      await supabase.from("receipts").insert({
-        booking_id: booking.id,
-        user_id: user.id,
-        cabin_id: booking.cabin_id,
-        seat_id: booking.seat_id,
-        due_id: dueRecord?.id || null,
-        amount: dueRemaining,
-        payment_method: "online",
-        receipt_type: "due_payment",
-        transaction_id: paymentResponse.razorpay_payment_id || "",
-        collected_by: user.id,
-        collected_by_name: "Online Payment",
-        notes: "Due payment by student",
-      });
+      if (bookingType === "reading_room") {
+        await supabase.from("receipts").insert({
+          booking_id: booking.id,
+          user_id: user.id,
+          cabin_id: booking.cabin_id,
+          seat_id: booking.seat_id,
+          due_id: dueRecord?.id || null,
+          amount: dueRemaining,
+          payment_method: "online",
+          receipt_type: "due_payment",
+          transaction_id: paymentResponse.razorpay_payment_id || "",
+          collected_by: user.id,
+          collected_by_name: "Online Payment",
+          notes: "Due payment by student",
+        });
+      } else {
+        await supabase.from("hostel_receipts").insert({
+          booking_id: booking.id,
+          user_id: user.id,
+          hostel_id: booking.hostel_id,
+          amount: dueRemaining,
+          payment_method: "online",
+          receipt_type: "due_payment",
+          transaction_id: paymentResponse.razorpay_payment_id || "",
+          collected_by: user.id,
+          collected_by_name: "Online Payment",
+          notes: "Due payment by student",
+        });
+      }
 
-      // Update dues record if exists
+      // Update dues record
       if (dueRecord) {
         const newPaid = Number(dueRecord.paid_amount) + dueRemaining;
         const newDueAmount = Math.max(0, Number(dueRecord.due_amount) - dueRemaining);
+        const duesTable = bookingType === "reading_room" ? "dues" : "hostel_dues";
         await supabase
-          .from("dues")
+          .from(duesTable)
           .update({
             paid_amount: newPaid,
             due_amount: newDueAmount,
@@ -295,8 +348,6 @@ export default function StudentBookingView() {
       }
 
       toast({ title: "Payment Successful", description: `₹${dueRemaining.toFixed(2)} paid successfully` });
-
-      // Refresh data
       await fetchData();
     } catch (error: any) {
       console.error("Payment processing error:", error);
@@ -326,13 +377,21 @@ export default function StudentBookingView() {
   }
 
   // Derived values
-  const cabinName = booking.cabins?.name || "Reading Room";
-  const seatNumber = booking.seats?.number || booking.seat_number || 0;
-  const seatPrice = (booking.total_price || 0) + (booking.discount_amount || 0) - (booking.locker_included ? (booking.locker_price || 0) : 0);
-  const totalPrice = booking.total_price || 0;
-  const lockerIncluded = booking.locker_included || false;
-  const lockerPrice = booking.locker_price || 0;
-  const discountAmount = booking.discount_amount || 0;
+  const isHostel = bookingType === "hostel";
+  const propertyName = isHostel ? (booking.hostels?.name || "Hostel") : (booking.cabins?.name || "Reading Room");
+  const unitLabel = isHostel ? "Bed" : "Seat";
+  const unitNumber = isHostel
+    ? (booking.hostel_beds?.bed_number || 0)
+    : (booking.seats?.number || booking.seat_number || 0);
+
+  const totalPrice = Number(booking.total_price || 0);
+  const lockerIncluded = !isHostel && (booking.locker_included || false);
+  const lockerPrice = !isHostel ? Number(booking.locker_price || 0) : 0;
+  const securityDeposit = isHostel ? Number(booking.security_deposit || 0) : 0;
+  const discountAmount = Number(booking.discount_amount || 0);
+  const seatPrice = isHostel
+    ? totalPrice
+    : totalPrice + discountAmount - (lockerIncluded ? lockerPrice : 0);
 
   const totalPaid = receipts.reduce((s, r) => s + Number(r.amount), 0);
   const dueRemaining = Math.max(0, totalPrice - totalPaid);
@@ -341,18 +400,18 @@ export default function StudentBookingView() {
   const daysLeft = endDate ? differenceInDays(endDate, new Date()) : 0;
 
   const paymentStatus = (() => {
-    // If booking was never paid (still pending/failed/cancelled), don't show Overdue
-    if (booking.payment_status === 'pending' && receipts.length === 0) return "Payment Pending";
-    if (booking.payment_status === 'cancelled') return "Cancelled";
-    if (booking.payment_status === 'failed') return "Failed";
+    const pStatus = booking.payment_status;
+    if (pStatus === 'pending' && receipts.length === 0) return "Payment Pending";
+    if (pStatus === 'cancelled') return "Cancelled";
+    if (pStatus === 'failed') return "Failed";
     if (dueRemaining === 0) return "Completed";
     if (daysLeft <= 0) return "Overdue";
     return "Partial";
   })();
 
   const paymentBadgeVariant =
-    paymentStatus === "Completed" ? "success" 
-    : (paymentStatus === "Overdue" || paymentStatus === "Cancelled" || paymentStatus === "Failed") ? "destructive" 
+    paymentStatus === "Completed" ? "success"
+    : (paymentStatus === "Overdue" || paymentStatus === "Cancelled" || paymentStatus === "Failed") ? "destructive"
     : "outline";
 
   const durationLabel =
@@ -391,13 +450,16 @@ export default function StudentBookingView() {
       <div className="max-w-lg mx-auto px-3 -mt-2 pb-6 space-y-3">
         {/* Booking Info */}
         <CollapsibleSection title="Booking Info" icon={MapPin}>
-          <InfoRow label="Reading Room" value={cabinName} />
-          <InfoRow label="Seat Number" value={`#${seatNumber}`} />
+          <InfoRow label={isHostel ? "Hostel" : "Reading Room"} value={propertyName} />
+          {isHostel && booking.hostel_rooms?.room_number && (
+            <InfoRow label="Room" value={booking.hostel_rooms.room_number} />
+          )}
+          <InfoRow label={`${unitLabel} Number`} value={`#${unitNumber}`} />
           <InfoRow label="Booking ID" value={booking.serial_number || `#${booking.id?.slice(0, 8)}`} />
           <InfoRow label="Check-in" value={safeFmt(booking.start_date, "dd MMM yyyy")} />
           <InfoRow label="Check-out" value={safeFmt(booking.end_date, "dd MMM yyyy")} />
           <InfoRow label="Duration" value={durationLabel} />
-          {booking.cabin_slots ? (
+          {!isHostel && booking.cabin_slots ? (
             <InfoRow
               label="Time Slot"
               value={
@@ -407,12 +469,12 @@ export default function StudentBookingView() {
                 </span>
               }
             />
-          ) : booking.cabins?.slots_enabled ? (
+          ) : !isHostel && booking.cabins?.slots_enabled ? (
             <InfoRow label="Booking Type" value="Full Day" />
           ) : null}
           {booking.customer_name && <InfoRow label="Booked By" value={booking.customer_name} />}
           <InfoRow label="Booked On" value={safeFmt(booking.created_at, "dd MMM yyyy")} />
-          {booking.cabins?.opening_time && booking.cabins?.closing_time && (
+          {!isHostel && booking.cabins?.opening_time && booking.cabins?.closing_time && (
             <InfoRow
               label="Timings"
               value={
@@ -423,15 +485,16 @@ export default function StudentBookingView() {
               }
             />
           )}
-          {booking.cabins?.working_days && getClosedDaysDisplay(booking.cabins.working_days) && (
+          {!isHostel && booking.cabins?.working_days && getClosedDaysDisplay(booking.cabins.working_days) && (
             <InfoRow label="Closed Days" value={<span className="text-destructive text-[11px]">{getClosedDaysDisplay(booking.cabins.working_days)}</span>} />
           )}
         </CollapsibleSection>
 
         {/* Payment Summary */}
         <CollapsibleSection title="Payment Summary" icon={CreditCard}>
-          <InfoRow label={`Seat Price (${durationLabel})`} value={`₹${Number(seatPrice).toFixed(2)}`} />
+          <InfoRow label={`${unitLabel} Price (${durationLabel})`} value={`₹${Number(seatPrice).toFixed(2)}`} />
           {lockerIncluded && <InfoRow label="Locker" value={`₹${Number(lockerPrice).toFixed(2)}`} />}
+          {securityDeposit > 0 && <InfoRow label="Security Deposit" value={`₹${securityDeposit.toFixed(2)}`} />}
           {discountAmount > 0 && (
             <InfoRow label="Discount" value={<span className="text-green-600">-₹{Number(discountAmount).toFixed(2)}</span>} />
           )}
@@ -499,7 +562,7 @@ export default function StudentBookingView() {
           )}
         </CollapsibleSection>
 
-        {/* Property Contact - only show for confirmed bookings (has receipts) */}
+        {/* Property Contact */}
         {partnerInfo && receipts.length > 0 && (
           <CollapsibleSection title="Property Contact" icon={Building2} defaultOpen={false}>
             {partnerInfo.business_name && <InfoRow label="Property Name" value={partnerInfo.business_name} />}
