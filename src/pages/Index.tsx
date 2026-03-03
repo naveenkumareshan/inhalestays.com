@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -344,8 +344,17 @@ const GuestHome: React.FC = () => {
 export default function Index() {
   const { user, isAuthenticated } = useAuth();
 
-  if (isAuthenticated && user?.role === 'student') {
-    return <AuthenticatedHome user={user} />;
+  if (isAuthenticated) {
+    const role = user?.role;
+    if (role === 'vendor' || role === 'vendor_employee') {
+      return <Navigate to="/partner/dashboard" replace />;
+    }
+    if (role === 'admin' || role === 'super_admin') {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+    if (role === 'student') {
+      return <AuthenticatedHome user={user} />;
+    }
   }
 
   return <GuestHome />;

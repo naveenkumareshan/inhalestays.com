@@ -255,6 +255,7 @@ function App() {
             {/* ── Partner routes (formerly vendor/host) ── */}
             <Route path="/partner/login" element={<VendorLogin />} />
             <Route path="/partner/register" element={<VendorRegister />} />
+            <Route path="/partner/forgot-password" element={<Suspense fallback={<div className="p-6 text-center">Loading...</div>}><ForgotPassword /></Suspense>} />
             <Route path="/vendor/login" element={<VendorLogin />} />
             <Route path="/vendor/register" element={<VendorRegister />} />
             <Route path="/host/login" element={<VendorLogin />} />
