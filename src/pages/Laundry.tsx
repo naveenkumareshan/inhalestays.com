@@ -20,9 +20,9 @@ type CartItem = LaundryItem & { quantity: number };
 const STEPS = ['Items', 'Address', 'Schedule', 'Review', 'Payment'];
 
 const CATEGORY_STYLES: Record<string, { bg: string; border: string; badge: string; text: string }> = {
-  clothing: { bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-200 dark:border-blue-800', badge: 'bg-blue-500', text: 'text-blue-700 dark:text-blue-300' },
-  bedding: { bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-200 dark:border-emerald-800', badge: 'bg-emerald-500', text: 'text-emerald-700 dark:text-emerald-300' },
-  special: { bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-200 dark:border-amber-800', badge: 'bg-amber-500', text: 'text-amber-700 dark:text-amber-300' },
+  clothing: { bg: 'bg-primary/5', border: 'border-primary/20', badge: 'bg-primary', text: 'text-primary' },
+  bedding: { bg: 'bg-secondary/10', border: 'border-secondary/30', badge: 'bg-secondary', text: 'text-secondary' },
+  special: { bg: 'bg-accent/10', border: 'border-accent/30', badge: 'bg-accent', text: 'text-accent-foreground' },
 };
 
 const Laundry = () => {
@@ -144,11 +144,11 @@ const Laundry = () => {
   if (!isAuthenticated) {
     return (
       <div className="container mx-auto px-4 py-12 max-w-md text-center">
-        <div className="rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 p-8 text-white shadow-lg">
+        <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-accent/80 p-8 text-primary-foreground shadow-lg">
           <ShoppingBag className="h-16 w-16 mx-auto mb-4 opacity-90" />
           <h1 className="text-2xl font-bold mb-2">Laundry Service</h1>
           <p className="opacity-90 mb-6">Login to use our convenient laundry pickup & delivery service</p>
-          <Button asChild className="w-full bg-white text-violet-600 hover:bg-white/90 font-semibold">
+          <Button asChild className="w-full bg-white text-primary hover:bg-white/90 font-semibold">
             <Link to="/student/login">Login to Continue</Link>
           </Button>
         </div>
@@ -157,13 +157,13 @@ const Laundry = () => {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-violet-500" /></div>;
+    return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   return (
     <div className="container mx-auto px-4 py-0 max-w-lg">
       {/* Gradient Hero Header */}
-      <div className="rounded-b-2xl bg-gradient-to-r from-violet-600 via-purple-500 to-fuchsia-500 px-5 py-5 -mx-4 mb-5 shadow-md">
+      <div className="rounded-b-2xl bg-gradient-to-br from-primary via-primary/90 to-accent/80 px-5 py-5 -mx-4 mb-5 shadow-md">
         <div className="flex items-center justify-between">
           <div className="text-white">
             <h1 className="text-xl font-bold flex items-center gap-2">
@@ -171,7 +171,7 @@ const Laundry = () => {
             </h1>
             <p className="text-xs opacity-80 mt-0.5">Professional pickup & delivery</p>
           </div>
-          <Button variant="secondary" size="sm" asChild className="bg-white/20 text-white border-0 hover:bg-white/30 backdrop-blur-sm text-xs">
+          <Button variant="secondary" size="sm" asChild className="bg-white/20 text-primary-foreground border-0 hover:bg-white/30 backdrop-blur-sm text-xs">
             <Link to="/student/laundry-orders">My Orders</Link>
           </Button>
         </div>
@@ -183,13 +183,13 @@ const Laundry = () => {
           {STEPS.slice(0, 4).map((s, i) => (
             <div key={s} className="flex-1 flex flex-col items-center gap-1">
               <div className={`h-2 w-full rounded-full transition-all ${
-                i < step ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500' :
-                i === step ? 'bg-gradient-to-r from-fuchsia-500 to-amber-400' :
+                i < step ? 'bg-gradient-to-r from-primary to-accent' :
+                i === step ? 'bg-gradient-to-r from-accent to-secondary' :
                 'bg-muted'
               }`} />
               <span className={`text-[10px] font-medium ${
-                i < step ? 'text-violet-600 dark:text-violet-400' :
-                i === step ? 'text-fuchsia-600 dark:text-fuchsia-400' :
+                i < step ? 'text-primary' :
+                i === step ? 'text-accent-foreground' :
                 'text-muted-foreground'
               }`}>{s}</span>
             </div>
@@ -251,16 +251,16 @@ const Laundry = () => {
       {/* Step 1: Address */}
       {step === 1 && (
         <div className="space-y-4">
-          <Card className="border-2 border-violet-200 dark:border-violet-800 shadow-sm overflow-hidden">
-            <CardHeader className="pb-3 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30">
-              <CardTitle className="text-base flex items-center gap-2 text-violet-700 dark:text-violet-300">
+          <Card className="border-2 border-primary/20 shadow-sm overflow-hidden">
+            <CardHeader className="pb-3 bg-primary/5">
+              <CardTitle className="text-base flex items-center gap-2 text-primary">
                 <MapPin className="h-4 w-4" /> Pickup Address
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pt-4">
-              <div><Label className="text-xs font-semibold text-violet-600 dark:text-violet-400">Room Number *</Label><Input value={address.room} onChange={e => setAddress(p => ({ ...p, room: e.target.value }))} placeholder="e.g. 201" className="border-violet-200 dark:border-violet-800 focus-visible:ring-violet-500" /></div>
-              <div><Label className="text-xs font-semibold text-violet-600 dark:text-violet-400">Block/Building *</Label><Input value={address.block} onChange={e => setAddress(p => ({ ...p, block: e.target.value }))} placeholder="e.g. Block A" className="border-violet-200 dark:border-violet-800 focus-visible:ring-violet-500" /></div>
-              <div><Label className="text-xs font-semibold text-violet-600 dark:text-violet-400">Floor *</Label><Input value={address.floor} onChange={e => setAddress(p => ({ ...p, floor: e.target.value }))} placeholder="e.g. 2nd Floor" className="border-violet-200 dark:border-violet-800 focus-visible:ring-violet-500" /></div>
+              <div><Label className="text-xs font-semibold text-primary">Room Number *</Label><Input value={address.room} onChange={e => setAddress(p => ({ ...p, room: e.target.value }))} placeholder="e.g. 201" className="border-primary/20 focus-visible:ring-primary" /></div>
+              <div><Label className="text-xs font-semibold text-primary">Block/Building *</Label><Input value={address.block} onChange={e => setAddress(p => ({ ...p, block: e.target.value }))} placeholder="e.g. Block A" className="border-primary/20 focus-visible:ring-primary" /></div>
+              <div><Label className="text-xs font-semibold text-primary">Floor *</Label><Input value={address.floor} onChange={e => setAddress(p => ({ ...p, floor: e.target.value }))} placeholder="e.g. 2nd Floor" className="border-primary/20 focus-visible:ring-primary" /></div>
               <div><Label className="text-xs font-semibold text-muted-foreground">Landmark</Label><Input value={address.landmark} onChange={e => setAddress(p => ({ ...p, landmark: e.target.value }))} placeholder="Near entrance gate" /></div>
             </CardContent>
           </Card>
@@ -270,23 +270,23 @@ const Laundry = () => {
       {/* Step 2: Schedule */}
       {step === 2 && (
         <div className="space-y-4">
-          <Card className="border-2 border-amber-200 dark:border-amber-800 shadow-sm overflow-hidden">
-            <CardHeader className="pb-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30">
-              <CardTitle className="text-base flex items-center gap-2 text-amber-700 dark:text-amber-300">
+          <Card className="border-2 border-accent/30 shadow-sm overflow-hidden">
+            <CardHeader className="pb-3 bg-accent/10">
+              <CardTitle className="text-base flex items-center gap-2 text-accent-foreground">
                 <Clock className="h-4 w-4" /> Pickup Schedule
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
               <div>
-                <Label className="text-xs font-semibold text-amber-600 dark:text-amber-400">Pickup Date *</Label>
-                <Input type="date" value={pickupDate} onChange={e => setPickupDate(e.target.value)} min={format(new Date(), 'yyyy-MM-dd')} className="border-amber-200 dark:border-amber-800 focus-visible:ring-amber-500" />
+                <Label className="text-xs font-semibold text-accent-foreground">Pickup Date *</Label>
+                <Input type="date" value={pickupDate} onChange={e => setPickupDate(e.target.value)} min={format(new Date(), 'yyyy-MM-dd')} className="border-accent/30 focus-visible:ring-accent" />
               </div>
               <div>
-                <Label className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-2 block">Time Slot *</Label>
+                <Label className="text-xs font-semibold text-accent-foreground mb-2 block">Time Slot *</Label>
                 <div className="grid grid-cols-2 gap-2">
                   {slots.map(s => (
                     <Button key={s.id} variant={selectedSlot === s.slot_name ? 'default' : 'outline'} size="sm"
-                      className={`text-xs ${selectedSlot === s.slot_name ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-0 text-white' : 'border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'}`}
+                      className={`text-xs ${selectedSlot === s.slot_name ? 'bg-gradient-to-r from-primary to-accent border-0 text-primary-foreground' : 'border-accent/30 text-accent-foreground'}`}
                       onClick={() => setSelectedSlot(s.slot_name)}>
                       {s.slot_name} ({s.start_time?.slice(0, 5)} - {s.end_time?.slice(0, 5)})
                     </Button>
@@ -305,24 +305,24 @@ const Laundry = () => {
       {/* Step 3: Review */}
       {step === 3 && (
         <div className="space-y-4">
-          <Card className="border-2 border-emerald-200 dark:border-emerald-800 shadow-sm overflow-hidden">
-            <CardHeader className="pb-3 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30">
-              <CardTitle className="text-base text-emerald-700 dark:text-emerald-300">Order Summary</CardTitle>
+          <Card className="border-2 border-secondary/30 shadow-sm overflow-hidden">
+            <CardHeader className="pb-3 bg-secondary/10">
+              <CardTitle className="text-base text-secondary">Order Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pt-4">
               {cartItems.map(i => (
                 <div key={i.id} className="flex justify-between text-sm">
                   <span>{i.icon} {i.name} × {i.quantity}</span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">₹{i.price * i.quantity}</span>
+                  <span className="font-semibold text-secondary">₹{i.price * i.quantity}</span>
                 </div>
               ))}
               <Separator />
               <div className="flex justify-between font-bold text-base">
-                <span>Total</span><span className="text-emerald-600 dark:text-emerald-400">₹{total}</span>
+                <span>Total</span><span className="text-secondary">₹{total}</span>
               </div>
             </CardContent>
           </Card>
-          <Card className="border-2 border-violet-200 dark:border-violet-800 shadow-sm">
+          <Card className="border-2 border-primary/20 shadow-sm">
             <CardContent className="p-4 space-y-2 text-sm">
               <p><span className="text-muted-foreground">Pickup:</span> Room {address.room}, {address.block}, {address.floor}</p>
               <p><span className="text-muted-foreground">Date:</span> {pickupDate}</p>
@@ -336,24 +336,24 @@ const Laundry = () => {
       {/* Step 4: Confirmation */}
       {step === 4 && createdOrder && (
         <div className="text-center space-y-6 py-4">
-          <div className="rounded-2xl bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 p-8 text-white shadow-lg">
+          <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-accent/80 p-8 text-primary-foreground shadow-lg">
             <CheckCircle2 className="h-16 w-16 mx-auto mb-3 drop-shadow" />
             <h2 className="text-xl font-bold mb-1">Order Placed!</h2>
             <p className="text-sm opacity-90">Your laundry will be picked up soon</p>
           </div>
-          <Card className="border-2 border-emerald-200 dark:border-emerald-800 shadow-sm">
+          <Card className="border-2 border-primary/20 shadow-sm">
             <CardContent className="p-5 space-y-4">
               <div className="text-center">
                 <p className="text-xs text-muted-foreground mb-1">Pickup OTP</p>
-                <p className="text-3xl font-bold tracking-widest bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent">{createdOrder.pickup_otp}</p>
+                <p className="text-3xl font-bold tracking-widest bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{createdOrder.pickup_otp}</p>
                 <p className="text-xs text-muted-foreground mt-1">Share this with the pickup agent</p>
               </div>
               <Separator />
               <p className="text-sm text-muted-foreground">Order: {createdOrder.serial_number || createdOrder.id.slice(0, 8)}</p>
-              <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Total: ₹{total}</p>
+              <p className="text-sm font-semibold text-secondary">Total: ₹{total}</p>
             </CardContent>
           </Card>
-          <Button className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-500 hover:from-violet-700 hover:to-fuchsia-600 text-white border-0" asChild>
+          <Button className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground border-0" asChild>
             <Link to="/student/laundry-orders">View My Orders</Link>
           </Button>
         </div>
@@ -361,21 +361,21 @@ const Laundry = () => {
 
       {/* Bottom bar */}
       {step < 4 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-violet-600 via-purple-500 to-fuchsia-500 p-4 flex items-center gap-3 max-w-lg mx-auto z-10 shadow-[0_-4px_20px_rgba(139,92,246,0.3)]">
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-primary via-primary/90 to-accent/80 p-4 flex items-center gap-3 max-w-lg mx-auto z-10 shadow-[0_-4px_20px_hsl(var(--primary)/0.3)]">
           {step > 0 && (
-            <Button variant="secondary" size="sm" onClick={() => setStep(s => s - 1)} className="bg-white/20 text-white border-0 hover:bg-white/30 backdrop-blur-sm">
+            <Button variant="secondary" size="sm" onClick={() => setStep(s => s - 1)} className="bg-white/20 text-primary-foreground border-0 hover:bg-white/30 backdrop-blur-sm">
               <ArrowLeft className="h-4 w-4 mr-1" /> Back
             </Button>
           )}
           <div className="flex-1 text-right">
-            {totalItems > 0 && <span className="text-sm font-semibold text-white">{totalItems} items • ₹{total}</span>}
+            {totalItems > 0 && <span className="text-sm font-semibold text-primary-foreground">{totalItems} items • ₹{total}</span>}
           </div>
           {step < 3 ? (
-            <Button size="sm" disabled={!canProceed()} onClick={() => setStep(s => s + 1)} className="bg-white text-violet-600 hover:bg-white/90 border-0 font-semibold disabled:opacity-50">
+            <Button size="sm" disabled={!canProceed()} onClick={() => setStep(s => s + 1)} className="bg-white text-primary hover:bg-white/90 border-0 font-semibold disabled:opacity-50">
               Next <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           ) : (
-            <Button size="sm" disabled={submitting} onClick={handleSubmit} className="bg-white text-violet-600 hover:bg-white/90 border-0 font-semibold disabled:opacity-50">
+            <Button size="sm" disabled={submitting} onClick={handleSubmit} className="bg-white text-primary hover:bg-white/90 border-0 font-semibold disabled:opacity-50">
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CreditCard className="h-4 w-4 mr-1" />}
               Pay ₹{total}
             </Button>
