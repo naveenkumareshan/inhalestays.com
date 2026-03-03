@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVendorEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
+import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
 import { Button } from '@/components/ui/button';
 import { 
   LayoutDashboard, 
@@ -65,6 +66,7 @@ export function AdminSidebar() {
   const { pathname } = useLocation();
   const { user, logout } = useAuth();
   const { hasPermission, hasAnyPermission, loading } = useVendorEmployeePermissions();
+  const propertyTypes = usePartnerPropertyTypes();
 
   if (loading) {
     return (
@@ -105,8 +107,8 @@ export function AdminSidebar() {
     }
   ];
 
-  // Reading Rooms section
-  if (user?.role === 'admin' || hasPermission('view_bookings')) {
+  // Reading Rooms section - only show for admin or partners with reading rooms
+  if (user?.role === 'admin' || (hasPermission('view_bookings') && (!isPartner || propertyTypes.hasReadingRooms))) {
     const readingRoomSubItems: MenuItem[] = [];
 
     if (user?.role === 'admin' || hasPermission('seats_available_map')) {
@@ -187,7 +189,7 @@ export function AdminSidebar() {
   }
 
   // ===== HOSTELS SECTION (moved ABOVE Users) =====
-  if (user?.role === 'admin' || hasPermission('view_reading_rooms')) {
+  if (user?.role === 'admin' || (hasPermission('view_reading_rooms') && (!isPartner || propertyTypes.hasHostels))) {
     const hostelSubItems: MenuItem[] = [
       {
         title: 'Bed Map',
@@ -251,13 +253,15 @@ export function AdminSidebar() {
     });
   }
 
-  // ===== LAUNDRY SECTION =====
-  menuItems.push({
-    title: 'Laundry',
-    url: `${routePrefix}/laundry`,
-    icon: Shirt,
-    roles: ['admin', 'vendor', 'vendor_employee'],
-  });
+  // ===== LAUNDRY SECTION - only show for admin or partners with laundry =====
+  if (user?.role === 'admin' || (isPartner && propertyTypes.hasLaundry)) {
+    menuItems.push({
+      title: 'Laundry',
+      url: `${routePrefix}/laundry`,
+      icon: Shirt,
+      roles: ['admin', 'vendor', 'vendor_employee'],
+    });
+  }
 
   // ===== USERS SECTION (moved BELOW Hostels) =====
   if (user?.role === 'admin' || hasPermission('manage_students')) {
