@@ -17,6 +17,7 @@ interface BookingData {
   booking_duration?: string;
   duration_count?: string;
   slot_id?: string;
+  customer_name?: string;
 }
 
 interface RenewalBookingData {

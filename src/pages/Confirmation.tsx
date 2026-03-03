@@ -156,10 +156,14 @@ const Confirmation = () => {
                 <div className="bg-cabin-light/20 p-4 rounded-md">
                   <p className="text-sm text-cabin-dark/60 mb-1">Duration</p>
                   <p className="font-medium text-cabin-dark">
-                    {booking?.durationCount || booking?.durationCount || 1}{" "}
-                    {(booking?.durationCount || booking?.durationCount || 1) === 1
-                      ? "month"
-                      : "months"}
+                    {booking?.duration_count || booking?.durationCount || 1}{" "}
+                    {(() => {
+                      const dur = booking?.booking_duration || booking?.bookingDuration || 'monthly';
+                      const count = Number(booking?.duration_count || booking?.durationCount || 1);
+                      if (dur === 'daily') return count === 1 ? 'day' : 'days';
+                      if (dur === 'weekly') return count === 1 ? 'week' : 'weeks';
+                      return count === 1 ? 'month' : 'months';
+                    })()}
                   </p>
                 </div>
 

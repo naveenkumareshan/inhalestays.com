@@ -162,6 +162,7 @@ export type Database = {
           collected_by: string | null
           collected_by_name: string
           created_at: string | null
+          customer_name: string
           discount_amount: number
           discount_reason: string
           duration_count: string | null
@@ -201,6 +202,7 @@ export type Database = {
           collected_by?: string | null
           collected_by_name?: string
           created_at?: string | null
+          customer_name?: string
           discount_amount?: number
           discount_reason?: string
           duration_count?: string | null
@@ -240,6 +242,7 @@ export type Database = {
           collected_by?: string | null
           collected_by_name?: string
           created_at?: string | null
+          customer_name?: string
           discount_amount?: number
           discount_reason?: string
           duration_count?: string | null

@@ -192,14 +192,14 @@ export const BookingsList = ({
                     {booking.bookingStatus === 'transferred' && (
                       <Badge variant="outline" className="border-amber-500 text-amber-500 text-[10px] px-1.5 py-0.5">Transferred</Badge>
                     )}
-                    {(booking.dueAmount ?? 0) > 0 ? (
+                    {booking.paymentStatus === 'pending' ? (
+                      <Badge variant="outline" className="border-amber-500 text-amber-500 text-[10px] px-1.5 py-0.5">Pending Payment</Badge>
+                    ) : (booking.dueAmount ?? 0) > 0 ? (
                       <Badge variant="outline" className="border-red-500 text-red-600 text-[10px] px-1.5 py-0.5">Due: ₹{booking.dueAmount?.toLocaleString()}</Badge>
                     ) : booking.paymentStatus === 'completed' ? (
                       <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] px-1.5 py-0.5">Fully Paid</Badge>
                     ) : (booking.paymentStatus as string) === 'advance_paid' ? (
                       <Badge variant="outline" className="border-amber-500 text-amber-600 text-[10px] px-1.5 py-0.5">Advance Paid</Badge>
-                    ) : booking.paymentStatus === 'pending' ? (
-                      <Badge variant="outline" className="border-amber-500 text-amber-500 text-[10px] px-1.5 py-0.5">Pending</Badge>
                     ) : booking.paymentStatus === 'failed' || booking.paymentStatus === 'cancelled' ? (
                       <Badge variant="outline" className="border-destructive text-destructive text-[10px] px-1.5 py-0.5">{booking.paymentStatus === 'failed' ? 'Failed' : 'Cancelled'}</Badge>
                     ) : null}

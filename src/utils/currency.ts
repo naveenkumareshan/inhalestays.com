@@ -11,6 +11,10 @@ const formatDate = (dateStr) => {
   });
 };
 
+export const roundPrice = (amount: number): number => {
+  return Math.round((amount + Number.EPSILON) * 100) / 100;
+};
+
 export const formatCurrency = (amount: number, currency = 'INR'): string => {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',

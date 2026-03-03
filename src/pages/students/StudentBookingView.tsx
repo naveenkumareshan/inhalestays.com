@@ -312,11 +312,20 @@ export default function StudentBookingView() {
   const endDate = booking.end_date ? new Date(booking.end_date) : null;
   const daysLeft = endDate ? differenceInDays(endDate, new Date()) : 0;
 
-  const paymentStatus =
-    dueRemaining === 0 ? "Completed" : daysLeft <= 0 ? "Overdue" : "Partial";
+  const paymentStatus = (() => {
+    // If booking was never paid (still pending/failed/cancelled), don't show Overdue
+    if (booking.payment_status === 'pending' && receipts.length === 0) return "Payment Pending";
+    if (booking.payment_status === 'cancelled') return "Cancelled";
+    if (booking.payment_status === 'failed') return "Failed";
+    if (dueRemaining === 0) return "Completed";
+    if (daysLeft <= 0) return "Overdue";
+    return "Partial";
+  })();
 
   const paymentBadgeVariant =
-    paymentStatus === "Completed" ? "success" : paymentStatus === "Overdue" ? "destructive" : "outline";
+    paymentStatus === "Completed" ? "success" 
+    : (paymentStatus === "Overdue" || paymentStatus === "Cancelled" || paymentStatus === "Failed") ? "destructive" 
+    : "outline";
 
   const durationLabel =
     booking.booking_duration === "daily"
@@ -373,6 +382,7 @@ export default function StudentBookingView() {
           ) : booking.cabins?.slots_enabled ? (
             <InfoRow label="Booking Type" value="Full Day" />
           ) : null}
+          {booking.customer_name && <InfoRow label="Booked By" value={booking.customer_name} />}
           <InfoRow label="Booked On" value={safeFmt(booking.created_at, "dd MMM yyyy")} />
           {booking.cabins?.opening_time && booking.cabins?.closing_time && (
             <InfoRow

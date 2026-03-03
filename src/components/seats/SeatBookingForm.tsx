@@ -174,6 +174,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
   const [originalPrice, setOriginalPrice] = useState<number>(0);
   const [manualCouponCode, setManualCouponCode] = useState('');
   const [validatingCoupon, setValidatingCoupon] = useState(false);
+  const [customerName, setCustomerName] = useState(user?.name || '');
 
   // Advance payment state
   const [useAdvancePayment, setUseAdvancePayment] = useState(false);
@@ -317,10 +318,10 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
 
         switch (selectedDuration.type) {
           case "daily":
-            basePrice = (monthlyBasePrice / 30) * selectedDuration.count;
+            basePrice = Math.round(((monthlyBasePrice / 30) * selectedDuration.count) * 100) / 100;
             break;
           case "weekly":
-            basePrice = (monthlyBasePrice / 4) * selectedDuration.count;
+            basePrice = Math.round(((monthlyBasePrice / 4) * selectedDuration.count) * 100) / 100;
             break;
           case "monthly":
             basePrice = monthlyBasePrice * selectedDuration.count;
@@ -502,6 +503,12 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
 
       const paymentAmount = useAdvancePayment ? advanceAmount : totalPrice;
 
+      if (!customerName.trim()) {
+        toast({ title: "Name Required", description: "Please enter your name before booking", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
+
       const response = await bookingsService.createBooking({
         cabin_id: cabin._id || cabin.id || "",
         seat_id: selectedSeat._id || selectedSeat.id || "",
@@ -515,6 +522,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
         payment_status: useAdvancePayment ? "advance_paid" : "pending",
         locker_included: effectiveLockerIncluded,
         locker_price: effectiveLockerPrice,
+        customer_name: customerName.trim(),
       } as any);
 
       if (response.success && response.data) {
@@ -805,10 +813,24 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
               </>
             )}
 
-            {/* Step 4: Booking Summary and Confirmation */}
+                {/* Step 4: Booking Summary and Confirmation */}
             {selectedSeat && cabin.isBookingActive ? (
               <>
                 <Separator className="my-0" />
+
+                {/* Customer Name Input */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">Your Name</Label>
+                  <Input
+                    placeholder="Enter your full name"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="h-9 text-sm"
+                  />
+                  {!customerName.trim() && (
+                    <p className="text-[11px] text-destructive">Name is required for booking</p>
+                  )}
+                </div>
 
                 <div className="bg-gradient-to-b from-muted/20 to-muted/40 rounded-xl p-3 space-y-2">
                   <div className="flex justify-between items-center">
@@ -847,7 +869,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                   <Separator className="opacity-30" />
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Seat Price:</span>
-                    <span>₹{Math.round(selectedSeat?.price || 0)} / month</span>
+                    <span>₹{Math.round(selectedSeat?.price || 0)} / {selectedDuration.type === 'daily' ? 'day' : selectedDuration.type === 'weekly' ? 'week' : 'month'}</span>
                   </div>
 
                   {/* Locker - inline in summary */}
@@ -883,7 +905,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                       <Separator className="opacity-30" />
                       <div className="flex justify-between text-sm text-green-600">
                         <span>Coupon ({appliedCoupon.coupon.code}):</span>
-                        <span>- ₹{appliedCoupon.discountAmount}</span>
+                        <span>- ₹{Number(appliedCoupon.discountAmount).toFixed(2)}</span>
                       </div>
                     </>
                   )}
