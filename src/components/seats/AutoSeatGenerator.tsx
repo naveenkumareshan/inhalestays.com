@@ -65,9 +65,6 @@ export const AutoSeatGenerator: React.FC<AutoSeatGeneratorProps> = ({
         const x = snap(startX + c * spacing + colOffset);
         const y = snap(startY + r * spacing);
 
-        // Boundary check
-        if (x + 32 > roomWidth - gridSize || y + 22 > roomHeight - gridSize) continue;
-
         seats.push({
           number: seatNumber++,
           row: r,

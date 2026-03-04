@@ -369,6 +369,22 @@ const SeatManagement = () => {
         isSaving={isSaving}
         categories={categories.map(c => ({ id: c.id, name: c.name, price: c.price }))}
         minPrice={cabin?.price || 0}
+        onRoomResize={async (newWidth, newHeight) => {
+          setRoomWidth(newWidth);
+          setRoomHeight(newHeight);
+          if (cabin?.id) {
+            try {
+              const updatedFloors = floors.map((f: any) =>
+                f.id === selectedFloor
+                  ? { ...f, layout_image: layoutImage, layout_image_opacity: layoutImageOpacity }
+                  : f
+              );
+              await adminCabinsService.updateCabinLayout(cabin.id, [], newWidth, newHeight, 20, [], undefined, updatedFloors);
+            } catch (e) {
+              console.error('Error saving room resize:', e);
+            }
+          }
+        }}
       />
 
       {/* Category Management Dialog */}
