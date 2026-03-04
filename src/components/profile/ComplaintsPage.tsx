@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Plus, MessageSquareWarning } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { bookingsService } from '@/api/bookingsService';
+import { hostelBookingService } from '@/api/hostelBookingService';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -47,13 +48,26 @@ const ComplaintsPage = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [complaintsRes, bookingsRes] = await Promise.all([
+    const [complaintsRes, cabinBookingsRes, hostelBookingsRes] = await Promise.all([
       supabase.from('complaints').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       bookingsService.getCurrentBookings(),
+      hostelBookingService.getUserBookings(),
     ]);
 
+    const cabinBookings = (cabinBookingsRes.success ? cabinBookingsRes.data : []).map((b: any) => ({
+      ...b,
+      _type: 'cabin',
+      _label: `${(b.cabins as any)?.name || 'Room'} — Seat #${b.seat_number || '—'}`,
+    }));
+
+    const hostelBookings = (hostelBookingsRes || []).map((hb: any) => ({
+      ...hb,
+      _type: 'hostel',
+      _label: `${(hb.hostels as any)?.name || 'Hostel'} — Bed #${(hb.hostel_beds as any)?.bed_number || '—'}`,
+    }));
+
     setComplaints((complaintsRes.data as any[]) || []);
-    setBookings(bookingsRes.success ? bookingsRes.data : []);
+    setBookings([...cabinBookings, ...hostelBookings]);
     setLoading(false);
   };
 
@@ -75,9 +89,15 @@ const ComplaintsPage = () => {
       status: 'open',
       priority: 'medium',
     };
-    if (formData.booking_id) {
+    if (formData.booking_id && selectedBooking) {
       insertData.booking_id = formData.booking_id;
-      insertData.cabin_id = selectedBooking?.cabin_id || null;
+      if (selectedBooking._type === 'hostel') {
+        insertData.hostel_id = selectedBooking.hostel_id;
+        insertData.module = 'hostel';
+      } else {
+        insertData.cabin_id = selectedBooking.cabin_id || null;
+        insertData.module = 'reading_room';
+      }
     }
 
     const { error } = await supabase.from('complaints').insert(insertData);
@@ -114,7 +134,7 @@ const ComplaintsPage = () => {
                   <SelectContent>
                     {bookings.map((b: any) => (
                       <SelectItem key={b.id} value={b.id} className="text-[13px]">
-                        {(b.cabins as any)?.name || 'Room'} — Seat #{b.seat_number || '—'}
+                        {b._label}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -1,5 +1,5 @@
 
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -70,6 +70,17 @@ export const BookingsList = ({
 }: BookingsListProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const expiredIdsRef = useRef<Set<string>>(new Set());
+
+  // Filter out stale pending bookings older than 1 hour
+  const ONE_HOUR = 60 * 60 * 1000;
+  const displayBookings = bookings.filter(b => {
+    if (b.paymentStatus === 'pending' && b.createdAt) {
+      const age = Date.now() - new Date(b.createdAt).getTime();
+      if (age > ONE_HOUR) return false;
+    }
+    return true;
+  });
 
   const handleCancelBooking = async (bookingId: string) => {
     try {
@@ -91,6 +102,8 @@ export const BookingsList = ({
   };
 
   const handlePaymentExpiry = async (bookingId: string) => {
+    if (expiredIdsRef.current.has(bookingId)) return;
+    expiredIdsRef.current.add(bookingId);
     try {
       await bookingsService.cancelBooking(bookingId);
     } catch (e) {
@@ -136,7 +149,7 @@ export const BookingsList = ({
     );
   }
 
-  if (bookings.length === 0) {
+  if (displayBookings.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-14 text-center">
         <Calendar className="h-10 w-10 text-muted-foreground mb-3" />
@@ -148,7 +161,7 @@ export const BookingsList = ({
 
   return (
     <div className="space-y-3">
-      {bookings.map((booking) => (
+      {displayBookings.map((booking) => (
         <Card key={booking.id} className="rounded-2xl overflow-hidden">
           <CardContent className="p-3">
             {/* Top row: thumbnail + title + status */}

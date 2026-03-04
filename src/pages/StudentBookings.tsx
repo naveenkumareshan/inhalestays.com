@@ -187,6 +187,16 @@ const StudentBookings = () => {
       const hostelBookings = (hostelBookingsRes || []).map(mapHostelBooking);
 
       const today = new Date().toISOString().split('T')[0];
+      const ONE_HOUR = 60 * 60 * 1000;
+
+      // Filter out stale pending bookings (>1 hour old)
+      const isNotStalePending = (b: any) => {
+        if (b.paymentStatus === 'pending' && b.createdAt) {
+          const age = Date.now() - new Date(b.createdAt).getTime();
+          if (age > ONE_HOUR) return false;
+        }
+        return true;
+      };
 
       // Merge cabin current + hostel current
       const mappedCurrent = allCurrentRaw.map(mapBooking);
@@ -194,6 +204,7 @@ const StudentBookings = () => {
         b.endDate >= today && !['failed', 'cancelled'].includes(b.bookingStatus)
       );
       const allCurrent = [...mappedCurrent, ...hostelCurrent]
+        .filter(isNotStalePending)
         .map((b: any) => ({ ...b, dueAmount: duesMap.get(b.id) || 0 }))
         .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setCurrentBookings(allCurrent);
