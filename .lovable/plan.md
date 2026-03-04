@@ -1,101 +1,79 @@
 
 
-# Fix Plan: Complaints (Vendor-only) + Support (Admin-only) + Expired Booking Blinking
+# Fix: Support Tickets Visibility + Chat-Style Messaging for Both Complaints & Support
 
-## Issue 1: Complaints Not Working (Student → Vendor)
+## Issue 1: Admin Cannot See Support Tickets
 
-**Root Cause**: The `complaints` table has a vendor SELECT policy but **no vendor UPDATE policy**. Vendors can see complaints linked to their properties but cannot respond (update `response`, `status`, `responded_by`, `responded_at` fields).
+The RLS policy uses `public.has_role(auth.uid(), 'admin')` without the `::app_role` cast. The `has_role` function signature requires `app_role` enum type. PostgreSQL may fail to auto-cast the text literal, causing the admin SELECT to silently return zero rows. The admin ALL policy needs to be recreated with proper casting.
 
-Additionally, when students select a hostel booking in the complaint form, only `cabin_id` is set — `hostel_id` is never populated, so hostel vendors never see those complaints.
+**Fix**: Drop and recreate the admin policy with `'admin'::app_role`.
 
-**Fix**:
-- **DB migration**: Add a vendor UPDATE policy on `complaints` for own properties
-- **`ComplaintsPage.tsx`**: When a hostel booking is selected, set `hostel_id` from the booking. Also fetch hostel bookings alongside reading room bookings so students can complain about either.
-- **`ComplaintTracker.tsx`** (used by both admin and vendors via OperationsHub): No code change needed — it already queries and updates complaints. The RLS fix enables vendor updates.
+## Issue 2: Chat-Style Messaging for Both Complaints & Support Tickets
 
-## Issue 2: Support Tickets (Student → Admin Only)
+Currently both systems use a single `response`/`admin_response` field — one message from each side. The user wants back-and-forth chat until resolved/closed, then lock the thread.
 
-**Root Cause**: The `support_tickets` table RLS policies only allow students to INSERT/SELECT their own tickets, and admins to manage all. This is correct per the user's requirement. The actual bug is likely that the **student INSERT policy is missing** — let me verify.
+### Approach: Create a shared `ticket_messages` table
 
-Looking at the provided RLS info, I don't see `support_tickets` RLS policies listed in the context. The table exists but policies may be incomplete. Need to ensure:
-- Students can INSERT their own tickets
-- Students can SELECT their own tickets  
-- Admins can manage ALL tickets
+A single messages table serving both complaints and support tickets, with a `ticket_type` discriminator.
 
-**Fix**: 
-- **DB migration**: Ensure proper RLS policies exist (student INSERT/SELECT own, admin ALL)
-- No vendor policies needed (support goes to admin only)
+### DB Changes
 
-## Issue 3: Expired Booking Blinking + Toast Spam
+```sql
+-- 1. Fix admin RLS for support_tickets
+DROP POLICY IF EXISTS "Admins can manage all tickets" ON public.support_tickets;
+CREATE POLICY "Admins can manage all tickets"
+  ON public.support_tickets FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
 
-**Root Cause**: When PaymentTimer expires → `handlePaymentExpiry` cancels booking → shows destructive toast → calls `onBookingCancelled` → parent re-fetches → if cancel hasn't propagated or fails, pending booking reappears → PaymentTimer remounts with `hasExpiredRef` reset → expires immediately again → infinite loop.
+DROP POLICY IF EXISTS "Students can view own tickets" ON public.support_tickets;
+CREATE POLICY "Students can view own tickets"
+  ON public.support_tickets FOR SELECT TO authenticated
+  USING (auth.uid() = user_id OR public.has_role(auth.uid(), 'admin'::app_role));
 
-**Fix**:
-1. **`BookingsList.tsx`**: Track already-expired booking IDs in a `useRef` Set. Skip `handlePaymentExpiry` for bookings already processed. Filter out pending bookings older than 1 hour from display entirely.
-2. **`StudentBookings.tsx`**: Filter out pending bookings older than 1 hour before setting state (both reading room and hostel).
-3. **`PaymentTimer.tsx`**: No changes needed — the parent-level guard is sufficient.
+-- 2. Create ticket_messages table
+CREATE TABLE public.ticket_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ticket_type text NOT NULL, -- 'complaint' or 'support'
+  ticket_id uuid NOT NULL,
+  sender_id uuid NOT NULL,
+  sender_role text NOT NULL DEFAULT 'student', -- 'student', 'vendor', 'admin'
+  message text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
-## Files to Modify
+ALTER TABLE public.ticket_messages ENABLE ROW LEVEL SECURITY;
+
+-- Students can insert messages on their own tickets
+-- Students can view messages on their own tickets
+-- Admins can manage all messages
+-- Vendors can manage messages on complaints for their properties
+```
+
+### UI Changes
 
 | File | Change |
 |------|--------|
-| DB migration | Add vendor UPDATE policy on `complaints`; ensure `support_tickets` has student INSERT + SELECT + admin ALL policies |
-| `src/components/profile/ComplaintsPage.tsx` | Fetch hostel bookings too; set `hostel_id` for hostel complaints |
-| `src/components/booking/BookingsList.tsx` | Add `expiredIdsRef` guard; filter out stale pending bookings (>1hr) |
-| `src/pages/StudentBookings.tsx` | Filter out pending bookings older than 1 hour |
+| `src/components/profile/SupportPage.tsx` | When clicking a ticket, open a chat view showing all `ticket_messages` for that ticket. Add message input at bottom. Disable input when status is `resolved` or `closed`. |
+| `src/components/profile/ComplaintsPage.tsx` | Same chat-style view when clicking a complaint card. Disable input when resolved/closed. |
+| `src/components/admin/SupportTicketsManagement.tsx` | Replace the dialog's single textarea with a chat thread from `ticket_messages`. Admin can send messages and change status. Disable messaging when resolved/closed. |
+| `src/components/admin/operations/ComplaintTracker.tsx` | Replace single response field with chat thread. Disable when resolved/closed. |
 
-## DB Migration SQL
+### Chat UI Pattern (shared across all 4 components)
 
-```sql
--- Vendor UPDATE policy for complaints (so vendors can respond)
-CREATE POLICY "Vendors can update complaints for own properties"
-ON public.complaints
-FOR UPDATE
-TO authenticated
-USING (
-  (EXISTS (SELECT 1 FROM cabins c WHERE c.id = complaints.cabin_id AND c.created_by = auth.uid()))
-  OR
-  (EXISTS (SELECT 1 FROM hostels h WHERE h.id = complaints.hostel_id AND h.created_by = auth.uid()))
-);
+- Messages shown in a scrollable area, student messages on right (blue), admin/vendor on left (gray)
+- Each message shows sender name, time, and text
+- Text input + send button at bottom
+- "This ticket is resolved" banner when status is resolved/closed, no input shown
+- Initial `description` shown as the first "message" (read from the parent ticket, not duplicated)
 
--- Ensure support_tickets has proper RLS
-ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
+### Files to Modify
 
-CREATE POLICY "Students can insert own support tickets"
-ON public.support_tickets FOR INSERT TO authenticated
-WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Students can view own support tickets"
-ON public.support_tickets FOR SELECT TO authenticated
-USING (auth.uid() = user_id);
-
-CREATE POLICY "Admins can manage all support tickets"
-ON public.support_tickets FOR ALL TO authenticated
-USING (has_role(auth.uid(), 'admin'::app_role))
-WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
-```
-
-## Key Logic for Expired Booking Fix
-
-```typescript
-// BookingsList.tsx - prevent infinite expiry loop
-const expiredIdsRef = useRef<Set<string>>(new Set());
-
-const handlePaymentExpiry = async (bookingId: string) => {
-  if (expiredIdsRef.current.has(bookingId)) return; // already handled
-  expiredIdsRef.current.add(bookingId);
-  try { await bookingsService.cancelBooking(bookingId); } catch {}
-  toast({ title: "Payment Expired", description: "Booking cancelled.", variant: "destructive" });
-  onBookingCancelled?.();
-};
-
-// Filter out stale pending bookings (>1 hour old)
-const displayBookings = bookings.filter(b => {
-  if (b.paymentStatus === 'pending' && b.createdAt) {
-    const age = Date.now() - new Date(b.createdAt).getTime();
-    if (age > 60 * 60 * 1000) return false; // older than 1 hour
-  }
-  return true;
-});
-```
+| File | Change |
+|------|--------|
+| DB migration | Fix RLS cast + create `ticket_messages` table with RLS |
+| `src/components/profile/SupportPage.tsx` | Add chat view per ticket |
+| `src/components/profile/ComplaintsPage.tsx` | Add chat view per complaint |
+| `src/components/admin/SupportTicketsManagement.tsx` | Replace single response with chat thread |
+| `src/components/admin/operations/ComplaintTracker.tsx` | Replace single response with chat thread |
 
