@@ -1,58 +1,52 @@
 
 
-# Fix: Partner Dashboard Data Isolation + Coupon Visibility
+# Plan: Fix Add Property Navigation + Add Multi-Seat/Bed Placement
 
-## Issue 1: Partner Dashboard Shows All Data
+## Issue 1: "Add New Property" button navigates to profile instead of starting property creation
 
-The `/partner/dashboard` route renders `AdminDashboard` which calls `get_dashboard_stats` RPC — this returns **global** statistics (all bookings, all revenue). Partners see the same numbers as admins.
+Currently all three property type buttons in the `ManageProperties` dialog navigate to `/partner/profile`. They should instead open the property creation flow directly within the current page.
 
-**Fix:** Update `DynamicStatisticsCards` and `DashboardStatistics` to pass a partner context. When the logged-in user is a vendor, filter dashboard queries to only include their own cabins/hostels.
+**Fix in `src/pages/partner/ManageProperties.tsx`:**
+- For **Reading Room**: Set `showEditor(true)` on the RoomManagement tab by switching to the `rooms` tab and triggering a "new cabin" action. Since `RoomManagement` is a lazy-loaded page with its own `showEditor` state, the simplest approach is to:
+  - Switch the active tab to the correct property type
+  - Pass a query param or use a shared state/ref to signal "create new"
+  - Alternative (simpler): navigate to a dedicated route like `/partner/properties?tab=rooms&action=new`
 
-### Changes:
+Actually, the cleanest approach: Instead of navigating away, switch the active tab and communicate the "add new" intent via a state prop passed to the lazy-loaded child components.
 
-**`src/hooks/use-dashboard-statistics.ts`**
-- Accept an optional `partnerId` parameter
-- When `partnerId` is provided, call a new RPC `get_partner_dashboard_stats(partner_user_id)` instead of `get_dashboard_stats()`
+**Changes:**
+- `ManageProperties.tsx`: Convert `defaultTab` to controlled state. On dialog button click, set the active tab and a `triggerNew` flag. Pass `triggerNew` as a prop to `RoomManagement` / `HostelManagement` / `LaundryPartnerDashboard`.
+- `RoomManagement.tsx`: Accept an optional `autoCreateNew` prop. When it transitions from false to true, call `handleNewCabin()` to open the editor.
+- `HostelManagement.tsx`: Same pattern — accept `autoCreateNew` and trigger the hostel creation flow.
 
-**Database migration — create `get_partner_dashboard_stats` RPC:**
-- A new `SECURITY DEFINER` function that computes the same stats as `get_dashboard_stats` but filtered to cabins where `created_by = partner_user_id` and hostels where `created_by = partner_user_id`
+## Issue 2: Add option to place multiple seats/beds at once by specifying a count
 
-**`src/components/admin/DynamicStatisticsCards.tsx`**
-- Read `user` from `useAuth()`, pass `user.id` when role is `vendor`
+Currently, the `FloorPlanDesigner` (seats) and `HostelBedPlanDesigner` (beds) place one seat/bed per click. The user wants a "place multiple" option that asks for a count and auto-arranges them.
 
-**`src/components/admin/DashboardStatistics.tsx`**
-- Same — pass user context so `getTopFillingRooms` is filtered to partner-owned cabins only
-- Update `adminBookingsService.getTopFillingRooms()` to accept an optional `userId` filter
+**Note:** An `AutoSeatGenerator` component already exists but is not wired into the `FloorPlanDesigner`. For beds, no such component exists.
 
-**`src/components/admin/OccupancyChart.tsx` and `RevenueChart.tsx`**
-- Filter chart data to partner-owned properties when user is a vendor
+**Changes:**
 
-## Issue 2: Partners See Admin-Created and Other Partners' Coupons
+### Seats (`FloorPlanDesigner.tsx`)
+- Add a "Add Multiple Seats" button to the toolbar (next to "Place Seats")
+- Wire up the existing `AutoSeatGenerator` component: open it on button click, pass `roomWidth`, `roomHeight`, `GRID_SNAP`, and `seats.length`
+- On generate, call `onPlaceSeat` for each generated seat
 
-Currently, the RLS policy "Partners can view relevant coupons" allows vendors to see all `scope='global'` coupons. The user wants partners to see **only their own** coupons.
+### Beds (`HostelBedPlanDesigner.tsx`)
+- Add a "Add Multiple Beds" button to the toolbar
+- Create a simple dialog (inline or new component) that asks for count, sharing option, and category
+- On confirm, auto-place beds in a grid pattern within the room, calling `onPlaceBed` for each
 
-**Fix — update coupon filtering in `CouponManagement.tsx`:**
-- When the user role is `vendor`, add a client-side filter or modify `couponService.getCoupons()` to pass a `created_by` / `partner_id` filter
-- In `fetchCoupons`, when user is a vendor, fetch only coupons where `created_by = user.id` (their own coupons)
+### Seat Placement Dialog Enhancement
+- In `SeatPlacementDialog` (inside `FloorPlanDesigner.tsx`), add a "Count" field (default 1). When count > 1, place that many seats starting from the clicked position, auto-incrementing seat numbers and arranging in a row/grid pattern.
 
-**`src/api/couponService.ts` — `getCoupons` method:**
-- Add a `createdBy` filter parameter
-- When provided, add `.eq('created_by', createdBy)` to the query
-
-**`src/components/admin/CouponManagement.tsx`:**
-- Pass `createdBy: user.id` when user role is `vendor`
-
-This is purely a client-side query filter since RLS already prevents write access. Partners will only see coupons they created themselves.
-
-## Files Changed
+## Files to Change
 
 | File | Change |
 |------|--------|
-| `src/hooks/use-dashboard-statistics.ts` | Add partner filtering support |
-| `src/components/admin/DynamicStatisticsCards.tsx` | Pass partner context |
-| `src/components/admin/DashboardStatistics.tsx` | Pass partner context for top rooms |
-| `src/api/adminBookingsService.ts` | Add partner-filtered variants |
-| `src/api/couponService.ts` | Add `createdBy` filter to `getCoupons` |
-| `src/components/admin/CouponManagement.tsx` | Filter coupons by creator for vendors |
-| Database migration | Create `get_partner_dashboard_stats` RPC |
+| `src/pages/partner/ManageProperties.tsx` | Use controlled tab state; pass create-new signal to children |
+| `src/pages/RoomManagement.tsx` | Accept `autoCreateNew` prop, trigger editor open |
+| `src/pages/hotelManager/HostelManagement.tsx` | Accept `autoCreateNew` prop, trigger create flow |
+| `src/components/seats/FloorPlanDesigner.tsx` | Add "Add Multiple" button, integrate `AutoSeatGenerator`, add count field to placement dialog |
+| `src/components/hostels/HostelBedPlanDesigner.tsx` | Add "Add Multiple Beds" button with count dialog |
 
