@@ -1,48 +1,101 @@
 
 
-# Plan: Per-Duration Locker Mandatory Settings
+# Fix Plan: Complaints (Vendor-only) + Support (Admin-only) + Expired Booking Blinking
 
-## What Changes
+## Issue 1: Complaints Not Working (Student → Vendor)
 
-Currently, locker is either **mandatory for all durations** or **optional for all**. The user wants granular control — e.g., locker mandatory for monthly but optional for daily/weekly.
+**Root Cause**: The `complaints` table has a vendor SELECT policy but **no vendor UPDATE policy**. Vendors can see complaints linked to their properties but cannot respond (update `response`, `status`, `responded_by`, `responded_at` fields).
 
-## Approach
+Additionally, when students select a hostel booking in the complaint form, only `cabin_id` is set — `hostel_id` is never populated, so hostel vendors never see those complaints.
 
-### 1. Add new DB column: `locker_mandatory_durations` (JSONB)
-- Add a `locker_mandatory_durations` JSONB column to the `cabins` table, defaulting to `'["daily", "weekly", "monthly"]'`
-- When locker is available and this array contains the selected duration, locker is mandatory for that duration; otherwise optional
-- Keep existing `locker_mandatory` as a master toggle (if true = use duration-specific list; if false = always optional)
+**Fix**:
+- **DB migration**: Add a vendor UPDATE policy on `complaints` for own properties
+- **`ComplaintsPage.tsx`**: When a hostel booking is selected, set `hostel_id` from the booking. Also fetch hostel bookings alongside reading room bookings so students can complain about either.
+- **`ComplaintTracker.tsx`** (used by both admin and vendors via OperationsHub): No code change needed — it already queries and updates complaints. The RLS fix enables vendor updates.
 
-### 2. Update CabinEditor UI (`src/components/admin/CabinEditor.tsx`)
-- Below the existing Mandatory/Optional radio buttons, when "Mandatory" is selected, add duration checkboxes (Daily, Weekly, Monthly) — same pattern as advance applicable durations
-- Only show durations that are in `allowed_durations`
+## Issue 2: Support Tickets (Student → Admin Only)
 
-### 3. Update admin cabins service (`src/api/adminCabinsService.ts`)
-- Persist `locker_mandatory_durations` on create/update
+**Root Cause**: The `support_tickets` table RLS policies only allow students to INSERT/SELECT their own tickets, and admins to manage all. This is correct per the user's requirement. The actual bug is likely that the **student INSERT policy is missing** — let me verify.
 
-### 4. Update student booking form (`src/components/seats/SeatBookingForm.tsx`)
-- Instead of `const lockerMandatory = cabin.lockerMandatory`, check if selected duration is in `locker_mandatory_durations` array
-- If duration is in the list → mandatory; otherwise → optional checkbox
+Looking at the provided RLS info, I don't see `support_tickets` RLS policies listed in the context. The table exists but policies may be incomplete. Need to ensure:
+- Students can INSERT their own tickets
+- Students can SELECT their own tickets  
+- Admins can manage ALL tickets
 
-### 5. Update partner booking (`src/pages/vendor/VendorSeats.tsx`)
-- Same logic: check selected duration against `locker_mandatory_durations`
+**Fix**: 
+- **DB migration**: Ensure proper RLS policies exist (student INSERT/SELECT own, admin ALL)
+- No vendor policies needed (support goes to admin only)
 
-### 6. Update vendor seats service (`src/api/vendorSeatsService.ts`)
-- Map `locker_mandatory_durations` from cabin data
+## Issue 3: Expired Booking Blinking + Toast Spam
 
-## DB Migration
-```sql
-ALTER TABLE public.cabins 
-ADD COLUMN locker_mandatory_durations jsonb NOT NULL DEFAULT '["daily", "weekly", "monthly"]';
-```
+**Root Cause**: When PaymentTimer expires → `handlePaymentExpiry` cancels booking → shows destructive toast → calls `onBookingCancelled` → parent re-fetches → if cancel hasn't propagated or fails, pending booking reappears → PaymentTimer remounts with `hasExpiredRef` reset → expires immediately again → infinite loop.
 
-## Files to modify
+**Fix**:
+1. **`BookingsList.tsx`**: Track already-expired booking IDs in a `useRef` Set. Skip `handlePaymentExpiry` for bookings already processed. Filter out pending bookings older than 1 hour from display entirely.
+2. **`StudentBookings.tsx`**: Filter out pending bookings older than 1 hour before setting state (both reading room and hostel).
+3. **`PaymentTimer.tsx`**: No changes needed — the parent-level guard is sufficient.
+
+## Files to Modify
+
 | File | Change |
 |------|--------|
-| DB migration | Add `locker_mandatory_durations` column |
-| `src/components/admin/CabinEditor.tsx` | Add duration checkboxes under locker mandatory |
-| `src/api/adminCabinsService.ts` | Persist new field |
-| `src/api/vendorSeatsService.ts` | Map new field |
-| `src/components/seats/SeatBookingForm.tsx` | Duration-aware mandatory check |
-| `src/pages/vendor/VendorSeats.tsx` | Duration-aware mandatory check |
+| DB migration | Add vendor UPDATE policy on `complaints`; ensure `support_tickets` has student INSERT + SELECT + admin ALL policies |
+| `src/components/profile/ComplaintsPage.tsx` | Fetch hostel bookings too; set `hostel_id` for hostel complaints |
+| `src/components/booking/BookingsList.tsx` | Add `expiredIdsRef` guard; filter out stale pending bookings (>1hr) |
+| `src/pages/StudentBookings.tsx` | Filter out pending bookings older than 1 hour |
+
+## DB Migration SQL
+
+```sql
+-- Vendor UPDATE policy for complaints (so vendors can respond)
+CREATE POLICY "Vendors can update complaints for own properties"
+ON public.complaints
+FOR UPDATE
+TO authenticated
+USING (
+  (EXISTS (SELECT 1 FROM cabins c WHERE c.id = complaints.cabin_id AND c.created_by = auth.uid()))
+  OR
+  (EXISTS (SELECT 1 FROM hostels h WHERE h.id = complaints.hostel_id AND h.created_by = auth.uid()))
+);
+
+-- Ensure support_tickets has proper RLS
+ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Students can insert own support tickets"
+ON public.support_tickets FOR INSERT TO authenticated
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Students can view own support tickets"
+ON public.support_tickets FOR SELECT TO authenticated
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Admins can manage all support tickets"
+ON public.support_tickets FOR ALL TO authenticated
+USING (has_role(auth.uid(), 'admin'::app_role))
+WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+```
+
+## Key Logic for Expired Booking Fix
+
+```typescript
+// BookingsList.tsx - prevent infinite expiry loop
+const expiredIdsRef = useRef<Set<string>>(new Set());
+
+const handlePaymentExpiry = async (bookingId: string) => {
+  if (expiredIdsRef.current.has(bookingId)) return; // already handled
+  expiredIdsRef.current.add(bookingId);
+  try { await bookingsService.cancelBooking(bookingId); } catch {}
+  toast({ title: "Payment Expired", description: "Booking cancelled.", variant: "destructive" });
+  onBookingCancelled?.();
+};
+
+// Filter out stale pending bookings (>1 hour old)
+const displayBookings = bookings.filter(b => {
+  if (b.paymentStatus === 'pending' && b.createdAt) {
+    const age = Date.now() - new Date(b.createdAt).getTime();
+    if (age > 60 * 60 * 1000) return false; // older than 1 hour
+  }
+  return true;
+});
+```
 
