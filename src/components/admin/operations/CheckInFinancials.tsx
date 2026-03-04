@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { Banknote, Smartphone, Building2, CreditCard, Receipt } from 'lucide-react';
+import { PaymentMethodSelector, requiresTransactionId, isNonCashMethod } from '@/components/vendor/PaymentMethodSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,9 +27,10 @@ interface CollectDrawerProps {
   due: any;
   module: Module;
   onSuccess: () => void;
+  partnerId?: string;
 }
 
-export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange, due, module, onSuccess }) => {
+export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange, due, module, onSuccess, partnerId }) => {
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('cash');
   const [txnId, setTxnId] = useState('');
@@ -143,27 +145,16 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
 
           <div>
             <Label className="text-xs">Payment Method</Label>
-            <RadioGroup value={method} onValueChange={setMethod} className="grid grid-cols-2 gap-1.5 mt-1">
-              <div className="flex items-center gap-1.5 border rounded p-1.5">
-                <RadioGroupItem value="cash" id="ci_cash" className="h-3 w-3" />
-                <Label htmlFor="ci_cash" className="text-[10px] cursor-pointer flex items-center gap-1"><Banknote className="h-3 w-3" /> Cash</Label>
-              </div>
-              <div className="flex items-center gap-1.5 border rounded p-1.5">
-                <RadioGroupItem value="upi" id="ci_upi" className="h-3 w-3" />
-                <Label htmlFor="ci_upi" className="text-[10px] cursor-pointer flex items-center gap-1"><Smartphone className="h-3 w-3" /> UPI</Label>
-              </div>
-              <div className="flex items-center gap-1.5 border rounded p-1.5">
-                <RadioGroupItem value="bank_transfer" id="ci_bank" className="h-3 w-3" />
-                <Label htmlFor="ci_bank" className="text-[10px] cursor-pointer flex items-center gap-1"><Building2 className="h-3 w-3" /> Bank</Label>
-              </div>
-              <div className="flex items-center gap-1.5 border rounded p-1.5">
-                <RadioGroupItem value="online" id="ci_online" className="h-3 w-3" />
-                <Label htmlFor="ci_online" className="text-[10px] cursor-pointer flex items-center gap-1"><CreditCard className="h-3 w-3" /> Online</Label>
-              </div>
-            </RadioGroup>
+            <PaymentMethodSelector
+              value={method}
+              onValueChange={setMethod}
+              partnerId={partnerId}
+              idPrefix="ci"
+              columns={2}
+            />
           </div>
 
-          {(method === 'upi' || method === 'bank_transfer') && (
+          {requiresTransactionId(method) && (
             <div>
               <Label className="text-xs">Transaction ID</Label>
               <Input className="h-8 text-xs" value={txnId} onChange={e => setTxnId(e.target.value)} />

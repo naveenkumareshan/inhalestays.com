@@ -39,6 +39,7 @@ import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
+import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
 
 type ViewMode = 'grid' | 'table';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked';
@@ -1551,30 +1552,17 @@ const VendorSeats: React.FC = () => {
                       {/* Payment Method */}
                       <div className="space-y-1.5">
                         <Label className="text-[10px] uppercase text-muted-foreground">Payment Method</Label>
-                        <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="grid grid-cols-3 gap-1.5">
-                          <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
-                            <RadioGroupItem value="cash" id="pm_cash" className="h-3 w-3" />
-                            <Label htmlFor="pm_cash" className="text-[10px] cursor-pointer flex items-center gap-1">
-                              <Banknote className="h-3 w-3" /> Cash
-                            </Label>
-                          </div>
-                          <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
-                            <RadioGroupItem value="upi" id="pm_upi" className="h-3 w-3" />
-                            <Label htmlFor="pm_upi" className="text-[10px] cursor-pointer flex items-center gap-1">
-                              <Smartphone className="h-3 w-3" /> UPI
-                            </Label>
-                          </div>
-                          <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
-                            <RadioGroupItem value="bank_transfer" id="pm_bank" className="h-3 w-3" />
-                            <Label htmlFor="pm_bank" className="text-[10px] cursor-pointer flex items-center gap-1">
-                              <Building2 className="h-3 w-3" /> Bank Transfer
-                            </Label>
-                          </div>
-                        </RadioGroup>
+                        <PaymentMethodSelector
+                          value={paymentMethod}
+                          onValueChange={setPaymentMethod}
+                          partnerId={user?.id}
+                          idPrefix="pm"
+                          columns={3}
+                        />
                       </div>
 
                       {/* Transaction ID (required for UPI/Bank) */}
-                      {(paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && (
+                      {(paymentMethod === 'upi' || paymentMethod === 'bank_transfer' || paymentMethod.startsWith('custom_')) && (
                         <div>
                           <Label className="text-[10px] uppercase text-muted-foreground">Transaction ID *</Label>
                           <Input className="h-8 text-xs" placeholder="Enter transaction reference ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} />

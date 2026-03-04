@@ -34,6 +34,8 @@ export const DateFilterSelector: React.FC<DateFilterProps> = ({
         <SelectContent>
           <SelectItem value="all">All</SelectItem>
           <SelectItem value="today">Today</SelectItem>
+          <SelectItem value="yesterday">Yesterday</SelectItem>
+          <SelectItem value="7days">Last 7 Days</SelectItem>
           <SelectItem value="this_week">This Week</SelectItem>
           <SelectItem value="this_month">This Month</SelectItem>
           <SelectItem value="last_month">Last Month</SelectItem>

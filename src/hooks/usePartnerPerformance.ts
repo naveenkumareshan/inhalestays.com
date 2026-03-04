@@ -2,11 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, subMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
+import { format, subMonths, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear, differenceInDays } from 'date-fns';
 
 export interface PerformanceFilters {
-  month: number;
-  year: number;
+  dateFilter: string; // today, yesterday, 7days, this_week, this_month, last_month, this_year, last_year, custom, all
+  startDate?: Date;
+  endDate?: Date;
   propertyId?: string;
   propertyType?: 'all' | 'reading_room' | 'hostel';
 }
@@ -28,8 +29,11 @@ export interface FloorPerformance {
   occupiedBeds: number;
 }
 
+export interface CollectionsByMethod {
+  [key: string]: number;
+}
+
 export interface PerformanceData {
-  // Summary
   totalSeats: number;
   occupiedSeats: number;
   occupancyPercent: number;
@@ -39,12 +43,10 @@ export interface PerformanceData {
   pendingDues: number;
   pendingRefunds: number;
   netEarnings: number;
-  // Previous month comparison
   prevCollections: number;
   prevOccupancy: number;
   prevNetEarnings: number;
   prevDues: number;
-  // Revenue breakdown
   roomFees: number;
   foodCollection: number;
   depositCollection: number;
@@ -55,36 +57,31 @@ export interface PerformanceData {
   prevDepositCollection: number;
   prevOtherCharges: number;
   prevTotalRevenue: number;
-  // Dues
   totalStudentsWithDues: number;
   totalDuesAmount: number;
   overdueGt7: number;
   overdueGt30: number;
   refundsPending: number;
   refundsProcessed: number;
-  // Trends
   monthlyTrends: MonthlyTrend[];
-  // Floor performance
   floorPerformance: FloorPerformance[];
   bestFloor: string;
   worstFloor: string;
-  // Settlement
   grossCollection: number;
   platformCommission: number;
   paidSettlements: number;
   pendingSettlement: number;
-  // Students
   activeStudents: number;
   newAdmissions: number;
   renewals: number;
   dropouts: number;
   avgStayDuration: number;
-  // Reading room specific
   hasReadingRooms: boolean;
   readingRoomActiveMembers: number;
   readingRoomDueMembers: number;
-  // Properties
   properties: { id: string; name: string; type: 'reading_room' | 'hostel' }[];
+  collectionsByMethod: CollectionsByMethod;
+  prevCollectionsByMethod: CollectionsByMethod;
 }
 
 const defaultData: PerformanceData = {
@@ -102,15 +99,52 @@ const defaultData: PerformanceData = {
   activeStudents: 0, newAdmissions: 0, renewals: 0, dropouts: 0, avgStayDuration: 0,
   hasReadingRooms: false, readingRoomActiveMembers: 0, readingRoomDueMembers: 0,
   properties: [],
+  collectionsByMethod: {},
+  prevCollectionsByMethod: {},
 };
+
+function getDateRange(filter: string, startDate?: Date, endDate?: Date): { start: Date; end: Date } {
+  const today = new Date();
+  switch (filter) {
+    case 'today':
+      return { start: today, end: today };
+    case 'yesterday': {
+      const y = subDays(today, 1);
+      return { start: y, end: y };
+    }
+    case '7days':
+      return { start: subDays(today, 6), end: today };
+    case 'this_week':
+      return { start: startOfWeek(today, { weekStartsOn: 1 }), end: endOfWeek(today, { weekStartsOn: 1 }) };
+    case 'this_month':
+      return { start: startOfMonth(today), end: endOfMonth(today) };
+    case 'last_month': {
+      const lm = subMonths(today, 1);
+      return { start: startOfMonth(lm), end: endOfMonth(lm) };
+    }
+    case 'this_year':
+      return { start: startOfYear(today), end: endOfYear(today) };
+    case 'last_year': {
+      const ly = new Date(today.getFullYear() - 1, 0, 1);
+      return { start: startOfYear(ly), end: endOfYear(ly) };
+    }
+    case 'custom':
+      return { start: startDate || startOfMonth(today), end: endDate || endOfMonth(today) };
+    default: // 'all'
+      return { start: new Date(2020, 0, 1), end: today };
+  }
+}
+
+function getPreviousRange(start: Date, end: Date): { start: Date; end: Date } {
+  const days = differenceInDays(end, start) + 1;
+  return { start: subDays(start, days), end: subDays(start, 1) };
+}
 
 export function usePartnerPerformance(filters: PerformanceFilters) {
   const { user } = useAuth();
   const today = new Date();
-  const currentStart = startOfMonth(new Date(filters.year, filters.month));
-  const currentEnd = endOfMonth(currentStart);
-  const prevStart = startOfMonth(subMonths(currentStart, 1));
-  const prevEnd = endOfMonth(prevStart);
+  const { start: currentStart, end: currentEnd } = getDateRange(filters.dateFilter, filters.startDate, filters.endDate);
+  const { start: prevStart, end: prevEnd } = getPreviousRange(currentStart, currentEnd);
   const todayStr = format(today, 'yyyy-MM-dd');
   const currentStartStr = format(currentStart, 'yyyy-MM-dd');
   const currentEndStr = format(currentEnd, 'yyyy-MM-dd');
@@ -119,18 +153,16 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
   const trend12Start = format(subMonths(currentStart, 11), 'yyyy-MM-dd');
 
   return useQuery({
-    queryKey: ['partner-performance', filters.month, filters.year, filters.propertyId, filters.propertyType, user?.id],
+    queryKey: ['partner-performance', filters.dateFilter, currentStartStr, currentEndStr, filters.propertyId, filters.propertyType, user?.id],
     queryFn: async (): Promise<PerformanceData> => {
       if (!user?.id) return defaultData;
 
-      // 1. Get partner
       const { data: partner } = await supabase
         .from('partners')
         .select('id')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      // 2. Get partner's properties
       const [cabinsRes, hostelsRes] = await Promise.all([
         supabase.from('cabins').select('id, name').eq('created_by', user.id),
         supabase.from('hostels').select('id, name').eq('created_by', user.id),
@@ -149,7 +181,6 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
         return { ...defaultData, properties };
       }
 
-      // Apply property filter
       const filteredCabinIds = filters.propertyId
         ? cabinIds.filter(id => id === filters.propertyId)
         : (filters.propertyType === 'hostel' ? [] : cabinIds);
@@ -157,109 +188,108 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
         ? hostelIds.filter(id => id === filters.propertyId)
         : (filters.propertyType === 'reading_room' ? [] : hostelIds);
 
-      // 3. Run all queries in parallel
       const queries = await Promise.all([
-        // Seats count for reading rooms
+        // 0: Seats count
         filteredCabinIds.length > 0
           ? supabase.from('seats').select('id, cabin_id, is_available').in('cabin_id', filteredCabinIds)
           : Promise.resolve({ data: [] }),
-        // Active reading room bookings (occupied seats today)
+        // 1: Active reading room bookings (occupied today)
         filteredCabinIds.length > 0
           ? supabase.from('bookings').select('id, seat_id, cabin_id, start_date, end_date, total_price, created_at, user_id')
             .in('cabin_id', filteredCabinIds).eq('payment_status', 'completed')
             .lte('start_date', todayStr).gte('end_date', todayStr)
           : Promise.resolve({ data: [] }),
-        // Hostel beds
+        // 2: Hostel beds
         filteredHostelIds.length > 0
           ? supabase.from('hostel_beds').select('id, room_id').in('room_id',
             (await supabase.from('hostel_rooms').select('id').in('hostel_id', filteredHostelIds)).data?.map(r => r.id) || [])
           : Promise.resolve({ data: [] }),
-        // Active hostel bookings
+        // 3: Active hostel bookings
         filteredHostelIds.length > 0
           ? supabase.from('hostel_bookings').select('id, bed_id, hostel_id, start_date, end_date, total_price, food_amount, security_deposit, created_at, user_id, status')
             .in('hostel_id', filteredHostelIds).in('status', ['confirmed', 'checked_in'])
             .lte('start_date', todayStr).gte('end_date', todayStr)
           : Promise.resolve({ data: [] }),
-        // Reading room receipts current month
+        // 4: RR receipts current period (with payment_method)
         filteredCabinIds.length > 0
-          ? supabase.from('receipts').select('amount, receipt_type, created_at')
+          ? supabase.from('receipts').select('amount, receipt_type, created_at, payment_method')
             .in('cabin_id', filteredCabinIds)
             .gte('created_at', currentStartStr).lte('created_at', currentEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
-        // Reading room receipts prev month
+        // 5: RR receipts prev period
         filteredCabinIds.length > 0
-          ? supabase.from('receipts').select('amount, receipt_type, created_at')
+          ? supabase.from('receipts').select('amount, receipt_type, created_at, payment_method')
             .in('cabin_id', filteredCabinIds)
             .gte('created_at', prevStartStr).lte('created_at', prevEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
-        // Hostel receipts current month
+        // 6: Hostel receipts current period
         filteredHostelIds.length > 0
-          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at')
+          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, payment_method')
             .in('hostel_id', filteredHostelIds)
             .gte('created_at', currentStartStr).lte('created_at', currentEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
-        // Hostel receipts prev month
+        // 7: Hostel receipts prev period
         filteredHostelIds.length > 0
-          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at')
+          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, payment_method')
             .in('hostel_id', filteredHostelIds)
             .gte('created_at', prevStartStr).lte('created_at', prevEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
-        // Dues (reading room)
+        // 8: Dues (RR)
         filteredCabinIds.length > 0
           ? supabase.from('dues').select('id, due_amount, paid_amount, due_date, status, user_id')
             .in('cabin_id', filteredCabinIds).in('status', ['pending', 'partial'])
           : Promise.resolve({ data: [] }),
-        // Hostel dues
+        // 9: Hostel dues
         filteredHostelIds.length > 0
           ? supabase.from('hostel_dues').select('id, due_amount, paid_amount, due_date, status, user_id')
             .in('hostel_id', filteredHostelIds).in('status', ['pending', 'partial'])
           : Promise.resolve({ data: [] }),
-        // Settlements
+        // 10: Settlements
         partner?.id
           ? supabase.from('partner_settlements').select('total_collected, commission_amount, net_payable, status')
             .eq('partner_id', partner.id)
           : Promise.resolve({ data: [] }),
-        // Reading room receipts last 12 months (for trends)
+        // 11: RR receipts 12 months
         filteredCabinIds.length > 0
           ? supabase.from('receipts').select('amount, receipt_type, created_at')
             .in('cabin_id', filteredCabinIds)
             .gte('created_at', trend12Start)
           : Promise.resolve({ data: [] }),
-        // Hostel receipts last 12 months
+        // 12: Hostel receipts 12 months
         filteredHostelIds.length > 0
           ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at')
             .in('hostel_id', filteredHostelIds)
             .gte('created_at', trend12Start)
           : Promise.resolve({ data: [] }),
-        // All bookings this month (reading room) - for new admissions
+        // 13: RR bookings this period
         filteredCabinIds.length > 0
           ? supabase.from('bookings').select('id, user_id, start_date, end_date, created_at')
             .in('cabin_id', filteredCabinIds).eq('payment_status', 'completed')
             .gte('created_at', currentStartStr).lte('created_at', currentEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
-        // All hostel bookings this month
+        // 14: Hostel bookings this period
         filteredHostelIds.length > 0
           ? supabase.from('hostel_bookings').select('id, user_id, start_date, end_date, created_at, status')
             .in('hostel_id', filteredHostelIds).in('status', ['confirmed', 'checked_in'])
             .gte('created_at', currentStartStr).lte('created_at', currentEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
-        // Hostel rooms for floor performance
+        // 15: Hostel rooms
         filteredHostelIds.length > 0
           ? supabase.from('hostel_rooms').select('id, room_number, floor, hostel_id, floor_id')
             .in('hostel_id', filteredHostelIds)
           : Promise.resolve({ data: [] }),
-        // Hostel floors
+        // 16: Hostel floors
         filteredHostelIds.length > 0
           ? supabase.from('hostel_floors').select('id, name, hostel_id')
             .in('hostel_id', filteredHostelIds)
           : Promise.resolve({ data: [] }),
-        // Previous month bookings occupancy (reading room)
+        // 17: Prev period RR bookings occupancy
         filteredCabinIds.length > 0
           ? supabase.from('bookings').select('id, seat_id')
             .in('cabin_id', filteredCabinIds).eq('payment_status', 'completed')
             .lte('start_date', prevEndStr).gte('end_date', prevStartStr)
           : Promise.resolve({ data: [] }),
-        // Previous month hostel bookings occupancy
+        // 18: Prev period hostel bookings occupancy
         filteredHostelIds.length > 0
           ? supabase.from('hostel_bookings').select('id, bed_id')
             .in('hostel_id', filteredHostelIds).in('status', ['confirmed', 'checked_in'])
@@ -282,26 +312,46 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
       const hostelBeds = (hostelBedsRes as any).data || [];
       const activeHostelBookings = (activeHostelBookingsRes as any).data || [];
 
-      // Summary
       const totalSeats = seats.length + hostelBeds.length;
       const occupiedRR = new Set(activeBookings.map((b: any) => b.seat_id)).size;
       const occupiedHostel = new Set(activeHostelBookings.map((b: any) => b.bed_id)).size;
       const occupiedSeats = occupiedRR + occupiedHostel;
       const occupancyPercent = totalSeats > 0 ? Math.round((occupiedSeats / totalSeats) * 100) : 0;
 
-      // Previous occupancy
       const prevOccupiedRR = new Set(((prevRRBookingsRes as any).data || []).map((b: any) => b.seat_id)).size;
       const prevOccupiedHostel = new Set(((prevHBookingsRes as any).data || []).map((b: any) => b.bed_id)).size;
       const prevOccupancy = totalSeats > 0 ? Math.round(((prevOccupiedRR + prevOccupiedHostel) / totalSeats) * 100) : 0;
 
-      // Revenue aggregation helper
       const sumReceipts = (data: any[], type?: string) =>
         (data || []).filter(r => !type || r.receipt_type === type).reduce((s, r) => s + (r.amount || 0), 0);
+
+      // Aggregate by payment method
+      const aggregateByMethod = (data: any[]): CollectionsByMethod => {
+        const result: CollectionsByMethod = {};
+        (data || []).forEach(r => {
+          const method = r.payment_method || 'cash';
+          result[method] = (result[method] || 0) + (r.amount || 0);
+        });
+        return result;
+      };
 
       const rrCurrent = (rrReceiptsCurrentRes as any).data || [];
       const rrPrev = (rrReceiptsPrevRes as any).data || [];
       const hCurrent = (hReceiptsCurrentRes as any).data || [];
       const hPrev = (hReceiptsPrevRes as any).data || [];
+
+      // Payment method collections
+      const rrMethodCurrent = aggregateByMethod(rrCurrent);
+      const hMethodCurrent = aggregateByMethod(hCurrent);
+      const collectionsByMethod: CollectionsByMethod = {};
+      for (const [k, v] of Object.entries(rrMethodCurrent)) collectionsByMethod[k] = (collectionsByMethod[k] || 0) + v;
+      for (const [k, v] of Object.entries(hMethodCurrent)) collectionsByMethod[k] = (collectionsByMethod[k] || 0) + v;
+
+      const rrMethodPrev = aggregateByMethod(rrPrev);
+      const hMethodPrev = aggregateByMethod(hPrev);
+      const prevCollectionsByMethod: CollectionsByMethod = {};
+      for (const [k, v] of Object.entries(rrMethodPrev)) prevCollectionsByMethod[k] = (prevCollectionsByMethod[k] || 0) + v;
+      for (const [k, v] of Object.entries(hMethodPrev)) prevCollectionsByMethod[k] = (prevCollectionsByMethod[k] || 0) + v;
 
       const roomFees = sumReceipts(rrCurrent, 'booking_payment') + sumReceipts(hCurrent, 'booking_payment');
       const foodCollection = sumReceipts(hCurrent, 'food_payment');
@@ -321,7 +371,6 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
       const prevTotalRevenue = sumReceipts(rrPrev) + sumReceipts(hPrev);
       const prevCollections = prevTotalRevenue;
 
-      // Dues
       const allDues = [...((rrDuesRes as any).data || []), ...((hDuesRes as any).data || [])];
       const totalStudentsWithDues = new Set(allDues.map(d => d.user_id)).size;
       const totalDuesAmount = allDues.reduce((s, d) => s + ((d.due_amount || 0) - (d.paid_amount || 0)), 0);
@@ -330,11 +379,9 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
       const overdueGt7 = allDues.filter(d => differenceInDays(now, new Date(d.due_date)) > 7).length;
       const overdueGt30 = allDues.filter(d => differenceInDays(now, new Date(d.due_date)) > 30).length;
 
-      // Refunds (from bookings with locker refund data)
-      const refundsPending = 0; // Would need locker_refunded=false checks
+      const refundsPending = 0;
       const refundsProcessed = 0;
 
-      // Settlements
       const settlements = (settlementsRes as any).data || [];
       const grossCollection = settlements.reduce((s: number, st: any) => s + (st.total_collected || 0), 0);
       const platformCommission = settlements.reduce((s: number, st: any) => s + (st.commission_amount || 0), 0);
@@ -342,10 +389,10 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
       const paidSettlements = settlements.filter((s: any) => s.status === 'paid').reduce((sum: number, s: any) => sum + (s.net_payable || 0), 0);
       const pendingSettlement = settlements.filter((s: any) => s.status !== 'paid').reduce((sum: number, s: any) => sum + (s.net_payable || 0), 0);
 
-      const prevNetEarnings = 0; // Simplified
+      const prevNetEarnings = 0;
       const prevDues = 0;
 
-      // Monthly trends (12 months)
+      // Monthly trends
       const allReceipts12 = [...((rrReceipts12Res as any).data || []), ...((hReceipts12Res as any).data || [])];
       const trendMap = new Map<string, MonthlyTrend>();
       for (let i = 11; i >= 0; i--) {
@@ -372,7 +419,6 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
       hostelFloors.forEach((f: any) => {
         floorMap.set(f.id, { floorName: f.name, occupancy: 0, revenue: 0, totalBeds: 0, occupiedBeds: 0 });
       });
-      // Count beds per floor
       const roomFloorMap = new Map<string, string>();
       hostelRooms.forEach((r: any) => { if (r.floor_id) roomFloorMap.set(r.id, r.floor_id); });
       hostelBeds.forEach((b: any) => {
@@ -399,7 +445,6 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
       const worstFloor = floorPerformance.length > 0
         ? floorPerformance.reduce((a, b) => a.occupancy < b.occupancy ? a : b).floorName : '-';
 
-      // Student insights
       const newRRBookings = (rrNewBookingsRes as any).data || [];
       const newHBookings = (hNewBookingsRes as any).data || [];
       const newAdmissions = newRRBookings.length + newHBookings.length;
@@ -426,6 +471,8 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
         readingRoomActiveMembers: occupiedRR,
         readingRoomDueMembers: ((rrDuesRes as any).data || []).length,
         properties,
+        collectionsByMethod,
+        prevCollectionsByMethod,
       };
     },
     enabled: !!user?.id,

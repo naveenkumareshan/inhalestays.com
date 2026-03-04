@@ -2279,6 +2279,36 @@ export type Database = {
           },
         ]
       }
+      partner_payment_modes: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          label: string
+          mode_type: string
+          partner_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          label: string
+          mode_type?: string
+          partner_user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          label?: string
+          mode_type?: string
+          partner_user_id?: string
+        }
+        Relationships: []
+      }
       partner_payout_settings: {
         Row: {
           commission_fixed: number

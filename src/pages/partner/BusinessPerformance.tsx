@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
-import { usePartnerPerformance, PerformanceFilters, MonthlyTrend } from '@/hooks/usePartnerPerformance';
+import { usePartnerPerformance, PerformanceFilters, MonthlyTrend, CollectionsByMethod } from '@/hooks/usePartnerPerformance';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '@/utils/currency';
-import { Loader2, TrendingUp, TrendingDown, Users, BedDouble, IndianRupee, AlertTriangle, Star, Flame, BarChart2, Wallet, UserPlus, UserMinus, Clock, Building } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Users, BedDouble, IndianRupee, AlertTriangle, Star, Flame, BarChart2, Wallet, UserPlus, UserMinus, Clock, Building, Banknote, Smartphone, Building2, CreditCard } from 'lucide-react';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Area, AreaChart
 } from 'recharts';
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+import { DateFilterSelector } from '@/components/common/DateFilterSelector';
 
 function GrowthBadge({ current, previous, suffix = '' }: { current: number; previous: number; suffix?: string }) {
   if (previous === 0 && current === 0) return <span className="text-[10px] text-muted-foreground">—</span>;
@@ -34,7 +33,7 @@ function SummaryCard({ title, value, icon: Icon, prev, isCurrency = false }: {
           <div>
             <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">{title}</p>
             <p className="text-xl font-bold mt-1">{isCurrency ? formatCurrency(value) : value.toLocaleString('en-IN')}</p>
-            {prev !== undefined && <GrowthBadge current={value} previous={prev} suffix=" vs last month" />}
+            {prev !== undefined && <GrowthBadge current={value} previous={prev} suffix=" vs prev" />}
           </div>
           <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
             <Icon className="h-5 w-5 text-primary" />
@@ -58,11 +57,23 @@ function InsightCard({ text, icon: Icon, gradient }: { text: string; icon: any; 
   );
 }
 
+const METHOD_LABELS: Record<string, { label: string; icon: any }> = {
+  cash: { label: 'Cash', icon: Banknote },
+  upi: { label: 'UPI', icon: Smartphone },
+  bank_transfer: { label: 'Bank Transfer', icon: Building2 },
+  online: { label: 'Online', icon: CreditCard },
+};
+
+function getMethodDisplay(key: string) {
+  if (METHOD_LABELS[key]) return METHOD_LABELS[key];
+  // Custom payment mode - clean up the key for display
+  const label = key.startsWith('custom_') ? key.replace('custom_', '') : key;
+  return { label: label.charAt(0).toUpperCase() + label.slice(1), icon: Building2 };
+}
+
 export default function BusinessPerformance() {
-  const now = new Date();
   const [filters, setFilters] = useState<PerformanceFilters>({
-    month: now.getMonth(),
-    year: now.getFullYear(),
+    dateFilter: 'this_month',
     propertyType: 'all',
   });
 
@@ -81,13 +92,13 @@ export default function BusinessPerformance() {
   const insights: { text: string; icon: any; gradient: string }[] = [];
   if (d.prevOccupancy !== undefined && d.occupancyPercent > d.prevOccupancy) {
     insights.push({
-      text: `Your occupancy improved by ${d.occupancyPercent - d.prevOccupancy}% compared to last month.`,
+      text: `Your occupancy improved by ${d.occupancyPercent - d.prevOccupancy}% compared to previous period.`,
       icon: TrendingUp, gradient: 'bg-gradient-to-r from-emerald-500 to-teal-600',
     });
   }
   if (d.prevCollections !== undefined && d.totalCollections > d.prevCollections) {
     insights.push({
-      text: `You earned ${formatCurrency(d.totalCollections - d.prevCollections)} more than last month.`,
+      text: `You earned ${formatCurrency(d.totalCollections - d.prevCollections)} more than previous period.`,
       icon: IndianRupee, gradient: 'bg-gradient-to-r from-blue-500 to-indigo-600',
     });
   }
@@ -104,10 +115,13 @@ export default function BusinessPerformance() {
     });
   }
 
-  // Best revenue month
   const bestRevMonth = d.monthlyTrends?.length
     ? d.monthlyTrends.reduce((a: MonthlyTrend, b: MonthlyTrend) => a.revenue > b.revenue ? a : b)
     : null;
+
+  // Payment method breakdown data
+  const methodEntries = Object.entries((d.collectionsByMethod || {}) as CollectionsByMethod)
+    .sort((a, b) => b[1] - a[1]);
 
   return (
     <div className="space-y-6 p-1">
@@ -118,14 +132,6 @@ export default function BusinessPerformance() {
           <p className="text-sm text-muted-foreground">Complete overview of your business metrics</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Select value={String(filters.month)} onValueChange={v => setFilters(f => ({ ...f, month: Number(v) }))}>
-            <SelectTrigger className="w-[100px] h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>{MONTHS.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
-          </Select>
-          <Select value={String(filters.year)} onValueChange={v => setFilters(f => ({ ...f, year: Number(v) }))}>
-            <SelectTrigger className="w-[80px] h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>{[2024, 2025, 2026].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
-          </Select>
           {d.properties?.length > 1 && (
             <Select value={filters.propertyId || 'all'} onValueChange={v => setFilters(f => ({ ...f, propertyId: v === 'all' ? undefined : v }))}>
               <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="All Properties" /></SelectTrigger>
@@ -137,6 +143,16 @@ export default function BusinessPerformance() {
           )}
         </div>
       </div>
+
+      {/* Date Filter */}
+      <DateFilterSelector
+        dateFilter={filters.dateFilter}
+        startDate={filters.startDate}
+        endDate={filters.endDate}
+        onDateFilterChange={v => setFilters(f => ({ ...f, dateFilter: v }))}
+        onStartDateChange={d => setFilters(f => ({ ...f, startDate: d }))}
+        onEndDateChange={d => setFilters(f => ({ ...f, endDate: d }))}
+      />
 
       {/* Section A: Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -168,8 +184,8 @@ export default function BusinessPerformance() {
             <TableHeader>
               <TableRow>
                 <TableHead className="text-[11px]">Category</TableHead>
-                <TableHead className="text-[11px] text-right">This Month</TableHead>
-                <TableHead className="text-[11px] text-right">Last Month</TableHead>
+                <TableHead className="text-[11px] text-right">This Period</TableHead>
+                <TableHead className="text-[11px] text-right">Previous Period</TableHead>
                 <TableHead className="text-[11px] text-right">Growth</TableHead>
               </TableRow>
             </TableHeader>
@@ -192,6 +208,49 @@ export default function BusinessPerformance() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Section B2: Collections by Payment Mode */}
+      {methodEntries.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Wallet className="h-4 w-4" /> Collections by Payment Mode
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-[11px]">Payment Mode</TableHead>
+                  <TableHead className="text-[11px] text-right">This Period</TableHead>
+                  <TableHead className="text-[11px] text-right">Previous Period</TableHead>
+                  <TableHead className="text-[11px] text-right">Growth</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {methodEntries.map(([method, amount]) => {
+                  const display = getMethodDisplay(method);
+                  const prevAmt = (d.prevCollectionsByMethod || {})[method] || 0;
+                  const MethodIcon = display.icon;
+                  return (
+                    <TableRow key={method}>
+                      <TableCell className="text-xs font-medium">
+                        <span className="inline-flex items-center gap-1.5">
+                          <MethodIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                          {display.label}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs text-right font-mono">{formatCurrency(amount)}</TableCell>
+                      <TableCell className="text-xs text-right font-mono text-muted-foreground">{formatCurrency(prevAmt)}</TableCell>
+                      <TableCell className="text-right"><GrowthBadge current={amount} previous={prevAmt} /></TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Section C: Dues & Refund */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -369,7 +428,7 @@ export default function BusinessPerformance() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {[
               { label: 'Active Students', value: d.activeStudents, icon: Users },
-              { label: 'New This Month', value: d.newAdmissions, icon: UserPlus },
+              { label: 'New This Period', value: d.newAdmissions, icon: UserPlus },
               { label: 'Renewals', value: d.renewals, icon: Users },
               { label: 'Dropouts', value: d.dropouts, icon: UserMinus },
               { label: 'Avg Stay (days)', value: d.avgStayDuration, icon: Clock },

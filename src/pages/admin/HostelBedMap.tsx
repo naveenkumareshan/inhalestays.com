@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
+import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
 
 type ViewMode = 'grid' | 'table';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked';
@@ -1422,23 +1423,16 @@ const HostelBedMap: React.FC = () => {
                       {/* Payment Method */}
                       <div className="space-y-1.5">
                         <Label className="text-[10px] uppercase text-muted-foreground">Payment Method</Label>
-                        <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="grid grid-cols-3 gap-1.5">
-                          <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
-                            <RadioGroupItem value="cash" id="hpm_cash" className="h-3 w-3" />
-                            <Label htmlFor="hpm_cash" className="text-[10px] cursor-pointer flex items-center gap-1"><Banknote className="h-3 w-3" /> Cash</Label>
-                          </div>
-                          <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
-                            <RadioGroupItem value="upi" id="hpm_upi" className="h-3 w-3" />
-                            <Label htmlFor="hpm_upi" className="text-[10px] cursor-pointer flex items-center gap-1"><Smartphone className="h-3 w-3" /> UPI</Label>
-                          </div>
-                          <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
-                            <RadioGroupItem value="bank_transfer" id="hpm_bank" className="h-3 w-3" />
-                            <Label htmlFor="hpm_bank" className="text-[10px] cursor-pointer flex items-center gap-1"><Building2 className="h-3 w-3" /> Bank</Label>
-                          </div>
-                        </RadioGroup>
+                        <PaymentMethodSelector
+                          value={paymentMethod}
+                          onValueChange={setPaymentMethod}
+                          partnerId={user?.id}
+                          idPrefix="hpm"
+                          columns={3}
+                        />
                       </div>
 
-                      {(paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && (
+                      {(paymentMethod === 'upi' || paymentMethod === 'bank_transfer' || paymentMethod.startsWith('custom_')) && (
                         <div>
                           <Label className="text-[10px] uppercase text-muted-foreground">Transaction ID *</Label>
                           <Input className="h-8 text-xs" placeholder="Enter transaction reference ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} />
@@ -1516,14 +1510,16 @@ const HostelBedMap: React.FC = () => {
                                   <div><Label className="text-[10px]">Amount (₹)</Label><Input type="number" className="h-7 text-xs" value={dueCollectAmount} onChange={e => setDueCollectAmount(e.target.value)} /></div>
                                   <div>
                                     <Label className="text-[10px]">Payment Method</Label>
-                                    <RadioGroup value={dueCollectMethod} onValueChange={setDueCollectMethod} className="grid grid-cols-2 gap-1 mt-1">
-                                      <div className="flex items-center gap-1 border rounded p-1"><RadioGroupItem value="cash" id={`hdc_cash_${b.bookingId}`} className="h-2.5 w-2.5" /><Label htmlFor={`hdc_cash_${b.bookingId}`} className="text-[9px] cursor-pointer">Cash</Label></div>
-                                      <div className="flex items-center gap-1 border rounded p-1"><RadioGroupItem value="upi" id={`hdc_upi_${b.bookingId}`} className="h-2.5 w-2.5" /><Label htmlFor={`hdc_upi_${b.bookingId}`} className="text-[9px] cursor-pointer">UPI</Label></div>
-                                      <div className="flex items-center gap-1 border rounded p-1"><RadioGroupItem value="bank_transfer" id={`hdc_bank_${b.bookingId}`} className="h-2.5 w-2.5" /><Label htmlFor={`hdc_bank_${b.bookingId}`} className="text-[9px] cursor-pointer">Bank</Label></div>
-                                      <div className="flex items-center gap-1 border rounded p-1"><RadioGroupItem value="online" id={`hdc_online_${b.bookingId}`} className="h-2.5 w-2.5" /><Label htmlFor={`hdc_online_${b.bookingId}`} className="text-[9px] cursor-pointer">Online</Label></div>
-                                    </RadioGroup>
+                                    <PaymentMethodSelector
+                                      value={dueCollectMethod}
+                                      onValueChange={setDueCollectMethod}
+                                      partnerId={user?.id}
+                                      idPrefix={`hdc_${b.bookingId}`}
+                                      columns={2}
+                                      compact
+                                    />
                                   </div>
-                                  {(dueCollectMethod === 'upi' || dueCollectMethod === 'bank_transfer') && (
+                                  {(dueCollectMethod === 'upi' || dueCollectMethod === 'bank_transfer' || dueCollectMethod.startsWith('custom_')) && (
                                     <div><Label className="text-[10px]">Transaction ID</Label><Input className="h-7 text-xs" value={dueCollectTxnId} onChange={e => setDueCollectTxnId(e.target.value)} /></div>
                                   )}
                                   {dueCollectMethod !== 'cash' && (
