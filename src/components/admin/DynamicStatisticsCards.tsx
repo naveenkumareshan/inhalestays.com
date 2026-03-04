@@ -5,9 +5,12 @@ import { useDashboardStatistics } from '@/hooks/use-dashboard-statistics';
 import { BarChart, TrendingUp, AlertCircle, UserCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { adminBookingsService } from '@/api/adminBookingsService';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function DynamicStatisticsCards() {
-  const { statistics, loading, error } = useDashboardStatistics();
+  const { user } = useAuth();
+  const partnerUserId = user?.role === 'vendor' ? user.id : undefined;
+  const { statistics, loading, error } = useDashboardStatistics(partnerUserId);
   const [activeResidents, setActiveResidents] = useState({
     activeResidents: 0,
     totalCapacity: 0,
@@ -22,7 +25,7 @@ useEffect(() => {
 
   const fetchActiveResidents = async () => {
     try {
-      const response = await adminBookingsService.getActiveResidents();
+      const response = await adminBookingsService.getActiveResidents(partnerUserId);
       if (response.success) {
         setActiveResidents(response.data as any);
       }

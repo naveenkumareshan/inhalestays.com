@@ -89,6 +89,7 @@ export function CouponManagement() {
         search: searchTerm || undefined,
         type: filterType || undefined,
         scope: filterScope || undefined,
+        createdBy: user?.role === 'vendor' ? user.id : undefined,
       });
       if (response.success) {
         setCoupons((response.data || []) as CouponData[]);

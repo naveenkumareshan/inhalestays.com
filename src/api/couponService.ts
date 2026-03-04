@@ -59,6 +59,7 @@ export const couponService = {
     scope?: string;
     applicableFor?: string;
     isActive?: boolean;
+    createdBy?: string;
   }) => {
     try {
       let query = supabase
@@ -77,6 +78,9 @@ export const couponService = {
       }
       if (params?.isActive !== undefined) {
         query = query.eq('is_active', params.isActive);
+      }
+      if (params?.createdBy) {
+        query = query.eq('created_by', params.createdBy);
       }
 
       const { data, error } = await query;

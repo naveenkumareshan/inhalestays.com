@@ -15,7 +15,7 @@ export type DashboardStatistics = {
   currentYear: number;
 };
 
-export function useDashboardStatistics() {
+export function useDashboardStatistics(partnerUserId?: string) {
   const [statistics, setStatistics] = useState<DashboardStatistics>({
     totalRevenue: 0,
     revenueToday: 0,
@@ -42,7 +42,7 @@ export function useDashboardStatistics() {
       setError(null);
       try {
         // Single RPC call replaces 4+ separate full-table queries
-        const result = await adminBookingsService.getDashboardStats();
+        const result = await adminBookingsService.getDashboardStats(partnerUserId);
         if (!result.success || !result.data) throw new Error('Failed to load');
 
         const d = result.data;

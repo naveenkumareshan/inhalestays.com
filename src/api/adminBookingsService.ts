@@ -275,9 +275,14 @@ export const adminBookingsService = {
     }
   },
 
-  getDashboardStats: async () => {
+  getDashboardStats: async (partnerUserId?: string) => {
     try {
-      const { data, error } = await supabase.rpc('get_dashboard_stats');
+      let data, error;
+      if (partnerUserId) {
+        ({ data, error } = await supabase.rpc('get_partner_dashboard_stats', { p_user_id: partnerUserId }));
+      } else {
+        ({ data, error } = await supabase.rpc('get_dashboard_stats'));
+      }
       if (error) throw error;
       return { success: true, data: data as Record<string, number> };
     } catch (error) {
@@ -362,9 +367,9 @@ export const adminBookingsService = {
     return { success: true, data: [] };
   },
 
-  getActiveResidents: async () => {
+  getActiveResidents: async (partnerUserId?: string) => {
     try {
-      const result = await adminBookingsService.getDashboardStats();
+      const result = await adminBookingsService.getDashboardStats(partnerUserId);
       if (!result.success || !result.data) throw new Error('Failed');
       const d = result.data;
       const activeResidents = d.active_residents || 0;
