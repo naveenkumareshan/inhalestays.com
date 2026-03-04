@@ -6,6 +6,6 @@ export const hideSplashScreen = async () => {
     // Small delay to let the app render before hiding
     setTimeout(async () => {
       await SplashScreen.hide();
-    }, 300);
+    }, 800);
   }
 };
