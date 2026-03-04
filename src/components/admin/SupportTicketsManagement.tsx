@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -10,8 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Headphones, Search, Send } from 'lucide-react';
+import { Headphones, Search } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import TicketChat from '@/components/shared/TicketChat';
 
 const STATUSES = ['all', 'open', 'in_progress', 'resolved', 'closed'];
 
@@ -28,14 +28,16 @@ const SupportTicketsManagement = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<any>(null);
-  const [adminResponse, setAdminResponse] = useState('');
   const [newStatus, setNewStatus] = useState('');
   const [saving, setSaving] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState('');
 
   useEffect(() => { loadTickets(); }, []);
 
   const loadTickets = async () => {
     setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) setCurrentUserId(user.id);
     const { data } = await supabase.from('support_tickets').select('*, profiles:user_id(name, email, phone)').order('created_at', { ascending: false });
     setTickets((data as any[]) || []);
     setLoading(false);
@@ -47,27 +49,16 @@ const SupportTicketsManagement = () => {
     return true;
   });
 
-  const handleRespond = async () => {
-    if (!selected) return;
+  const handleStatusUpdate = async () => {
+    if (!selected || !newStatus) return;
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    const updates: any = {};
-    if (adminResponse.trim()) {
-      updates.admin_response = adminResponse.trim();
-      updates.responded_by = user?.id;
-      updates.responded_at = new Date().toISOString();
-    }
-    if (newStatus) updates.status = newStatus;
-
-    const { error } = await supabase.from('support_tickets').update(updates).eq('id', selected.id);
+    const { error } = await supabase.from('support_tickets').update({ status: newStatus }).eq('id', selected.id);
     setSaving(false);
     if (error) {
-      toast({ title: 'Error', description: 'Failed to update ticket', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' });
     } else {
-      toast({ title: 'Updated', description: 'Support ticket updated' });
-      setSelected(null);
-      setAdminResponse('');
-      setNewStatus('');
+      toast({ title: 'Updated', description: 'Ticket status updated' });
+      setSelected({ ...selected, status: newStatus });
       loadTickets();
     }
   };
@@ -126,7 +117,7 @@ const SupportTicketsManagement = () => {
                       <TableCell><Badge variant="outline" className="text-[10px] capitalize">{t.category}</Badge></TableCell>
                       <TableCell><span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusBadge[t.status] || ''}`}>{t.status?.replace('_', ' ')}</span></TableCell>
                       <TableCell>
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setSelected(t); setNewStatus(t.status); setAdminResponse(t.admin_response || ''); }}>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setSelected(t); setNewStatus(t.status); }}>
                           View
                         </Button>
                       </TableCell>
@@ -140,44 +131,47 @@ const SupportTicketsManagement = () => {
       </Card>
 
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="text-sm">Support Ticket Details</DialogTitle>
+            <DialogTitle className="text-sm">Support Ticket — {selected?.serial_number || ''}</DialogTitle>
           </DialogHeader>
           {selected && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="flex flex-col flex-1 min-h-0 space-y-3">
+              <div className="grid grid-cols-2 gap-2 text-xs shrink-0">
                 <div><span className="text-muted-foreground">User:</span> {(selected.profiles as any)?.name}</div>
                 <div><span className="text-muted-foreground">Email:</span> {(selected.profiles as any)?.email}</div>
                 <div><span className="text-muted-foreground">Category:</span> <span className="capitalize">{selected.category}</span></div>
                 <div><span className="text-muted-foreground">Date:</span> {format(new Date(selected.created_at), 'd MMM yyyy')}</div>
               </div>
-              <div>
-                <p className="text-xs font-medium mb-1">Subject</p>
-                <p className="text-sm">{selected.subject}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium mb-1">Description</p>
-                <p className="text-sm text-muted-foreground">{selected.description}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium mb-1">Update Status</p>
+
+              {/* Status update */}
+              <div className="flex items-center gap-2 shrink-0">
                 <Select value={newStatus} onValueChange={setNewStatus}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs w-[140px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {STATUSES.filter(s => s !== 'all').map(s => (
-                      <SelectItem key={s} value={s} className="capitalize text-sm">{s.replace('_', ' ')}</SelectItem>
+                      <SelectItem key={s} value={s} className="capitalize text-xs">{s.replace('_', ' ')}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <Button size="sm" className="h-8 text-xs" disabled={saving || newStatus === selected.status} onClick={handleStatusUpdate}>
+                  {saving ? 'Saving…' : 'Update Status'}
+                </Button>
               </div>
-              <div>
-                <p className="text-xs font-medium mb-1">Admin Response</p>
-                <Textarea value={adminResponse} onChange={(e) => setAdminResponse(e.target.value)} rows={3} className="text-sm" placeholder="Write a response…" maxLength={1000} />
+
+              {/* Chat thread */}
+              <div className="flex-1 min-h-0 border rounded-lg overflow-hidden">
+                <TicketChat
+                  ticketId={selected.id}
+                  ticketType="support"
+                  ticketDescription={selected.description}
+                  ticketCreatedAt={selected.created_at}
+                  ticketStatus={selected.status}
+                  senderRole="admin"
+                  currentUserId={currentUserId}
+                  creatorName={(selected.profiles as any)?.name || 'Student'}
+                />
               </div>
-              <Button onClick={handleRespond} disabled={saving} className="w-full h-9 text-sm gap-1">
-                <Send className="h-3.5 w-3.5" /> {saving ? 'Saving…' : 'Update & Respond'}
-              </Button>
             </div>
           )}
         </DialogContent>

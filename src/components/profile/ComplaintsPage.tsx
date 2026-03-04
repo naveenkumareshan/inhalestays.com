@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, MessageSquareWarning } from 'lucide-react';
+import { ArrowLeft, Plus, MessageSquareWarning, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { bookingsService } from '@/api/bookingsService';
 import { hostelBookingService } from '@/api/hostelBookingService';
@@ -14,6 +14,7 @@ import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import TicketChat from '@/components/shared/TicketChat';
 
 const CATEGORIES = ['cleanliness', 'noise', 'facilities', 'staff', 'other'];
 
@@ -31,6 +32,8 @@ const ComplaintsPage = () => {
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
+  const [currentUserId, setCurrentUserId] = useState('');
 
   const [formData, setFormData] = useState({
     booking_id: '',
@@ -39,14 +42,13 @@ const ComplaintsPage = () => {
     description: '',
   });
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    setCurrentUserId(user.id);
 
     const [complaintsRes, cabinBookingsRes, hostelBookingsRes] = await Promise.all([
       supabase.from('complaints').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
@@ -112,6 +114,38 @@ const ComplaintsPage = () => {
     }
   };
 
+  // Chat view for selected complaint
+  if (selectedComplaint) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <div className="bg-card border-b px-3 py-3 flex items-center gap-3 sticky top-0 z-10">
+          <button onClick={() => setSelectedComplaint(null)} className="p-1"><ArrowLeft className="h-5 w-5" /></button>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-semibold truncate">{selectedComplaint.subject}</p>
+            <div className="flex items-center gap-2">
+              {selectedComplaint.serial_number && <span className="text-[10px] font-mono text-muted-foreground">{selectedComplaint.serial_number}</span>}
+              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusBadge[selectedComplaint.status] || ''}`}>
+                {selectedComplaint.status?.replace('_', ' ')}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1">
+          <TicketChat
+            ticketId={selectedComplaint.id}
+            ticketType="complaint"
+            ticketDescription={selectedComplaint.description}
+            ticketCreatedAt={selectedComplaint.created_at}
+            ticketStatus={selectedComplaint.status}
+            senderRole="student"
+            currentUserId={currentUserId}
+            creatorName="You"
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="bg-card border-b px-3 py-3 flex items-center gap-3 sticky top-0 z-10">
@@ -174,28 +208,22 @@ const ComplaintsPage = () => {
         ) : (
           <div className="space-y-2">
             {complaints.map((c: any) => (
-              <Card key={c.id} className="rounded-2xl">
-                <CardContent className="p-3 space-y-1.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
+              <Card key={c.id} className="rounded-2xl cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedComplaint(c)}>
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0 space-y-1">
                       {c.serial_number && <p className="text-[10px] font-mono text-muted-foreground">{c.serial_number}</p>}
                       <p className="text-[13px] font-semibold text-foreground">{c.subject}</p>
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">{c.category}</Badge>
+                        <span>{format(new Date(c.created_at), 'd MMM yyyy')}</span>
+                        <span className={`font-medium px-2 py-0.5 rounded-full ${statusBadge[c.status] || ''}`}>
+                          {c.status?.replace('_', ' ')}
+                        </span>
+                      </div>
                     </div>
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${statusBadge[c.status] || ''}`}>
-                      {c.status?.replace('_', ' ')}
-                    </span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                   </div>
-                  <p className="text-[11px] text-muted-foreground line-clamp-2">{c.description}</p>
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">{c.category}</Badge>
-                    <span>{format(new Date(c.created_at), 'd MMM yyyy')}</span>
-                  </div>
-                  {c.response && (
-                    <div className="bg-muted/50 rounded-xl p-2 mt-1">
-                      <p className="text-[10px] font-medium text-primary mb-0.5">Response:</p>
-                      <p className="text-[11px] text-foreground">{c.response}</p>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             ))}

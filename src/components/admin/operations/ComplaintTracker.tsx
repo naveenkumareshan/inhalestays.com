@@ -1,23 +1,22 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO } from 'date-fns';
-import { Search, ChevronDown, ChevronUp, Send } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
+import TicketChat from '@/components/shared/TicketChat';
 
 const ComplaintTracker = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [responseText, setResponseText] = useState('');
+  const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const { toast } = useToast();
@@ -59,29 +58,6 @@ const ComplaintTracker = () => {
     },
   });
 
-  const respondMutation = useMutation({
-    mutationFn: async ({ id, response }: { id: string; response: string }) => {
-      const { error } = await supabase
-        .from('complaints')
-        .update({
-          response,
-          responded_by: user?.id,
-          responded_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: 'Response sent' });
-      queryClient.invalidateQueries({ queryKey: ['ops-complaints'] });
-      setResponseText('');
-    },
-    onError: (err: any) => {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
-    },
-  });
-
   const filtered = complaints.filter((c: any) => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -102,9 +78,10 @@ const ComplaintTracker = () => {
     }
   };
 
-  const toggleExpand = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
-    setResponseText('');
+  const handleDialogStatusUpdate = (newStatus: string) => {
+    if (!selectedComplaint) return;
+    updateStatusMutation.mutate({ id: selectedComplaint.id, status: newStatus });
+    setSelectedComplaint({ ...selectedComplaint, status: newStatus });
   };
 
   return (
@@ -144,7 +121,6 @@ const ComplaintTracker = () => {
             <thead>
               <tr className="border-b bg-muted/50">
                 <th className="text-left py-2 px-3 font-medium w-12">S.No.</th>
-                <th className="text-left py-2 px-3 font-medium w-6"></th>
                 <th className="text-left py-2 px-3 font-medium">ID</th>
                 <th className="text-left py-2 px-3 font-medium">Subject</th>
                 <th className="text-left py-2 px-3 font-medium">Student</th>
@@ -156,103 +132,45 @@ const ComplaintTracker = () => {
             </thead>
             <tbody>
               {filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((c: any, index: number) => (
-                <React.Fragment key={c.id}>
-                  <tr className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => toggleExpand(c.id)}>
-                    <td className="py-1.5 px-3 text-muted-foreground">{getSerialNumber(index, currentPage, pageSize)}</td>
-                    <td className="py-1.5 px-3">
-                      {expandedId === c.id ? (
-                        <ChevronUp className="h-3 w-3 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                <tr key={c.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => setSelectedComplaint(c)}>
+                  <td className="py-1.5 px-3 text-muted-foreground">{getSerialNumber(index, currentPage, pageSize)}</td>
+                  <td className="py-1.5 px-3 font-mono text-muted-foreground">{c.serial_number || c.id.slice(0, 8)}</td>
+                  <td className="py-1.5 px-3 font-medium max-w-[200px] truncate">{c.subject}</td>
+                  <td className="py-1.5 px-3">{c.profiles?.name || 'N/A'}</td>
+                  <td className="py-1.5 px-3">
+                    <Badge variant="outline" className="text-[10px] capitalize">{c.priority}</Badge>
+                  </td>
+                  <td className="py-1.5 px-3">
+                    <Badge variant={statusColor(c.status) as any} className="text-[10px] capitalize">
+                      {c.status?.replace('_', ' ')}
+                    </Badge>
+                  </td>
+                  <td className="py-1.5 px-3">{format(parseISO(c.created_at), 'dd MMM yyyy')}</td>
+                  <td className="py-1.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-1 justify-end">
+                      {c.status !== 'resolved' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-5 text-[9px] px-1.5"
+                          onClick={() => updateStatusMutation.mutate({ id: c.id, status: 'resolved' })}
+                        >
+                          Resolve
+                        </Button>
                       )}
-                    </td>
-                    <td className="py-1.5 px-3 font-mono text-muted-foreground">{c.serial_number || c.id.slice(0, 8)}</td>
-                    <td className="py-1.5 px-3 font-medium max-w-[200px] truncate">{c.subject}</td>
-                    <td className="py-1.5 px-3">{c.profiles?.name || 'N/A'}</td>
-                    <td className="py-1.5 px-3">
-                      <Badge variant="outline" className="text-[10px] capitalize">{c.priority}</Badge>
-                    </td>
-                    <td className="py-1.5 px-3">
-                      <Badge variant={statusColor(c.status) as any} className="text-[10px] capitalize">
-                        {c.status?.replace('_', ' ')}
-                      </Badge>
-                    </td>
-                    <td className="py-1.5 px-3">{format(parseISO(c.created_at), 'dd MMM yyyy')}</td>
-                    <td className="py-1.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex gap-1 justify-end">
-                        {c.status !== 'resolved' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-5 text-[9px] px-1.5"
-                            onClick={() => updateStatusMutation.mutate({ id: c.id, status: 'resolved' })}
-                          >
-                            Resolve
-                          </Button>
-                        )}
-                        {c.status === 'open' && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-5 text-[9px] px-1.5"
-                            onClick={() => updateStatusMutation.mutate({ id: c.id, status: 'in_progress' })}
-                          >
-                            In Progress
-                          </Button>
-                        )}
-                        {c.status === 'resolved' && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-5 text-[9px] px-1.5"
-                            onClick={() => updateStatusMutation.mutate({ id: c.id, status: 'open' })}
-                          >
-                            Reopen
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                  {expandedId === c.id && (
-                    <tr className="bg-muted/20">
-                      <td colSpan={9} className="px-3 py-3">
-                        <div className="space-y-3 text-xs">
-                          <div>
-                            <span className="font-medium text-muted-foreground">Description:</span>
-                            <p className="mt-1">{c.description}</p>
-                          </div>
-                          {c.response && (
-                            <div className="bg-primary/5 rounded p-2">
-                              <span className="font-medium text-muted-foreground">Previous Response:</span>
-                              <p className="mt-1">{c.response}</p>
-                            </div>
-                          )}
-                          <div className="flex gap-2">
-                            <Textarea
-                              value={responseText}
-                              onChange={(e) => setResponseText(e.target.value)}
-                              placeholder="Type your response..."
-                              className="text-xs flex-1"
-                              rows={2}
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                            <Button
-                              size="sm"
-                              className="h-auto"
-                              disabled={!responseText.trim() || respondMutation.isPending}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                respondMutation.mutate({ id: c.id, response: responseText });
-                              }}
-                            >
-                              <Send className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
+                      {c.status === 'open' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-5 text-[9px] px-1.5"
+                          onClick={() => updateStatusMutation.mutate({ id: c.id, status: 'in_progress' })}
+                        >
+                          In Progress
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>
@@ -265,6 +183,58 @@ const ComplaintTracker = () => {
           />
         </div>
       )}
+
+      {/* Complaint Chat Dialog */}
+      <Dialog open={!!selectedComplaint} onOpenChange={(open) => !open && setSelectedComplaint(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Complaint — {selectedComplaint?.serial_number || ''}</DialogTitle>
+          </DialogHeader>
+          {selectedComplaint && (
+            <div className="flex flex-col flex-1 min-h-0 space-y-3">
+              <div className="grid grid-cols-2 gap-2 text-xs shrink-0">
+                <div><span className="text-muted-foreground">Student:</span> {selectedComplaint.profiles?.name}</div>
+                <div><span className="text-muted-foreground">Phone:</span> {selectedComplaint.profiles?.phone || '—'}</div>
+                <div><span className="text-muted-foreground">Category:</span> <span className="capitalize">{selectedComplaint.category}</span></div>
+                <div><span className="text-muted-foreground">Priority:</span> <span className="capitalize">{selectedComplaint.priority}</span></div>
+              </div>
+
+              {/* Status actions */}
+              <div className="flex gap-2 shrink-0">
+                {selectedComplaint.status !== 'resolved' && (
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleDialogStatusUpdate('resolved')}>
+                    Mark Resolved
+                  </Button>
+                )}
+                {selectedComplaint.status === 'open' && (
+                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleDialogStatusUpdate('in_progress')}>
+                    In Progress
+                  </Button>
+                )}
+                {selectedComplaint.status === 'resolved' && (
+                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleDialogStatusUpdate('open')}>
+                    Reopen
+                  </Button>
+                )}
+              </div>
+
+              {/* Chat thread */}
+              <div className="flex-1 min-h-0 border rounded-lg overflow-hidden">
+                <TicketChat
+                  ticketId={selectedComplaint.id}
+                  ticketType="complaint"
+                  ticketDescription={selectedComplaint.description}
+                  ticketCreatedAt={selectedComplaint.created_at}
+                  ticketStatus={selectedComplaint.status}
+                  senderRole="admin"
+                  currentUserId={user?.id || ''}
+                  creatorName={selectedComplaint.profiles?.name || 'Student'}
+                />
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
