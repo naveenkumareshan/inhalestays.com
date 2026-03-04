@@ -66,6 +66,8 @@ interface FloorPlanDesignerProps {
   categories?: SeatCategoryOption[];
   minPrice?: number;
   onRoomResize?: (newWidth: number, newHeight: number) => void;
+  onBulkPlaceSeats?: (seats: Array<{ position: { x: number; y: number }; number: number; price: number; category: string }>) => Promise<void>;
+  onBulkMoveSeats?: (seats: Array<{ _id: string; position: { x: number; y: number } }>) => Promise<void>;
 }
 
 export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
@@ -89,6 +91,8 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   categories = [],
   minPrice = 0,
   onRoomResize,
+  onBulkPlaceSeats,
+  onBulkMoveSeats,
 }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -255,28 +259,78 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   };
 
   // ── Auto-generate seats handler ──
-  const handleAutoGenerate = (generatedSeats: GeneratedSeat[]) => {
-    if (!onPlaceSeat) return;
-    let placed = 0;
+  const handleAutoGenerate = async (generatedSeats: GeneratedSeat[]) => {
+    // Filter out overlapping seats
+    const validSeats = generatedSeats.filter(gs => !isOverlapping(gs.position));
+    const skipped = generatedSeats.length - validSeats.length;
+
+    if (validSeats.length === 0) {
+      toast({ title: 'No seats placed', description: 'All positions overlapped with existing seats' });
+      return;
+    }
 
     // Auto-expand room if seats exceed current bounds
-    if (generatedSeats.length > 0) {
-      const maxX = Math.max(...generatedSeats.map(s => s.position.x)) + SEAT_W + GRID_SNAP;
-      const maxY = Math.max(...generatedSeats.map(s => s.position.y)) + SEAT_H + GRID_SNAP;
-      if ((maxX > roomWidth || maxY > roomHeight) && onRoomResize) {
-        onRoomResize(Math.max(roomWidth, maxX), Math.max(roomHeight, maxY));
-      }
+    const maxX = Math.max(...validSeats.map(s => s.position.x)) + SEAT_W + GRID_SNAP;
+    const maxY = Math.max(...validSeats.map(s => s.position.y)) + SEAT_H + GRID_SNAP;
+    if ((maxX > roomWidth || maxY > roomHeight) && onRoomResize) {
+      onRoomResize(Math.max(roomWidth, maxX), Math.max(roomHeight, maxY));
     }
 
-    for (const gs of generatedSeats) {
-      if (!isOverlapping(gs.position)) {
+    // Use bulk placement if available (single API call)
+    if (onBulkPlaceSeats) {
+      const bulkData = validSeats.map(gs => ({
+        position: gs.position,
+        number: gs.number,
+        price: gs.price,
+        category: categories[0]?.name || 'Non-AC',
+      }));
+      await onBulkPlaceSeats(bulkData);
+    } else if (onPlaceSeat) {
+      for (const gs of validSeats) {
         onPlaceSeat(gs.position, gs.number, gs.price, categories[0]?.name || 'Non-AC');
-        placed++;
       }
     }
-    toast({ title: `Placed ${placed} seats`, description: `${generatedSeats.length - placed} skipped due to overlap` });
 
-    // Auto-fit zoom after generation
+    toast({ title: `Placed ${validSeats.length} seats`, description: skipped > 0 ? `${skipped} skipped due to overlap` : undefined });
+    setTimeout(() => handleFitToScreen(), 300);
+  };
+
+  // ── Reset Layout: re-grid all seats in neat rows ──
+  const handleResetLayout = async () => {
+    if (seats.length === 0) return;
+    const sorted = [...seats].sort((a, b) => a.number - b.number);
+    const cols = Math.ceil(Math.sqrt(sorted.length * 1.5));
+    const spacingX = SEAT_W + GRID_SNAP;
+    const spacingY = SEAT_H + GRID_SNAP;
+    const startX = GRID_SNAP;
+    const startY = GRID_SNAP;
+
+    const updates: Array<{ _id: string; position: { x: number; y: number } }> = [];
+    sorted.forEach((seat, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = snapToGrid(startX + col * spacingX);
+      const y = snapToGrid(startY + row * spacingY);
+      updates.push({ _id: seat._id, position: { x, y } });
+    });
+
+    // Auto-expand if needed
+    const maxX = Math.max(...updates.map(u => u.position.x)) + SEAT_W + GRID_SNAP;
+    const maxY = Math.max(...updates.map(u => u.position.y)) + SEAT_H + GRID_SNAP;
+    if ((maxX > roomWidth || maxY > roomHeight) && onRoomResize) {
+      onRoomResize(Math.max(roomWidth, maxX), Math.max(roomHeight, maxY));
+    }
+
+    // Update local state immediately
+    const posMap = new Map(updates.map(u => [u._id, u.position]));
+    onSeatsChange(seats.map(s => posMap.has(s._id) ? { ...s, position: posMap.get(s._id)! } : s));
+
+    // Persist via bulk move
+    if (onBulkMoveSeats) {
+      await onBulkMoveSeats(updates);
+    }
+
+    toast({ title: 'Layout reset', description: `${sorted.length} seats arranged in grid` });
     setTimeout(() => handleFitToScreen(), 300);
   };
 
@@ -342,6 +396,17 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
         >
           <Grid3X3 className="h-3.5 w-3.5 mr-1" /> Add Multiple
         </Button>
+
+        {seats.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={handleResetLayout}
+          >
+            <Maximize className="h-3.5 w-3.5 mr-1" /> Reset Layout
+          </Button>
+        )}
 
         {placementMode && (
           <span className="text-xs text-muted-foreground">Next: #{nextSeatNumber} — Click on the layout to place a seat</span>
