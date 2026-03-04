@@ -204,4 +204,15 @@ export const adminSeatsService = {
       return { success: false, message: String(e) };
     }
   },
+
+  deleteAllSeatsByCabin: async (cabinId: string, floor: number) => {
+    try {
+      const { error } = await supabase.from('seats').delete().eq('cabin_id', cabinId).eq('floor', floor);
+      if (error) throw error;
+      return { success: true };
+    } catch (e) {
+      console.error('Error deleting all seats:', e);
+      return { success: false, message: String(e) };
+    }
+  },
 };

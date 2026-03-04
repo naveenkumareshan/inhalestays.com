@@ -6,6 +6,10 @@ import { Slider } from '@/components/ui/slider';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Save, ZoomIn, ZoomOut, Maximize, Image, X, MousePointerClick, Grid3X3,
@@ -68,6 +72,7 @@ interface FloorPlanDesignerProps {
   onRoomResize?: (newWidth: number, newHeight: number) => void;
   onBulkPlaceSeats?: (seats: Array<{ position: { x: number; y: number }; number: number; price: number; category: string }>) => Promise<void>;
   onBulkMoveSeats?: (seats: Array<{ _id: string; position: { x: number; y: number } }>) => Promise<void>;
+  onDeleteAllSeats?: () => Promise<void>;
 }
 
 export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
@@ -93,6 +98,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   onRoomResize,
   onBulkPlaceSeats,
   onBulkMoveSeats,
+  onDeleteAllSeats,
 }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -105,6 +111,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   const [placementMode, setPlacementMode] = useState(false);
   const [nextSeatNumber, setNextSeatNumber] = useState(1);
   const [showAutoGenerator, setShowAutoGenerator] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
   // Pending seat for dialog
   const [pendingSeat, setPendingSeat] = useState<{ x: number; y: number } | null>(null);
@@ -408,6 +415,17 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
           </Button>
         )}
 
+        {seats.length > 0 && onDeleteAllSeats && (
+          <Button
+            variant="destructive"
+            size="sm"
+            className="h-8"
+            onClick={() => setShowDeleteAllConfirm(true)}
+          >
+            <X className="h-3.5 w-3.5 mr-1" /> Delete All
+          </Button>
+        )}
+
         {placementMode && (
           <span className="text-xs text-muted-foreground">Next: #{nextSeatNumber} — Click on the layout to place a seat</span>
         )}
@@ -548,6 +566,30 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
         gridSize={GRID_SNAP}
         existingSeatCount={seats.length}
       />
+
+      {/* Delete All Confirmation */}
+      <AlertDialog open={showDeleteAllConfirm} onOpenChange={setShowDeleteAllConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete All Seats?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all {seats.length} seats on this floor. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (onDeleteAllSeats) await onDeleteAllSeats();
+                setShowDeleteAllConfirm(false);
+              }}
+            >
+              Delete All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
