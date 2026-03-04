@@ -1,32 +1,49 @@
 
 
-# Fix: Partner Pages Not Opening
+# Fix: Partner Login — Pages Not Showing
 
 ## Root Cause
 
-The `VendorLogin.tsx` redirects partners to `/admin/dashboard` (lines 27 and 81) instead of `/partner/dashboard`. Meanwhile, the sidebar generates all links with the `/partner/` prefix. This creates a critical mismatch:
+The `fetchUserRole` function in `AuthContext.tsx` (line 59-63) uses `.single()` to query the `user_roles` table. The problem: the `handle_new_user` trigger automatically inserts a `'student'` role for every new user. When an admin later assigns the `'vendor'` role to a partner, that user ends up with **two rows** in `user_roles` — both `'student'` and `'vendor'`.
 
-1. Partner logs in → lands on `/admin/dashboard` (under the `/admin` route tree)
-2. Sidebar shows `/partner/*` links (because `isPartner = true`)
-3. Clicking ANY sidebar link causes a **full route tree switch** from `/admin` to `/partner`
-4. React Router unmounts the entire `/admin` tree and remounts a new `/partner` tree
-5. During this remount, `ProtectedRoute` and `AdminSidebar` re-initialize their hooks (`useAuth`, `useVendorEmployeePermissions`, `usePartnerPropertyTypes`) — all start with `loading: true`
-6. This causes a blank flash or stuck loading state on every single click
-
-After the first click lands the partner in `/partner/*`, subsequent clicks should stay in the same tree. But if the user navigates back to dashboard or refreshes, they end up on `/admin/dashboard` again, restarting the cycle.
+`.single()` fails when multiple rows are returned (PostgreSQL error PGRST116), causing `fetchUserRole` to default to `'student'`. The `ProtectedRoute` then sees a "student" user trying to access an admin-required route and redirects them to `/student/dashboard` — which is why partner pages never show.
 
 ## Fix
 
-### File: `src/pages/vendor/VendorLogin.tsx`
-- **Line 27**: Change redirect from `/admin/dashboard` to `/partner/dashboard`
-- **Line 81**: Change post-login navigation from `/admin/dashboard` to `/partner/dashboard`
+### File: `src/contexts/AuthContext.tsx`
 
-### File: `src/contexts/AuthContext.tsx` (no change needed)
-Auth context is fine — `isLoading` stays `false` after initial auth check. The issue is purely the route mismatch causing full tree remounts.
+Replace the `.single()` query with one that handles multiple roles by prioritizing the highest-privilege role:
 
-### File: `src/pages/Index.tsx` (verify)
-Check if the homepage redirect for authenticated vendors also sends them to `/admin/dashboard` instead of `/partner/dashboard`. If so, fix it too.
+```typescript
+const fetchUserRole = async (userId: string): Promise<UserRole> => {
+  const cached = roleCache.get(userId);
+  if (cached) return cached;
 
-## Summary
-Two-line fix in `VendorLogin.tsx` to redirect partners to `/partner/dashboard` instead of `/admin/dashboard`, keeping all navigation within the correct route tree and preventing full layout remounts.
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId);
+
+  if (error || !data || data.length === 0) {
+    console.warn('No role found for user, defaulting to student');
+    return 'student';
+  }
+
+  // Priority order: pick the highest-privilege role
+  const priority: UserRole[] = ['super_admin', 'admin', 'vendor', 'vendor_employee', 'hostel_manager', 'student'];
+  const roles = data.map(r => r.role as UserRole);
+  const role = priority.find(p => roles.includes(p)) || 'student';
+
+  roleCache.set(userId, role);
+  return role;
+};
+```
+
+**What changes:**
+- Remove `.single()` — fetch all role rows for the user
+- When multiple roles exist, pick the highest-priority one (super_admin > admin > vendor > vendor_employee > hostel_manager > student)
+- Partners with both 'student' and 'vendor' roles will correctly resolve to 'vendor'
+
+### Files Changed
+- `src/contexts/AuthContext.tsx` — one function fix (~15 lines)
 
