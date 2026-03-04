@@ -106,6 +106,7 @@ import { LazyWrapper } from './components/LazyWrapper';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
 import { useReferralCapture } from './hooks/useReferralCapture';
+import SplashOverlay from './components/SplashOverlay';
 
 const StudentSuspense = ({ children }: { children: React.ReactNode }) => (
   <ErrorBoundary>
@@ -135,6 +136,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+    <SplashOverlay />
     <AuthProvider>
       <LazyWrapper>
         <Router>
