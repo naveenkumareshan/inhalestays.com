@@ -36,7 +36,6 @@ export const generateCabinShareText = (cabin: CabinShareData, userId?: string) =
   if (cabin.fullAddress) lines.push(`📍 ${cabin.fullAddress}`);
   if (cabin.price) lines.push(`💰 ₹${cabin.price}/month`);
   if (cabin.averageRating && cabin.averageRating > 0) lines.push(`⭐ ${cabin.averageRating.toFixed(1)} rating`);
-  lines.push(``, `🔗 ${url}`);
   return { text: lines.join("\n"), url, title: cabin.name };
 };
 
@@ -56,6 +55,5 @@ export const generateHostelShareText = (hostel: HostelShareData, lowestPrice?: n
   else if (hostel.food_enabled) lines.push(`🍽 Food Available`);
   if (hostel.location) lines.push(`📍 ${hostel.location}`);
   if (lowestPrice && lowestPrice < Infinity) lines.push(`💰 From ₹${lowestPrice}`);
-  lines.push(``, `🔗 ${url}`);
   return { text: lines.join("\n"), url, title: hostel.name };
 };

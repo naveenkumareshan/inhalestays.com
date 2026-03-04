@@ -40,7 +40,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ title, text: shareText
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const encoded = encodeURIComponent(shareText + "\n" + url);
+  const encoded = encodeURIComponent(shareText + "\n\n" + url);
 
   return (
     <>
