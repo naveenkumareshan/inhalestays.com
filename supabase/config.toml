@@ -24,3 +24,6 @@ verify_jwt = false
 
 [functions.subscription-verify-payment]
 verify_jwt = false
+
+[functions.partner-register]
+verify_jwt = false
