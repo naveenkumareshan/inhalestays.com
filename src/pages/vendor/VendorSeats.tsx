@@ -200,10 +200,18 @@ const VendorSeats: React.FC = () => {
     const cabin = cabins.find(c => c._id === selectedCabinId);
     if (!cabin) return [];
     const floors = (cabin as any).floors;
-    if (Array.isArray(floors) && floors.length > 0) return floors;
+    if (Array.isArray(floors) && floors.length > 0) {
+      return floors.map((f: any, i: number) => ({
+        label: (typeof f === 'object' && f?.name) ? f.name : `Floor ${i + 1}`,
+        value: String(i + 1),
+      }));
+    }
     // Derive from seats
-    const floorSet = new Set(seats.map(s => s.floor).filter(Boolean));
-    return Array.from(floorSet).sort((a: any, b: any) => a - b);
+    const floorSet = new Set(seats.map(s => (s as any).floor).filter(Boolean));
+    return Array.from(floorSet).sort((a: any, b: any) => a - b).map((f: any) => ({
+      label: `Floor ${f}`,
+      value: String(f),
+    }));
   }, [selectedCabinId, cabins, seats]);
 
   // Reset floor when cabin changes
@@ -721,9 +729,9 @@ const VendorSeats: React.FC = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs font-medium">All Floors</SelectItem>
-              {availableFloors.map((f: any, i: number) => (
-                <SelectItem key={String(f)} value={String(f)} className="text-xs">
-                  {typeof f === 'object' ? f.name || `Floor ${i + 1}` : `Floor ${f}`}
+              {availableFloors.map((floor: any) => (
+                <SelectItem key={floor.value} value={floor.value} className="text-xs">
+                  {floor.label}
                 </SelectItem>
               ))}
             </SelectContent>
