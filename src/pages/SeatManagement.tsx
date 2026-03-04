@@ -184,6 +184,35 @@ const SeatManagement = () => {
     }
   };
 
+  const handleBulkPlaceSeats = async (seatsData: Array<{ position: { x: number; y: number }; number: number; price: number; category: string }>) => {
+    if (!cabin?.id) return;
+    try {
+      const bulkData = seatsData.map(s => ({
+        number: s.number,
+        floor: selectedFloor,
+        cabinId: cabin.id,
+        price: s.price,
+        position: s.position,
+        isAvailable: true,
+        category: s.category,
+      }));
+      const res = await adminSeatsService.bulkCreateSeats(bulkData as any);
+      if (res.success && res.data) {
+        setSeats(prev => [...prev, ...res.data]);
+      }
+    } catch (e) {
+      toast({ title: "Error bulk placing seats", variant: "destructive" });
+    }
+  };
+
+  const handleBulkMoveSeats = async (updates: Array<{ _id: string; position: { x: number; y: number } }>) => {
+    try {
+      await adminSeatsService.updateSeatPositions(updates);
+    } catch (e) {
+      console.error('Error saving bulk positions:', e);
+    }
+  };
+
   const handleSeatUpdate = async (seatId: string, updates: { category?: string; price?: number }) => {
     try {
       const res = await adminSeatsService.updateSeat(seatId, updates);
@@ -369,6 +398,8 @@ const SeatManagement = () => {
         isSaving={isSaving}
         categories={categories.map(c => ({ id: c.id, name: c.name, price: c.price }))}
         minPrice={cabin?.price || 0}
+        onBulkPlaceSeats={handleBulkPlaceSeats}
+        onBulkMoveSeats={handleBulkMoveSeats}
         onRoomResize={async (newWidth, newHeight) => {
           setRoomWidth(newWidth);
           setRoomHeight(newHeight);
