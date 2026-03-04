@@ -1,39 +1,88 @@
 
 
-# Investigation: Share Links Not Opening
+# Performance Optimization & 5000-Student Scalability Plan
 
-## Findings
+## Current Problems Identified
 
-I tested the share link routing thoroughly:
+### 1. Critical: Full-table scans on every dashboard load
+- **`getBookingStats`** (line 280): Fetches ALL bookings (`select('payment_status')`) just to count statuses — with 5000 students making multiple bookings, this will download tens of thousands of rows to the browser
+- **`getRevenueByTransaction`** (line 296): Fetches ALL completed bookings to sum revenue client-side
+- **`getActiveResidents`** (line 366): Two separate queries (bookings + cabins) on every dashboard load
 
-1. **Routes work correctly** — `/book-seat/IS-ROOM-2026-00001` loads "Scholar's Den" properly in the preview
-2. **RLS allows public access** — The `cabins` table has a policy allowing anyone to view active+approved cabins
-3. **Serial number lookup works** — `getCabinBySerialNumber` correctly queries the database
-4. **Share URL generation is correct** — `generateCabinShareText` produces `https://inhalestays.com/book-seat/IS-ROOM-2026-XXXX`
+### 2. Duplicate API calls
+- The dashboard fires `getBookingStats`, `getRevenueByTransaction`, `getActiveResidents`, `getOccupancyReports`, `getTopFillingRooms`, and `getExpiringBookings` — all in parallel on mount. The `user_roles` query fires twice (visible in performance profile: two 1.2-1.6s fetches).
 
-## Root Cause
+### 3. No database indexes
+- Queries filter on `payment_status`, `start_date`, `end_date`, `user_id`, `cabin_id` — likely missing indexes on these columns.
 
-The share links point to `https://inhalestays.com`, your custom domain. The code is correct, but the **published version on your custom domain needs to be updated**. If the deployed version is behind the current codebase, the routes or serial number lookup may not work for visitors.
+### 4. Legacy axios code still present
+- `axiosConfig.ts` and many service files (bookingManagementService, authService) still reference a non-existent Express backend (`localhost:5000`). These are dead code but add confusion and bundle weight.
 
-**Additionally**, there is one code issue: the share text passed to `navigator.share` already contains the URL (in the `🔗 https://...` line), and the `url` parameter is also passed separately. Some platforms concatenate both, which can produce a malformed link when students click it.
+## Solution: Server-Side Aggregation + Indexes
 
-## Fix
+### Phase 1: Create database functions for aggregation (migration)
 
-### 1. Clean up ShareButton to avoid double-URL issue
-In `src/components/ShareButton.tsx`, the `encoded` variable for WhatsApp/Telegram/Email concatenates `shareText + "\n" + url`, but `shareText` already includes the URL. This causes the URL to appear twice and sometimes malformed.
+Create a single `get_dashboard_stats()` RPC that runs the counting/summing server-side and returns a small JSON object instead of thousands of rows:
 
-Fix: Use only the `url` prop separately, and strip the URL line from the display text when building platform-specific share links.
+```sql
+-- Index for common booking queries
+CREATE INDEX IF NOT EXISTS idx_bookings_payment_status ON bookings(payment_status);
+CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_dates ON bookings(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_bookings_cabin_id ON bookings(cabin_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_is_active ON profiles(is_active);
+CREATE INDEX IF NOT EXISTS idx_hostel_bookings_status ON hostel_bookings(status);
+CREATE INDEX IF NOT EXISTS idx_hostel_bookings_user_id ON hostel_bookings(user_id);
 
-### 2. Ensure `navigator.share` doesn't double-encode
-Pass a simplified `text` (without the URL line) to `navigator.share`, since the `url` field is passed separately and platforms append it automatically.
+-- Dashboard stats RPC (replaces 4+ client-side full-table scans)
+CREATE OR REPLACE FUNCTION get_dashboard_stats()
+RETURNS jsonb
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT jsonb_build_object(
+    'total_bookings', (SELECT count(*) FROM bookings),
+    'completed_bookings', (SELECT count(*) FROM bookings WHERE payment_status = 'completed'),
+    'pending_bookings', (SELECT count(*) FROM bookings WHERE payment_status = 'pending'),
+    'cancelled_bookings', (SELECT count(*) FROM bookings WHERE payment_status = 'cancelled'),
+    'total_revenue', (SELECT coalesce(sum(total_price), 0) FROM bookings WHERE payment_status = 'completed'),
+    'active_residents', (SELECT count(*) FROM bookings WHERE payment_status = 'completed' AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE),
+    'total_capacity', (SELECT coalesce(sum(capacity), 0) FROM cabins WHERE is_active = true)
+  );
+$$;
+```
 
-### 3. Update shareUtils to separate text and URL
-Modify `generateCabinShareText` and `generateHostelShareText` to return the text body **without** the URL line, since the URL is already returned as a separate field.
+### Phase 2: Update dashboard service to use RPC
 
-### 4. Publish the app
-After the code fix, you need to click **Publish → Update** to deploy the latest version to `inhalestays.com`.
+Rewrite `getBookingStats`, `getRevenueByTransaction`, and `getActiveResidents` in `adminBookingsService.ts` to call a single `supabase.rpc('get_dashboard_stats')` instead of 4 separate full-table queries.
+
+### Phase 3: Fix duplicate user_roles query
+
+In `AuthContext.tsx`, the `onAuthStateChange` callback and `getSession` both trigger `buildUser` → `fetchUserRole`, causing two identical network calls. Cache the result so it only fires once per session.
+
+### Phase 4: Remove dead legacy code
+
+Delete unused axios-based service files that reference the old Express backend:
+- `src/api/axiosConfig.ts`
+- `src/api/authService.ts`
+- `src/api/bookingManagementService.ts`
+- Any other files importing from `axiosConfig` that have Supabase equivalents
+
+### Phase 5: Add pagination guardrails
+
+For the admin students page with 5000 students — it already uses server-side pagination (good). Verify the `adminUsersService` uses `.range()` and `{ count: 'exact' }` patterns consistently.
+
+## Scalability Assessment
+
+**Can it handle 5000 students?** Yes, with these changes:
+- Database indexes ensure queries stay fast as data grows
+- Server-side aggregation (RPC) eliminates the bottleneck of downloading thousands of rows
+- Existing pagination in admin lists is already correct
+- Supabase can comfortably handle this scale
 
 ## Files Changed
-- `src/utils/shareUtils.ts` — Remove URL line from the text body (it's passed separately)
-- `src/components/ShareButton.tsx` — Use `url` directly instead of appending it to text again
+- **Migration SQL**: Add indexes + `get_dashboard_stats()` RPC
+- **`src/api/adminBookingsService.ts`**: Replace full-table scan methods with single RPC call
+- **`src/hooks/use-dashboard-statistics.ts`**: Simplify to use single RPC
+- **`src/contexts/AuthContext.tsx`**: Prevent duplicate `fetchUserRole` calls
+- **Delete**: `src/api/axiosConfig.ts`, `src/api/authService.ts`, `src/api/bookingManagementService.ts`
 
