@@ -294,7 +294,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
           break;
         case "weekly":
           setSelection(weekly);
-          newEndDate = addWeeks(startDate, selectedDuration.count);
+          newEndDate = addDays(startDate, selectedDuration.count * 7 - 1);
           break;
         case "monthly": {
           setSelection(months);
@@ -305,7 +305,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
         }
         default:
           setSelection(months);
-          newEndDate = addMonths(startDate, 1);
+          newEndDate = subDays(addMonths(startDate, 1), 1);
       }
 
       setEndDate(newEndDate);
@@ -366,7 +366,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
           break;
         case "weekly":
           setSelection(weekly);
-          newEndDate = addWeeks(startDate, selectedDuration.count);
+          newEndDate = addDays(startDate, selectedDuration.count * 7 - 1);
           break;
         case "monthly": {
           setSelection(months);
@@ -377,7 +377,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
         }
         default:
           setSelection(months);
-          newEndDate = addMonths(startDate, 1);
+          newEndDate = subDays(addMonths(startDate, 1), 1);
       }
 
       setEndDate(newEndDate);

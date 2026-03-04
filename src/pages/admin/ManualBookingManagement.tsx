@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { addDays, addWeeks, addMonths } from 'date-fns';
+import { addDays, addMonths, subDays } from 'date-fns';
 import { adminManualBookingService } from '../../api/adminManualBookingService';
 import { adminUsersService } from '../../api/adminUsersService';
 import { seatsService } from '../../api/seatsService';
@@ -337,9 +337,9 @@ useEffect(() => {
       if (bookingDuration === 'daily') {
         endDateObj = addDays(startDateObj, Math.max(0, months - 1));
       } else if (bookingDuration === 'weekly') {
-        endDateObj = addWeeks(startDateObj, months);
+        endDateObj = addDays(startDateObj, months * 7 - 1);
       } else {
-        endDateObj = addMonths(startDateObj, months);
+        endDateObj = subDays(addMonths(startDateObj, months), 1);
       }
       setEndDate(endDateObj.toISOString().split('T')[0]);
     }
@@ -352,9 +352,9 @@ useEffect(() => {
     if (bookingDuration === 'daily') {
       endDateObj = addDays(startDateObj, Math.max(0, months - 1));
     } else if (bookingDuration === 'weekly') {
-      endDateObj = addWeeks(startDateObj, months);
+      endDateObj = addDays(startDateObj, months * 7 - 1);
     } else {
-      endDateObj = addMonths(startDateObj, months);
+      endDateObj = subDays(addMonths(startDateObj, months), 1);
     }
     setEndDate(endDateObj.toISOString().split('T')[0]);
   };
@@ -369,9 +369,9 @@ useEffect(() => {
       if (bookingDuration === 'daily') {
         endDateObj = addDays(startDateObj, Math.max(0, monthsValue - 1));
       } else if (bookingDuration === 'weekly') {
-        endDateObj = addWeeks(startDateObj, monthsValue);
+        endDateObj = addDays(startDateObj, monthsValue * 7 - 1);
       } else {
-        endDateObj = addMonths(startDateObj, monthsValue);
+        endDateObj = subDays(addMonths(startDateObj, monthsValue), 1);
       }
       setEndDate(endDateObj.toISOString().split('T')[0]);
     }

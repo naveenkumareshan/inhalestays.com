@@ -12,7 +12,7 @@ import { razorpayService } from '@/api/razorpayService';
 import { useAuth } from '@/hooks/use-auth';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { Bed, Building, CreditCard, ChevronLeft, AlertCircle } from 'lucide-react';
-import { format, addMonths, addWeeks, addDays } from 'date-fns';
+import { format, addMonths, addDays, subDays } from 'date-fns';
 import { getImageUrl } from '@/lib/utils';
 import { formatCurrency } from '@/utils/currency';
 
@@ -113,9 +113,9 @@ const HostelBooking = () => {
   }, [room?.id, sharingOption?.id, bookingPeriod]);
   
   const calculateEndDate = () => {
-    if (bookingPeriod.type === 'daily') return addDays(startDate, bookingPeriod.duration);
-    if (bookingPeriod.type === 'weekly') return addWeeks(startDate, bookingPeriod.duration);
-    return addMonths(startDate, bookingPeriod.duration);
+    if (bookingPeriod.type === 'daily') return addDays(startDate, Math.max(0, bookingPeriod.duration - 1));
+    if (bookingPeriod.type === 'weekly') return addDays(startDate, bookingPeriod.duration * 7 - 1);
+    return subDays(addMonths(startDate, bookingPeriod.duration), 1);
   };
 
   const calculateTotalPrice = () => {
