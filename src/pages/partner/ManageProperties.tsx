@@ -3,7 +3,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building, Hotel, Plus, Shirt } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
 import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
 import {
   Dialog,
@@ -17,14 +16,31 @@ const HostelManagement = lazy(() => import('@/pages/hotelManager/HostelManagemen
 const LaundryPartnerDashboard = lazy(() => import('@/pages/LaundryPartnerDashboard'));
 
 const ManageProperties: React.FC = () => {
-  const navigate = useNavigate();
   const { hasReadingRooms, hasHostels, hasLaundry, loading } = usePartnerPropertyTypes();
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [triggerNew, setTriggerNew] = useState(false);
 
   const hasAny = hasReadingRooms || hasHostels || hasLaundry;
-  const showAllTabs = !hasAny && !loading; // New partner with no properties yet
+  const showAllTabs = !hasAny && !loading;
 
   const defaultTab = hasReadingRooms ? 'rooms' : hasHostels ? 'hostels' : hasLaundry ? 'laundry' : 'rooms';
+  const [activeTab, setActiveTab] = useState(defaultTab);
+
+  // Update activeTab when loading finishes and defaultTab changes
+  React.useEffect(() => {
+    if (!loading) {
+      setActiveTab(hasReadingRooms ? 'rooms' : hasHostels ? 'hostels' : hasLaundry ? 'laundry' : 'rooms');
+    }
+  }, [loading, hasReadingRooms, hasHostels, hasLaundry]);
+
+  const handleAddProperty = (tab: string) => {
+    setShowAddDialog(false);
+    setActiveTab(tab);
+    setTriggerNew(true);
+  };
+
+  // Reset triggerNew after it's been consumed
+  const handleTriggerConsumed = () => setTriggerNew(false);
 
   const LoadingFallback = () => (
     <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
@@ -45,7 +61,7 @@ const ManageProperties: React.FC = () => {
       {loading ? (
         <LoadingFallback />
       ) : (
-        <Tabs defaultValue={defaultTab} className="space-y-3">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
           <TabsList className="h-8">
             {(showAllTabs || hasReadingRooms) && (
               <TabsTrigger value="rooms" className="text-xs gap-1.5">
@@ -70,7 +86,7 @@ const ManageProperties: React.FC = () => {
           {(showAllTabs || hasReadingRooms) && (
             <TabsContent value="rooms">
               <Suspense fallback={<LoadingFallback />}>
-                <RoomManagement />
+                <RoomManagement autoCreateNew={activeTab === 'rooms' && triggerNew} onTriggerConsumed={handleTriggerConsumed} />
               </Suspense>
             </TabsContent>
           )}
@@ -78,7 +94,7 @@ const ManageProperties: React.FC = () => {
           {(showAllTabs || hasHostels) && (
             <TabsContent value="hostels">
               <Suspense fallback={<LoadingFallback />}>
-                <HostelManagement />
+                <HostelManagement autoCreateNew={activeTab === 'hostels' && triggerNew} onTriggerConsumed={handleTriggerConsumed} />
               </Suspense>
             </TabsContent>
           )}
@@ -102,7 +118,7 @@ const ManageProperties: React.FC = () => {
             <Button
               variant="outline"
               className="justify-start gap-2 h-12"
-              onClick={() => { setShowAddDialog(false); navigate('/partner/profile'); }}
+              onClick={() => handleAddProperty('rooms')}
             >
               <Building className="h-4 w-4 text-primary" />
               <div className="text-left">
@@ -113,7 +129,7 @@ const ManageProperties: React.FC = () => {
             <Button
               variant="outline"
               className="justify-start gap-2 h-12"
-              onClick={() => { setShowAddDialog(false); navigate('/partner/profile'); }}
+              onClick={() => handleAddProperty('hostels')}
             >
               <Hotel className="h-4 w-4 text-primary" />
               <div className="text-left">
@@ -124,7 +140,7 @@ const ManageProperties: React.FC = () => {
             <Button
               variant="outline"
               className="justify-start gap-2 h-12"
-              onClick={() => { setShowAddDialog(false); navigate('/partner/profile'); }}
+              onClick={() => handleAddProperty('laundry')}
             >
               <Shirt className="h-4 w-4 text-primary" />
               <div className="text-left">

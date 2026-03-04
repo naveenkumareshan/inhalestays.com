@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Save, ZoomIn, ZoomOut, Maximize, Image, X, MousePointerClick, RotateCw } from 'lucide-react';
+import { Save, ZoomIn, ZoomOut, Maximize, Image, X, MousePointerClick, RotateCw, Grid3X3 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { BedShapeIcon } from '@/components/hostels/BedShapeIcon';
 
@@ -78,6 +78,12 @@ export const HostelBedPlanDesigner: React.FC<HostelBedPlanDesignerProps> = ({
   const [placeSharingOption, setPlaceSharingOption] = useState('');
   const [placeCategory, setPlaceCategory] = useState('');
   const [placeBedNumber, setPlaceBedNumber] = useState(1);
+
+  // Multi-bed dialog state
+  const [showMultiBedDialog, setShowMultiBedDialog] = useState(false);
+  const [multiBedCount, setMultiBedCount] = useState(5);
+  const [multiBedSharing, setMultiBedSharing] = useState('');
+  const [multiBedCategory, setMultiBedCategory] = useState('');
 
   useEffect(() => {
     if (beds.length > 0) {
@@ -207,6 +213,34 @@ export const HostelBedPlanDesigner: React.FC<HostelBedPlanDesignerProps> = ({
     setPendingBed(null);
   };
 
+  const handleMultiBedGenerate = () => {
+    if (!onPlaceBed || !multiBedSharing) return;
+    const spacing = 60;
+    const startX = snapToGrid(Math.max(GRID_SNAP * 2, 60));
+    const startY = snapToGrid(Math.max(GRID_SNAP * 3, 100));
+    const cols = Math.floor((roomWidth - startX * 2) / spacing) || 1;
+    let placed = 0;
+    let num = nextBedNumber;
+
+    for (let i = 0; i < multiBedCount; i++) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const pos = clampPosition(
+        snapToGrid(startX + col * spacing),
+        snapToGrid(startY + row * spacing),
+        roomWidth, roomHeight
+      );
+      if (!isOverlapping(pos)) {
+        onPlaceBed(pos, num, multiBedSharing, multiBedCategory === 'none' ? '' : multiBedCategory);
+        placed++;
+        num++;
+      }
+    }
+    setNextBedNumber(num);
+    setShowMultiBedDialog(false);
+    toast({ title: `Placed ${placed} beds`, description: `${multiBedCount - placed} skipped due to overlap` });
+  };
+
   return (
     <div className="space-y-4">
       {/* Toolbar */}
@@ -231,6 +265,9 @@ export const HostelBedPlanDesigner: React.FC<HostelBedPlanDesignerProps> = ({
         <div className="h-6 w-px bg-border" />
         <Button variant={placementMode ? 'default' : 'outline'} size="sm" className="h-8" onClick={() => setPlacementMode(!placementMode)}>
           <MousePointerClick className="h-3.5 w-3.5 mr-1" /> {placementMode ? 'Stop Placing' : 'Place Beds'}
+        </Button>
+        <Button variant="outline" size="sm" className="h-8" onClick={() => { setMultiBedSharing(sharingOptions[0]?.id || ''); setMultiBedCategory(''); setShowMultiBedDialog(true); }}>
+          <Grid3X3 className="h-3.5 w-3.5 mr-1" /> Add Multiple
         </Button>
         {placementMode && <span className="text-xs text-muted-foreground">Next: #{nextBedNumber} — Click to place</span>}
         <div className="flex-1" />
@@ -366,6 +403,49 @@ export const HostelBedPlanDesigner: React.FC<HostelBedPlanDesignerProps> = ({
           <DialogFooter>
             <Button variant="outline" onClick={() => setPendingBed(null)}>Cancel</Button>
             <Button onClick={handlePlacementConfirm} disabled={!placeSharingOption}>Place Bed</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Multi-Bed Dialog */}
+      <Dialog open={showMultiBedDialog} onOpenChange={setShowMultiBedDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Grid3X3 className="h-5 w-5" /> Add Multiple Beds</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div>
+              <Label>Number of Beds</Label>
+              <Input type="number" min={1} max={50} value={multiBedCount} onChange={e => setMultiBedCount(+e.target.value || 1)} />
+            </div>
+            <div>
+              <Label>Sharing Option</Label>
+              <Select value={multiBedSharing} onValueChange={setMultiBedSharing}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select sharing type" /></SelectTrigger>
+                <SelectContent>
+                  {sharingOptions.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.type} (₹{s.price_monthly}/mo)</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Category (optional)</Label>
+              <Select value={multiBedCategory} onValueChange={setMultiBedCategory}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="No category" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No category</SelectItem>
+                  {categories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.name}>{cat.name} (+₹{cat.price_adjustment})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="bg-muted rounded-lg p-3 text-sm">
+              <p><strong>Preview:</strong> {multiBedCount} beds will be auto-arranged in a grid pattern</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMultiBedDialog(false)}>Cancel</Button>
+            <Button onClick={handleMultiBedGenerate} disabled={!multiBedSharing}>Place {multiBedCount} Beds</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

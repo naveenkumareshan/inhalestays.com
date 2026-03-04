@@ -41,7 +41,12 @@ interface Vendor {
   business_name: string;
 }
 
-const RoomManagement = () => {
+interface RoomManagementProps {
+  autoCreateNew?: boolean;
+  onTriggerConsumed?: () => void;
+}
+
+const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTriggerConsumed }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -67,6 +72,14 @@ const RoomManagement = () => {
       fetchVendors();
     }
   }, [currentPage, selectedVendor, isAdmin]);
+
+  // Auto-create new when triggered from parent
+  useEffect(() => {
+    if (autoCreateNew) {
+      handleNewCabin();
+      onTriggerConsumed?.();
+    }
+  }, [autoCreateNew]);
   
   const fetchVendors = async () => {
     try {

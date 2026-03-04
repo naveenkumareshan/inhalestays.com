@@ -15,7 +15,12 @@ import { Input } from '@/components/ui/input';
 
 const ITEMS_PER_PAGE = 9;
 
-const HostelManagement = () => {
+interface HostelManagementProps {
+  autoCreateNew?: boolean;
+  onTriggerConsumed?: () => void;
+}
+
+const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTriggerConsumed }) => {
   const [hostels, setHostels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +34,14 @@ const HostelManagement = () => {
   const { user } = useAuth();
 
   useEffect(() => { fetchHostels(); }, []);
+
+  // Auto-create new when triggered from parent
+  useEffect(() => {
+    if (autoCreateNew) {
+      handleAddHostel();
+      onTriggerConsumed?.();
+    }
+  }, [autoCreateNew]);
 
   const fetchHostels = async () => {
     try {

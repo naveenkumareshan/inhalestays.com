@@ -8,9 +8,10 @@ import {
 } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
-  Save, ZoomIn, ZoomOut, Maximize, Image, X, MousePointerClick,
+  Save, ZoomIn, ZoomOut, Maximize, Image, X, MousePointerClick, Grid3X3,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { AutoSeatGenerator, GeneratedSeat } from './AutoSeatGenerator';
 
 // ── Constants ──────────────────────────────────────────────────────
 const GRID_SNAP = 40;
@@ -97,6 +98,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   // Placement mode
   const [placementMode, setPlacementMode] = useState(false);
   const [nextSeatNumber, setNextSeatNumber] = useState(1);
+  const [showAutoGenerator, setShowAutoGenerator] = useState(false);
 
   // Pending seat for dialog
   const [pendingSeat, setPendingSeat] = useState<{ x: number; y: number } | null>(null);
@@ -250,6 +252,19 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
     setPendingSeat(null);
   };
 
+  // ── Auto-generate seats handler ──
+  const handleAutoGenerate = (generatedSeats: GeneratedSeat[]) => {
+    if (!onPlaceSeat) return;
+    let placed = 0;
+    for (const gs of generatedSeats) {
+      if (!isOverlapping(gs.position)) {
+        onPlaceSeat(gs.position, gs.number, gs.price, categories[0]?.name || 'Non-AC');
+        placed++;
+      }
+    }
+    toast({ title: `Placed ${placed} seats`, description: `${generatedSeats.length - placed} skipped due to overlap` });
+  };
+
   // ── Seat edit confirm ──
   const handleEditConfirm = (updates: { category?: string; price?: number }) => {
     if (editingSeat && onSeatUpdate) {
@@ -302,6 +317,15 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
           onClick={() => setPlacementMode(!placementMode)}
         >
           <MousePointerClick className="h-3.5 w-3.5 mr-1" /> {placementMode ? 'Stop Placing' : 'Place Seats'}
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8"
+          onClick={() => setShowAutoGenerator(true)}
+        >
+          <Grid3X3 className="h-3.5 w-3.5 mr-1" /> Add Multiple
         </Button>
 
         {placementMode && (
@@ -432,6 +456,17 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
         onConfirm={handleEditConfirm}
         onCancel={() => setEditingSeat(null)}
         onDelete={onDeleteSeat}
+      />
+
+      {/* Auto Seat Generator */}
+      <AutoSeatGenerator
+        open={showAutoGenerator}
+        onOpenChange={setShowAutoGenerator}
+        onGenerate={handleAutoGenerate}
+        roomWidth={roomWidth}
+        roomHeight={roomHeight}
+        gridSize={GRID_SNAP}
+        existingSeatCount={seats.length}
       />
     </div>
   );
