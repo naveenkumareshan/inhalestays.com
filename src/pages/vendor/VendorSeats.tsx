@@ -170,12 +170,14 @@ const VendorSeats: React.FC = () => {
     if (cabins.length === 0 && selectedCabinId !== 'all') return;
     setRefreshing(true);
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    const res = await vendorSeatsService.getSeatsForDate(selectedCabinId, dateStr);
+    // Pass partner cabin IDs to restrict "All" view to only partner-owned cabins
+    const partnerCabinIds = cabins.map(c => c._id);
+    const res = await vendorSeatsService.getSeatsForDate(selectedCabinId, dateStr, partnerCabinIds);
     if (res.success && res.data) {
       setSeats(res.data);
     }
     setRefreshing(false);
-  }, [selectedCabinId, selectedDate, cabins.length]);
+  }, [selectedCabinId, selectedDate, cabins]);
 
   useEffect(() => { fetchSeats(); }, [fetchSeats]);
 

@@ -200,6 +200,9 @@ const HostelBedMap: React.FC = () => {
 
     if (selectedHostelId !== 'all') {
       bedsQuery = bedsQuery.eq('hostel_rooms.hostel_id', selectedHostelId);
+    } else if (hostels.length > 0) {
+      // Partner isolation: only show beds from partner's own hostels
+      bedsQuery = bedsQuery.in('hostel_rooms.hostel_id', hostels.map(h => h.id));
     }
 
     const { data: bedsData } = await bedsQuery.order('bed_number');
@@ -220,6 +223,8 @@ const HostelBedMap: React.FC = () => {
 
     if (selectedHostelId !== 'all') {
       bookingsQuery = bookingsQuery.eq('hostel_id', selectedHostelId);
+    } else if (hostels.length > 0) {
+      bookingsQuery = bookingsQuery.in('hostel_id', hostels.map(h => h.id));
     }
 
     const { data: bookingsData } = await bookingsQuery;
@@ -316,7 +321,7 @@ const HostelBedMap: React.FC = () => {
 
     setBeds(mappedBeds);
     setRefreshing(false);
-  }, [selectedHostelId, selectedDate]);
+  }, [selectedHostelId, selectedDate, hostels]);
 
   useEffect(() => {
     if (!loading) fetchBeds();

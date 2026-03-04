@@ -257,7 +257,8 @@ export const vendorSeatsService = {
   },
 
   // Date-aware seat fetcher - supports 'all' for all cabins
-  getSeatsForDate: async (cabinId: string, date: string) => {
+  // When cabinId is 'all', partnerCabinIds restricts to partner-owned cabins only
+  getSeatsForDate: async (cabinId: string, date: string, partnerCabinIds?: string[]) => {
     try {
       let query = supabase
         .from('seats')
@@ -266,6 +267,9 @@ export const vendorSeatsService = {
 
       if (cabinId !== 'all') {
         query = query.eq('cabin_id', cabinId);
+      } else if (partnerCabinIds && partnerCabinIds.length > 0) {
+        // Partner isolation: only show seats from partner's own cabins
+        query = query.in('cabin_id', partnerCabinIds);
       }
 
       const { data: seatsData, error } = await query;
