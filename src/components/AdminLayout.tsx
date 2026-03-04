@@ -1,5 +1,6 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "./admin/AdminSidebar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -98,7 +99,9 @@ const AdminLayout: React.FC = () => {
             </header>
 
             <div className="flex-1 p-3 sm:p-6 bg-muted/10 overflow-x-hidden">
-              <Outlet key={location.pathname} />
+              <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+                <Outlet />
+              </Suspense>
             </div>
           </SidebarInset>
         </div>
