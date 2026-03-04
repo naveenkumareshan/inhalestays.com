@@ -59,15 +59,18 @@ const fetchUserRole = async (userId: string): Promise<UserRole> => {
   const { data, error } = await supabase
     .from('user_roles')
     .select('role')
-    .eq('user_id', userId)
-    .single();
+    .eq('user_id', userId);
 
-  if (error || !data) {
+  if (error || !data || data.length === 0) {
     console.warn('No role found for user, defaulting to student');
     return 'student';
   }
 
-  const role = data.role as UserRole;
+  // Priority order: pick the highest-privilege role
+  const priority: UserRole[] = ['super_admin', 'admin', 'vendor', 'vendor_employee', 'hostel_manager', 'student'];
+  const roles = data.map(r => r.role as UserRole);
+  const role = priority.find(p => roles.includes(p)) || 'student';
+
   roleCache.set(userId, role);
   return role;
 };
