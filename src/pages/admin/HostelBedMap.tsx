@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { format, addDays, addWeeks, addMonths } from 'date-fns';
+import { format, addDays, addMonths, subDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -557,9 +557,9 @@ const HostelBedMap: React.FC = () => {
 
   // Compute end date
   const computedEndDate = useMemo(() => {
-    if (selectedDuration.type === 'monthly') return addMonths(bookingStartDate, selectedDuration.count);
-    if (selectedDuration.type === 'weekly') return addWeeks(bookingStartDate, selectedDuration.count);
-    return addDays(bookingStartDate, selectedDuration.count);
+    if (selectedDuration.type === 'monthly') return subDays(addMonths(bookingStartDate, selectedDuration.count), 1);
+    if (selectedDuration.type === 'weekly') return addDays(bookingStartDate, selectedDuration.count * 7 - 1);
+    return addDays(bookingStartDate, Math.max(0, selectedDuration.count - 1));
   }, [selectedDuration, bookingStartDate]);
 
   // Computed total

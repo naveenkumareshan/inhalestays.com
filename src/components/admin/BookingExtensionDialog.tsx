@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
-import { format, addMonths, isAfter, addDays } from 'date-fns';
+import { format, addMonths, isAfter, addDays, subDays } from 'date-fns';
 import { CalendarIcon, Tag, CheckCircle, XCircle } from 'lucide-react';
 import { adminManualBookingService } from '@/api/adminManualBookingService';
 import { couponService } from '@/api/couponService';
@@ -67,7 +67,7 @@ export const BookingExtensionDialog = ({
 
   const calculateNewEndDate = () => {
     const currentEndDate = new Date(booking.endDate);
-    return addMonths(currentEndDate, selectedDuration);
+    return subDays(addMonths(currentEndDate, selectedDuration), 1);
   };
   
   const calculateAdditionalAmount = () => {
