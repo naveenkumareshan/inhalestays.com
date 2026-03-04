@@ -213,6 +213,20 @@ const SeatManagement = () => {
     }
   };
 
+  const handleDeleteAllSeats = async () => {
+    if (!cabin?.id) return;
+    try {
+      const res = await adminSeatsService.deleteAllSeatsByCabin(cabin.id, selectedFloor);
+      if (res.success) {
+        setSeats([]);
+        setSelectedSeat(null);
+        toast({ title: "All seats deleted" });
+      }
+    } catch (e) {
+      toast({ title: "Error deleting seats", variant: "destructive" });
+    }
+  };
+
   const handleSeatUpdate = async (seatId: string, updates: { category?: string; price?: number }) => {
     try {
       const res = await adminSeatsService.updateSeat(seatId, updates);
@@ -400,6 +414,7 @@ const SeatManagement = () => {
         minPrice={cabin?.price || 0}
         onBulkPlaceSeats={handleBulkPlaceSeats}
         onBulkMoveSeats={handleBulkMoveSeats}
+        onDeleteAllSeats={handleDeleteAllSeats}
         onRoomResize={async (newWidth, newHeight) => {
           setRoomWidth(newWidth);
           setRoomHeight(newHeight);
