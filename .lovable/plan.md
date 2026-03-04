@@ -1,26 +1,36 @@
 
 
-# Fix: Partner Registration Not Working
+# Fix: Partner Login 404 + Dual Registration Support
 
-## Problem
+## Issue 1: Partner Login shows 404
 
-The `partner-register` edge function exists in code but is **not configured** in `supabase/config.toml`. Without a config entry, two things happen:
+**Root Cause:** `VendorLogin` is lazy-loaded (line 33 of App.tsx) but rendered **without a `<Suspense>` wrapper** at line 261:
 
-1. **JWT verification is enabled by default** — since the registration endpoint is called by unauthenticated users, the request will be rejected with a 401 error.
-2. The function may not be deployed at all.
-
-## Fix
-
-### File: `supabase/config.toml`
-
-Add the missing function configuration:
-
-```toml
-[functions.partner-register]
-verify_jwt = false
+```tsx
+// Line 261 — missing Suspense
+<Route path="/partner/login" element={<VendorLogin />} />
 ```
 
-This is a one-line addition. Once added, the function will be deployed with JWT verification disabled, allowing unauthenticated users to register as partners.
+React throws an error when a lazy component renders without Suspense, which triggers the catch-all `*` route → 404 page.
 
-No other code changes are needed — the `PartnerOnboard.tsx` page correctly calls `supabase.functions.invoke('partner-register', ...)` and the edge function logic itself is sound.
+**Fix:** Wrap `VendorLogin` in `<Suspense>` on all partner/vendor/host login routes (lines 261, 265, 267).
+
+## Issue 2: Allow users to register as both student and partner
+
+Currently, the `partner-register` edge function rejects users whose email is already registered (`"already been registered"` error). An existing student cannot become a partner.
+
+**Fix — update the `partner-register` edge function:**
+1. When the email already exists, look up the existing user instead of failing
+2. Add the `vendor` role to their `user_roles` (if not already present)
+3. Create the partner record linked to the existing user
+4. Return success so the user can login via `/partner/login`
+
+This way a student can register as a partner without creating a duplicate account — they keep their existing login credentials and gain the vendor role.
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `src/App.tsx` (lines 261, 265, 267) | Wrap lazy `VendorLogin` in `<Suspense>` |
+| `supabase/functions/partner-register/index.ts` | Handle existing users: add vendor role + create partner record instead of rejecting |
 
