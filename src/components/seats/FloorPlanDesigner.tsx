@@ -65,6 +65,7 @@ interface FloorPlanDesignerProps {
   isSaving?: boolean;
   categories?: SeatCategoryOption[];
   minPrice?: number;
+  onRoomResize?: (newWidth: number, newHeight: number) => void;
 }
 
 export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
@@ -87,6 +88,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   isSaving,
   categories = [],
   minPrice = 0,
+  onRoomResize,
 }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -256,6 +258,16 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   const handleAutoGenerate = (generatedSeats: GeneratedSeat[]) => {
     if (!onPlaceSeat) return;
     let placed = 0;
+
+    // Auto-expand room if seats exceed current bounds
+    if (generatedSeats.length > 0) {
+      const maxX = Math.max(...generatedSeats.map(s => s.position.x)) + SEAT_W + GRID_SNAP;
+      const maxY = Math.max(...generatedSeats.map(s => s.position.y)) + SEAT_H + GRID_SNAP;
+      if ((maxX > roomWidth || maxY > roomHeight) && onRoomResize) {
+        onRoomResize(Math.max(roomWidth, maxX), Math.max(roomHeight, maxY));
+      }
+    }
+
     for (const gs of generatedSeats) {
       if (!isOverlapping(gs.position)) {
         onPlaceSeat(gs.position, gs.number, gs.price, categories[0]?.name || 'Non-AC');
@@ -263,6 +275,9 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
       }
     }
     toast({ title: `Placed ${placed} seats`, description: `${generatedSeats.length - placed} skipped due to overlap` });
+
+    // Auto-fit zoom after generation
+    setTimeout(() => handleFitToScreen(), 300);
   };
 
   // ── Seat edit confirm ──
