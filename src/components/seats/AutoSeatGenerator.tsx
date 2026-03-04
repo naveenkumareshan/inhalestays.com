@@ -46,19 +46,19 @@ export const AutoSeatGenerator: React.FC<AutoSeatGeneratorProps> = ({
   const [seatsPerRow, setSeatsPerRow] = useState(8);
   const [price, setPrice] = useState(2000);
 
-  const snap = (val: number) => Math.round(val / gridSize) * gridSize;
-
   const handleGenerate = () => {
     const seats: GeneratedSeat[] = [];
     let seatNumber = existingSeatCount + 1;
 
-    const startX = snap(Math.max(gridSize * 3, 60));
-    const startY = snap(Math.max(gridSize * 5, 100));
+    const startX = 60;
+    const startY = 60;
+    const spacingX = SEAT_W + 6;
+    const spacingY = SEAT_H + 6;
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < seatsPerRow; c++) {
-        const x = snap(startX + c * (SEAT_W + GAP));
-        const y = snap(startY + r * (SEAT_H + GAP));
+        const x = startX + c * spacingX;
+        const y = startY + r * spacingY;
 
         seats.push({
           number: seatNumber++,

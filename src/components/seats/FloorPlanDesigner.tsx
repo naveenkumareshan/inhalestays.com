@@ -307,17 +307,17 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
     if (seats.length === 0) return;
     const sorted = [...seats].sort((a, b) => a.number - b.number);
     const cols = Math.ceil(Math.sqrt(sorted.length * 1.5));
-    const spacingX = SEAT_W + GRID_SNAP;
-    const spacingY = SEAT_H + GRID_SNAP;
-    const startX = GRID_SNAP;
-    const startY = GRID_SNAP;
+    const spacingX = SEAT_W + 6;
+    const spacingY = SEAT_H + 6;
+    const startX = 60;
+    const startY = 60;
 
     const updates: Array<{ _id: string; position: { x: number; y: number } }> = [];
     sorted.forEach((seat, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
-      const x = snapToGrid(startX + col * spacingX);
-      const y = snapToGrid(startY + row * spacingY);
+      const x = startX + col * spacingX;
+      const y = startY + row * spacingY;
       updates.push({ _id: seat._id, position: { x, y } });
     });
 
@@ -413,6 +413,12 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
           >
             <Maximize className="h-3.5 w-3.5 mr-1" /> Reset Layout
           </Button>
+        )}
+
+        {seats.length > 0 && (
+          <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded-md">
+            {seats.length} Seats
+          </span>
         )}
 
         {seats.length > 0 && onDeleteAllSeats && (
