@@ -275,19 +275,22 @@ export const adminBookingsService = {
     }
   },
 
+  getDashboardStats: async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_dashboard_stats');
+      if (error) throw error;
+      return { success: true, data: data as Record<string, number> };
+    } catch (error) {
+      return { success: false, data: null };
+    }
+  },
+
   getBookingStats: async (period: 'day' | 'week' | 'month' | 'year' = 'month') => {
     try {
-      const { data, error } = await supabase.from('bookings').select('payment_status');
-      if (error) throw error;
-
-      const stats = {
-        total: data?.length || 0,
-        completed: data?.filter(b => b.payment_status === 'completed').length || 0,
-        pending: data?.filter(b => b.payment_status === 'pending').length || 0,
-        cancelled: data?.filter(b => b.payment_status === 'cancelled').length || 0,
-      };
-
-      return { success: true, data: stats };
+      const result = await adminBookingsService.getDashboardStats();
+      if (!result.success || !result.data) throw new Error('Failed');
+      const d = result.data;
+      return { success: true, data: { total: d.total_bookings, completed: d.completed_bookings, pending: d.pending_bookings, cancelled: d.cancelled_bookings } };
     } catch (error) {
       return { success: false, data: { total: 0, completed: 0, pending: 0, cancelled: 0 } };
     }
@@ -295,16 +298,12 @@ export const adminBookingsService = {
 
   getRevenueByTransaction: async () => {
     try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('total_price, payment_status')
-        .eq('payment_status', 'completed');
-      if (error) throw error;
-
-      const totalRevenue = (data || []).reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);
-      return { success: true, data: { totalRevenue, count: data?.length || 0 } };
+      const result = await adminBookingsService.getDashboardStats();
+      if (!result.success || !result.data) throw new Error('Failed');
+      const d = result.data;
+      return { success: true, data: { totalRevenue: d.total_revenue, todayRevenue: d.today_revenue, currentYear: d.current_year, count: d.completed_bookings } };
     } catch (error) {
-      return { success: false, data: { totalRevenue: 0, count: 0 } };
+      return { success: false, data: { totalRevenue: 0, todayRevenue: 0, currentYear: 0, count: 0 } };
     }
   },
 
@@ -365,24 +364,12 @@ export const adminBookingsService = {
 
   getActiveResidents: async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const { data, error, count } = await supabase
-        .from('bookings')
-        .select('id', { count: 'exact' })
-        .eq('payment_status', 'completed')
-        .lte('start_date', today)
-        .gte('end_date', today);
-      if (error) throw error;
-
-      // Get total seat capacity
-      const { data: cabinsData } = await supabase
-        .from('cabins')
-        .select('capacity')
-        .eq('is_active', true);
-      const totalCapacity = (cabinsData || []).reduce((sum, c) => sum + (c.capacity || 0), 0);
-      const activeResidents = count || 0;
+      const result = await adminBookingsService.getDashboardStats();
+      if (!result.success || !result.data) throw new Error('Failed');
+      const d = result.data;
+      const activeResidents = d.active_residents || 0;
+      const totalCapacity = d.total_capacity || 0;
       const occupancyPercentage = totalCapacity > 0 ? Math.round((activeResidents / totalCapacity) * 100) : 0;
-
       return { success: true, data: { activeResidents, totalCapacity, occupancyPercentage } };
     } catch (error) {
       return { success: false, data: { activeResidents: 0, totalCapacity: 0, occupancyPercentage: 0 } };

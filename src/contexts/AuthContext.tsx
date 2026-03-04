@@ -49,7 +49,13 @@ const AuthContext = createContext<AuthContextType>({
   updateUserProfile: async () => false
 });
 
+// Cache to prevent duplicate fetchUserRole calls
+const roleCache = new Map<string, UserRole>();
+
 const fetchUserRole = async (userId: string): Promise<UserRole> => {
+  const cached = roleCache.get(userId);
+  if (cached) return cached;
+
   const { data, error } = await supabase
     .from('user_roles')
     .select('role')
@@ -61,7 +67,9 @@ const fetchUserRole = async (userId: string): Promise<UserRole> => {
     return 'student';
   }
 
-  return data.role as UserRole;
+  const role = data.role as UserRole;
+  roleCache.set(userId, role);
+  return role;
 };
 
 const buildUser = async (supabaseUser: SupabaseUser): Promise<User> => {

@@ -1,7 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { adminBookingsService } from '@/api/adminBookingsService';
-import { adminSeatsService } from '@/api/adminSeatsService';
 
 export type DashboardStatistics = {
   totalRevenue: number;
@@ -13,7 +12,7 @@ export type DashboardStatistics = {
   pendingSeats: number;
   availableSeats: number;
   totalCabins: number;
-  currentYear:number;
+  currentYear: number;
 };
 
 export function useDashboardStatistics() {
@@ -27,7 +26,7 @@ export function useDashboardStatistics() {
     pendingSeats: 0,
     availableSeats: 0,
     totalCabins: 0,
-    currentYear:0
+    currentYear: 0
   });
 
   const [loading, setLoading] = useState(true);
@@ -35,47 +34,34 @@ export function useDashboardStatistics() {
   const hasFetchedRef = useRef(false);
 
   useEffect(() => {
-     if (hasFetchedRef.current) return;
-      hasFetchedRef.current = true;
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
 
     const fetchDashboardStatistics = async () => {
       setLoading(true);
       setError(null);
       try {
-        const bookingStats = await adminBookingsService.getBookingStats('month');
-        const seatsResponse = await adminSeatsService.getActiveSeatsCountSeats({isAvailable:true});
-        const revenueResponse = await adminBookingsService.getRevenueByTransaction();
+        // Single RPC call replaces 4+ separate full-table queries
+        const result = await adminBookingsService.getDashboardStats();
+        if (!result.success || !result.data) throw new Error('Failed to load');
 
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
-        
-        const occupancyData = await adminBookingsService.getOccupancyReports({
-          startDate: startOfMonth,
-          endDate: endOfMonth
+        const d = result.data;
+        const totalCapacity = d.total_capacity || 0;
+        const activeResidents = d.active_residents || 0;
+        const occupancyRate = totalCapacity > 0 ? Math.round((activeResidents / totalCapacity) * 100) : 0;
+
+        setStatistics({
+          totalRevenue: d.total_revenue || 0,
+          revenueToday: d.today_revenue || 0,
+          currentYear: d.current_year || 0,
+          pendingPayments: d.pending_bookings || 0,
+          activeSubscriptions: d.completed_bookings || 0,
+          newSubscriptionsThisMonth: 0,
+          occupancyRate,
+          pendingSeats: 0,
+          availableSeats: d.available_seats || 0,
+          totalCabins: d.total_bookings || 0,
         });
-        
-        let availableSeats = 0;
-        const pendingSeats = 0;
-        
-        if (seatsResponse.success) {
-          availableSeats = (seatsResponse as any).data || seatsResponse.count || 0;
-        }
-        
-        const dashboardStats: DashboardStatistics = {
-          totalRevenue: revenueResponse.success ? revenueResponse.data?.totalRevenue || 0 : 0,
-          revenueToday: revenueResponse.success ? (revenueResponse.data as any)?.todayRevenue || 0 : 0,
-          currentYear: revenueResponse.success ? (revenueResponse.data as any)?.currentYear || 0 : 0,
-          pendingPayments: bookingStats.success ? (bookingStats.data as any)?.pendingPayments || bookingStats.data?.pending || 0 : 0,
-          activeSubscriptions: bookingStats.success ? (bookingStats.data as any)?.activeSubscriptions || bookingStats.data?.completed || 0 : 0,
-          newSubscriptionsThisMonth: bookingStats.success ? (bookingStats.data as any)?.newSubscriptionsThisMonth || 0 : 0,
-          occupancyRate: occupancyData.success ? (occupancyData.data as any)?.overallOccupancy || 0 : 0,
-          pendingSeats: pendingSeats,
-          availableSeats: availableSeats,
-          totalCabins: bookingStats.success ? (bookingStats.data as any)?.totalCabins || bookingStats.data?.total || 0 : 0,
-        };
-        
-        setStatistics(dashboardStats);
       } catch (err) {
         console.error('Error fetching dashboard statistics:', err);
         setError('Failed to load dashboard statistics');
