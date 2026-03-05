@@ -1,31 +1,48 @@
 
 
-# Fix: Vendor Employee Cannot See Sidebar — Missing RLS Policy
+# Fix: Partner Employee Sidebar Not Showing Permitted Items
 
 ## Problem
-When a `vendor_employee` logs in, the `buildUser` function in `AuthContext.tsx` queries the `vendor_employees` table to fetch their permissions. However, the RLS policy on `vendor_employees` only allows access to:
-- The **partner** who owns the employee (`partner_user_id = auth.uid()`)
-- **Admins**
+Two bugs prevent `vendor_employee` users from seeing their assigned sidebar items.
 
-There is **no policy allowing the employee to read their own record**. The query silently returns no rows, so `permissions` stays as an empty array and every sidebar item is hidden.
+## Root Causes
 
-## Fix
-Add an RLS policy on `vendor_employees` that lets an employee SELECT their own row:
+### 1. `usePartnerPropertyTypes` queries the wrong user ID
+In `src/hooks/usePartnerPropertyTypes.ts`, the hook queries `cabins.created_by = user.id` and `hostels.created_by = user.id`. For a `vendor_employee`, `user.id` is the **employee's** ID, not the partner's. Since the employee never created any properties, `hasReadingRooms` and `hasHostels` are always `false`, and all property-related sidebar sections are hidden.
 
-```sql
-CREATE POLICY "Employees can view own record"
-ON public.vendor_employees
-FOR SELECT
-USING (employee_user_id = auth.uid());
+**Fix**: When the user is a `vendor_employee`, use `user.vendorId` (the partner's user ID already stored from `AuthContext`) instead of `user.id`.
+
+### 2. Section-level permission gates are too restrictive
+In `src/components/admin/AdminSidebar.tsx`, the outer gate for each collapsible section checks a single specific permission, but employees may have other permissions within that section:
+
+- **Reading Rooms section** (line 111): gated by `hasPermission('view_bookings')` — an employee with only `seats_available_map` is blocked from the entire section
+- **Hostels section** (line 192): gated by `hasPermission('view_reading_rooms')` — this is a Reading Room permission, not a Hostel permission
+- **Users section** (line 267): gated by `hasPermission('manage_students')` — should also allow `view_students`
+
+**Fix**: Change section gates to `hasAnyPermission([...all relevant sub-permissions...])` so any granted sub-permission opens the section, while individual items are still filtered by `hasAccess`.
+
+## Changes
+
+| File | Change |
+|------|--------|
+| `src/hooks/usePartnerPropertyTypes.ts` | Use `user.vendorId` instead of `user.id` when role is `vendor_employee` |
+| `src/components/admin/AdminSidebar.tsx` | Fix section-level permission gates to use `hasAnyPermission` with all relevant permissions for that section |
+
+### Detailed gate fixes in AdminSidebar
+
+```text
+Reading Rooms section gate:
+  Before: hasPermission('view_bookings')
+  After:  hasAnyPermission(['view_bookings','seats_available_map','view_due_management','view_receipts','view_key_deposits','view_reading_rooms'])
+
+Hostels section gate:
+  Before: hasPermission('view_reading_rooms')
+  After:  hasAnyPermission(['view_bed_map','view_hostel_due_management','view_hostel_bookings','view_hostel_receipts','view_hostel_deposits'])
+
+Users section gate:
+  Before: hasPermission('manage_students')
+  After:  hasAnyPermission(['view_students','manage_students','view_coupons'])
 ```
 
-This is a single database migration. No code changes needed — the existing `AuthContext.tsx` logic from the previous fix will work once it can actually read the data.
-
-## Files to Change
-
-| Change | Detail |
-|--------|--------|
-| **Database migration** | Add SELECT RLS policy on `vendor_employees` for `employee_user_id = auth.uid()` |
-
-No UI or code file modifications required.
+No database or UI design changes required.
 
