@@ -32,7 +32,7 @@ import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 
 type ViewMode = 'grid' | 'table';
-type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked';
+type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked';
 
 interface HostelBed {
   id: string;
@@ -51,7 +51,7 @@ interface HostelBed {
   hostelId: string;
   hostelName: string;
   floor: number;
-  dateStatus: 'available' | 'booked' | 'expiring_soon' | 'blocked';
+  dateStatus: 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked';
   currentBooking: any | null;
   allBookings: any[];
 }
@@ -288,6 +288,8 @@ const HostelBedMap: React.FC = () => {
         const now = new Date();
         const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         dateStatus = daysLeft <= 5 ? 'expiring_soon' : 'booked';
+      } else if (allBeds.length > 0 || !b.is_available) {
+        dateStatus = 'future_booked';
       }
 
       const formatBooking = (bk: any) => ({
@@ -416,13 +418,14 @@ const HostelBedMap: React.FC = () => {
     const available = beds.filter(b => b.dateStatus === 'available').length;
     const expiring = beds.filter(b => b.dateStatus === 'expiring_soon').length;
     const blocked = beds.filter(b => b.dateStatus === 'blocked').length;
+    const futureBooked = beds.filter(b => b.dateStatus === 'future_booked').length;
     const revenue = beds.reduce((sum, b) => {
       if (b.dateStatus === 'booked' || b.dateStatus === 'expiring_soon') {
         return sum + (b.currentBooking?.totalPrice || 0);
       }
       return sum;
     }, 0);
-    return { total, booked, available, expiring, blocked, revenue };
+    return { total, booked, available, expiring, blocked, futureBooked, revenue };
   }, [beds]);
 
   // Get hostel info for selected bed
@@ -874,6 +877,7 @@ const HostelBedMap: React.FC = () => {
       case 'available': return 'bg-emerald-100 border-emerald-500 dark:bg-emerald-900 dark:border-emerald-600';
       case 'booked': return 'bg-red-100 border-red-500 dark:bg-red-900 dark:border-red-600';
       case 'expiring_soon': return 'bg-amber-100 border-amber-500 dark:bg-amber-900 dark:border-amber-600';
+      case 'future_booked': return 'bg-violet-100 border-violet-500 dark:bg-violet-900 dark:border-violet-600';
       case 'blocked': return 'bg-muted border-muted-foreground/30';
       default: return 'bg-muted border-border';
     }
@@ -884,6 +888,7 @@ const HostelBedMap: React.FC = () => {
       case 'available': return 'Available';
       case 'booked': return 'Booked';
       case 'expiring_soon': return 'Expiring';
+      case 'future_booked': return 'Future Booked';
       case 'blocked': return 'Blocked';
       default: return '-';
     }
@@ -894,6 +899,7 @@ const HostelBedMap: React.FC = () => {
       case 'available': return <CheckCircle className="h-3 w-3 text-emerald-600" />;
       case 'booked': return <Users className="h-3 w-3 text-red-600" />;
       case 'expiring_soon': return <AlertTriangle className="h-3 w-3 text-amber-600" />;
+      case 'future_booked': return <Clock className="h-3 w-3 text-violet-600" />;
       case 'blocked': return <Ban className="h-3 w-3 text-muted-foreground" />;
       default: return null;
     }
@@ -928,6 +934,7 @@ const HostelBedMap: React.FC = () => {
           { label: 'Total', value: stats.total, icon: <LayoutGrid className="h-3.5 w-3.5 text-primary" /> },
           { label: 'Booked', value: stats.booked, icon: <Users className="h-3.5 w-3.5 text-red-500" /> },
           { label: 'Available', value: stats.available, icon: <CheckCircle className="h-3.5 w-3.5 text-emerald-500" /> },
+          { label: 'Future', value: stats.futureBooked, icon: <Clock className="h-3.5 w-3.5 text-violet-500" /> },
           { label: 'Expiring', value: stats.expiring, icon: <AlertTriangle className="h-3.5 w-3.5 text-amber-500" /> },
           { label: 'Blocked', value: stats.blocked, icon: <Ban className="h-3.5 w-3.5 text-muted-foreground" /> },
           { label: 'Revenue', value: `₹${stats.revenue.toLocaleString()}`, icon: <IndianRupee className="h-3.5 w-3.5 text-primary" /> },
@@ -1004,6 +1011,7 @@ const HostelBedMap: React.FC = () => {
             <SelectItem value="all" className="text-xs">All Status</SelectItem>
             <SelectItem value="available" className="text-xs">Available</SelectItem>
             <SelectItem value="booked" className="text-xs">Booked</SelectItem>
+            <SelectItem value="future_booked" className="text-xs">Future Booked</SelectItem>
             <SelectItem value="expiring_soon" className="text-xs">Expiring Soon</SelectItem>
             <SelectItem value="blocked" className="text-xs">Blocked</SelectItem>
           </SelectContent>
@@ -1032,6 +1040,7 @@ const HostelBedMap: React.FC = () => {
       <div className="flex items-center gap-3 px-1 text-[10px] text-muted-foreground flex-wrap">
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block" /> Available</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" /> Booked</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-violet-500 inline-block" /> Future Booked</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block" /> Expiring</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-muted-foreground/40 inline-block" /> Blocked</span>
         <span className="ml-auto">{filteredBeds.length} beds</span>
@@ -1298,7 +1307,7 @@ const HostelBedMap: React.FC = () => {
               )}
 
               {/* ── BOOKING SUCCESS VIEW ── */}
-              {(selectedBed.dateStatus === 'available' || showFutureBooking) && bookingSuccess && lastBookingInfo && (
+              {(selectedBed.dateStatus === 'available' || selectedBed.dateStatus === 'future_booked' || showFutureBooking) && bookingSuccess && lastBookingInfo && (
                 <div className="space-y-3">
                   <div className="flex flex-col items-center py-4">
                     <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center mb-2">
@@ -1359,7 +1368,7 @@ const HostelBedMap: React.FC = () => {
               )}
 
               {/* ── AVAILABLE / FUTURE: Booking form ── */}
-              {(selectedBed.dateStatus === 'available' || showFutureBooking) && !bookingSuccess && (
+              {(selectedBed.dateStatus === 'available' || selectedBed.dateStatus === 'future_booked' || showFutureBooking) && !bookingSuccess && (
                 <div className="space-y-3">
                   {showFutureBooking && (
                     <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-1" onClick={() => { setShowFutureBooking(false); setIsRenewMode(false); }}>

@@ -78,20 +78,25 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
 
           const roomBeds = (beds || [])
             .filter(b => b.room_id === room.id)
-            .map(b => ({
-              id: b.id,
-              bed_number: b.bed_number,
-              is_available: b.is_available && !b.is_blocked && !bookingMap.has(b.id),
-              is_blocked: b.is_blocked,
-              room_id: b.room_id,
-              sharing_option_id: b.sharing_option_id,
-              sharingType: (b as any).hostel_sharing_options?.type || '',
-              price: (b as any).hostel_sharing_options?.price_monthly || 0,
-              category: (b as any).category || null,
-              price_override: (b as any).price_override || null,
-              amenities: (b as any).amenities || [],
-              occupantName: bookingMap.get(b.id) || undefined,
-            }));
+            .map(b => {
+              const isOccupied = !b.is_available || b.is_blocked || bookingMap.has(b.id);
+              const isFutureBooked = !isOccupied && b.is_available && !b.is_blocked && !bookingMap.has(b.id) === false;
+              return {
+                id: b.id,
+                bed_number: b.bed_number,
+                is_available: b.is_available && !b.is_blocked && !bookingMap.has(b.id),
+                is_blocked: b.is_blocked,
+                is_future_booked: !b.is_available && !b.is_blocked && !bookingMap.has(b.id),
+                room_id: b.room_id,
+                sharing_option_id: b.sharing_option_id,
+                sharingType: (b as any).hostel_sharing_options?.type || '',
+                price: (b as any).hostel_sharing_options?.price_monthly || 0,
+                category: (b as any).category || null,
+                price_override: (b as any).price_override || null,
+                amenities: (b as any).amenities || [],
+                occupantName: bookingMap.get(b.id) || undefined,
+              };
+            });
 
           grouped[floor].push({
             roomId: room.id,
@@ -206,11 +211,15 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
         ))}
       </Tabs>
 
-      {/* Legend - 3 states only */}
-      <div className="flex items-center justify-center gap-4 text-[11px] mt-4 pt-3 border-t">
+      {/* Legend - 4 states */}
+      <div className="flex items-center justify-center gap-4 text-[11px] mt-4 pt-3 border-t flex-wrap">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded border border-emerald-400 bg-emerald-50" />
           <span>Available</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded border border-violet-400 bg-violet-50" />
+          <span>Future Booked</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded border border-blue-400 bg-blue-50" />
