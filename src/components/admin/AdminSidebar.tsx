@@ -68,7 +68,7 @@ export function AdminSidebar() {
   const { hasPermission, hasAnyPermission, loading } = useVendorEmployeePermissions();
   const propertyTypes = usePartnerPropertyTypes();
 
-  if (loading) {
+  if (loading || propertyTypes.loading) {
     return (
       <Sidebar>
         <SidebarContent>

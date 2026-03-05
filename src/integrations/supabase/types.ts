@@ -3655,6 +3655,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_partner_or_employee_of: {
+        Args: { owner_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
