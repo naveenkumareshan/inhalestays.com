@@ -6,17 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { CalendarIcon, Search, Receipt, Download, RefreshCw } from 'lucide-react';
+import { Search, Receipt, Download, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/currency';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { DateFilterSelector } from '@/components/common/DateFilterSelector';
+import { getDateRangeFromFilter } from '@/utils/dateFilterUtils';
 
 interface ReceiptRow {
   id: string;
@@ -49,8 +49,9 @@ const Receipts: React.FC = () => {
   const [filterCabin, setFilterCabin] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
-  const [toDate, setToDate] = useState<Date | undefined>(undefined);
+  const [dateFilter, setDateFilter] = useState('all');
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const { toast } = useToast();
@@ -65,7 +66,6 @@ const Receipts: React.FC = () => {
     let query = supabase.from('cabins').select('id, name').order('name');
     try {
       const { ownerId, userId } = await getEffectiveOwnerId();
-      // For non-admin users, filter by owner
       const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', userId);
       const isAdmin = roles?.some(r => r.role === 'admin' || r.role === 'super_admin');
       if (!isAdmin) {
@@ -86,7 +86,6 @@ const Receipts: React.FC = () => {
         .limit(500);
       if (error) throw error;
 
-      // Fetch related data
       const userIds = [...new Set((data || []).map(r => r.user_id))];
       const cabinIds = [...new Set((data || []).filter(r => r.cabin_id).map(r => r.cabin_id!))];
       const seatIds = [...new Set((data || []).filter(r => r.seat_id).map(r => r.seat_id!))];
@@ -115,7 +114,6 @@ const Receipts: React.FC = () => {
         bookingSerial: r.booking_id ? bookingMap[r.booking_id]?.serial_number || '' : '',
       }));
 
-      // Resolve custom payment method labels
       const customLabels = await resolvePaymentMethodLabels(mapped.map(r => r.payment_method));
       setPaymentLabels(customLabels);
 
@@ -130,14 +128,17 @@ const Receipts: React.FC = () => {
     let result = receipts;
     if (filterCabin !== 'all') result = result.filter(r => r.cabin_id === filterCabin);
     if (filterType !== 'all') result = result.filter(r => r.receipt_type === filterType);
-    if (fromDate) {
-      const from = format(fromDate, 'yyyy-MM-dd');
-      result = result.filter(r => r.created_at.slice(0, 10) >= from);
+    
+    const { from, to } = getDateRangeFromFilter(dateFilter, startDate, endDate);
+    if (from) {
+      const fromStr = format(from, 'yyyy-MM-dd');
+      result = result.filter(r => r.created_at.slice(0, 10) >= fromStr);
     }
-    if (toDate) {
-      const to = format(toDate, 'yyyy-MM-dd');
-      result = result.filter(r => r.created_at.slice(0, 10) <= to);
+    if (to) {
+      const toStr = format(to, 'yyyy-MM-dd');
+      result = result.filter(r => r.created_at.slice(0, 10) <= toStr);
     }
+    
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
       result = result.filter(r =>
@@ -148,7 +149,7 @@ const Receipts: React.FC = () => {
       );
     }
     return result;
-  }, [receipts, filterCabin, filterType, fromDate, toDate, searchTerm]);
+  }, [receipts, filterCabin, filterType, dateFilter, startDate, endDate, searchTerm]);
 
   const totalAmount = useMemo(() => filtered.reduce((s, r) => s + r.amount, 0), [filtered]);
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -232,24 +233,17 @@ const Receipts: React.FC = () => {
             <SelectItem value="due_collection" className="text-xs">Due Collection</SelectItem>
           </SelectContent>
         </Select>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
-              <CalendarIcon className="h-3 w-3" /> {fromDate ? format(fromDate, 'dd MMM') : 'From'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={fromDate} onSelect={(d) => { setFromDate(d); setPage(1); }} /></PopoverContent>
-        </Popover>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
-              <CalendarIcon className="h-3 w-3" /> {toDate ? format(toDate, 'dd MMM') : 'To'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={toDate} onSelect={(d) => { setToDate(d); setPage(1); }} /></PopoverContent>
-        </Popover>
-        {(fromDate || toDate || filterCabin !== 'all' || filterType !== 'all' || searchTerm) && (
-          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFromDate(undefined); setToDate(undefined); setFilterCabin('all'); setFilterType('all'); setSearchTerm(''); setPage(1); }}>
+        <DateFilterSelector
+          dateFilter={dateFilter}
+          startDate={startDate}
+          endDate={endDate}
+          onDateFilterChange={(v) => { setDateFilter(v); setPage(1); }}
+          onStartDateChange={(d) => { setStartDate(d); setPage(1); }}
+          onEndDateChange={(d) => { setEndDate(d); setPage(1); }}
+          compact
+        />
+        {(dateFilter !== 'all' || filterCabin !== 'all' || filterType !== 'all' || searchTerm) && (
+          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setDateFilter('all'); setStartDate(undefined); setEndDate(undefined); setFilterCabin('all'); setFilterType('all'); setSearchTerm(''); setPage(1); }}>
             Clear
           </Button>
         )}

@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-// Badge replaced with inline brand spans
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,6 +11,8 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { hostelService } from '@/api/hostelService';
 import { Eye, Download, Search, Filter, Calendar } from 'lucide-react';
+import { DateFilterSelector } from '@/components/common/DateFilterSelector';
+import { getDateRangeFromFilter } from '@/utils/dateFilterUtils';
 
 interface BookingListProps {
   hostelId?: string;
@@ -23,6 +24,9 @@ export const HostelBookingsList = ({ hostelId }: BookingListProps) => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [filterStartDate, setFilterStartDate] = useState<Date | undefined>(undefined);
+  const [filterEndDate, setFilterEndDate] = useState<Date | undefined>(undefined);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   
@@ -69,7 +73,7 @@ export const HostelBookingsList = ({ hostelId }: BookingListProps) => {
   };
   
   const getFilteredBookings = () => {
-    return bookings.filter(booking => {
+    let filtered = bookings.filter(booking => {
       const searchLower = searchTerm.toLowerCase();
       const matchesSearch = !searchTerm ||
         (booking.profiles?.name?.toLowerCase().includes(searchLower) || 
@@ -82,6 +86,18 @@ export const HostelBookingsList = ({ hostelId }: BookingListProps) => {
       
       return matchesSearch && matchesStatus;
     });
+
+    const { from, to } = getDateRangeFromFilter(dateFilter, filterStartDate, filterEndDate);
+    if (from) {
+      const fromStr = format(from, 'yyyy-MM-dd');
+      filtered = filtered.filter(b => (b.created_at || b.createdAt || '').slice(0, 10) >= fromStr);
+    }
+    if (to) {
+      const toStr = format(to, 'yyyy-MM-dd');
+      filtered = filtered.filter(b => (b.created_at || b.createdAt || '').slice(0, 10) <= toStr);
+    }
+
+    return filtered;
   };
   
   const getStatusBadgeClass = (status: string) => {
@@ -144,6 +160,15 @@ export const HostelBookingsList = ({ hostelId }: BookingListProps) => {
             Refresh
           </Button>
         </div>
+        <DateFilterSelector
+          dateFilter={dateFilter}
+          startDate={filterStartDate}
+          endDate={filterEndDate}
+          onDateFilterChange={setDateFilter}
+          onStartDateChange={setFilterStartDate}
+          onEndDateChange={setFilterEndDate}
+          compact
+        />
       </div>
       
       <Tabs defaultValue="current">

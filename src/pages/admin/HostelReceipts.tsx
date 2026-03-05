@@ -6,17 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { CalendarIcon, Search, Receipt, RefreshCw } from 'lucide-react';
+import { Search, Receipt, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/currency';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { DateFilterSelector } from '@/components/common/DateFilterSelector';
+import { getDateRangeFromFilter } from '@/utils/dateFilterUtils';
 
 interface ReceiptRow {
   id: string;
@@ -47,8 +47,9 @@ const HostelReceipts: React.FC = () => {
   const [filterHostel, setFilterHostel] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
-  const [toDate, setToDate] = useState<Date | undefined>(undefined);
+  const [dateFilter, setDateFilter] = useState('all');
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const { toast } = useToast();
@@ -122,14 +123,17 @@ const HostelReceipts: React.FC = () => {
     let result = receipts;
     if (filterHostel !== 'all') result = result.filter(r => r.hostel_id === filterHostel);
     if (filterType !== 'all') result = result.filter(r => r.receipt_type === filterType);
-    if (fromDate) {
-      const from = format(fromDate, 'yyyy-MM-dd');
-      result = result.filter(r => r.created_at.slice(0, 10) >= from);
+    
+    const { from, to } = getDateRangeFromFilter(dateFilter, startDate, endDate);
+    if (from) {
+      const fromStr = format(from, 'yyyy-MM-dd');
+      result = result.filter(r => r.created_at.slice(0, 10) >= fromStr);
     }
-    if (toDate) {
-      const to = format(toDate, 'yyyy-MM-dd');
-      result = result.filter(r => r.created_at.slice(0, 10) <= to);
+    if (to) {
+      const toStr = format(to, 'yyyy-MM-dd');
+      result = result.filter(r => r.created_at.slice(0, 10) <= toStr);
     }
+    
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
       result = result.filter(r =>
@@ -140,7 +144,7 @@ const HostelReceipts: React.FC = () => {
       );
     }
     return result;
-  }, [receipts, filterHostel, filterType, fromDate, toDate, searchTerm]);
+  }, [receipts, filterHostel, filterType, dateFilter, startDate, endDate, searchTerm]);
 
   const totalAmount = useMemo(() => filtered.reduce((s, r) => s + r.amount, 0), [filtered]);
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -161,7 +165,7 @@ const HostelReceipts: React.FC = () => {
       </div>
 
       {/* Summary */}
-      <div className="border rounded-md p-3 bg-card flex items-center gap-6">
+      <div className="border rounded-md p-3 bg-card flex flex-wrap items-center gap-4 sm:gap-6">
         <div>
           <div className="text-[10px] uppercase text-muted-foreground">Total</div>
           <div className="text-lg font-bold">{formatCurrency(totalAmount)}</div>
@@ -198,24 +202,17 @@ const HostelReceipts: React.FC = () => {
             <SelectItem value="deposit_refund" className="text-xs">Deposit Refund</SelectItem>
           </SelectContent>
         </Select>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
-              <CalendarIcon className="h-3 w-3" /> {fromDate ? format(fromDate, 'dd MMM') : 'From'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={fromDate} onSelect={(d) => { setFromDate(d); setPage(1); }} /></PopoverContent>
-        </Popover>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
-              <CalendarIcon className="h-3 w-3" /> {toDate ? format(toDate, 'dd MMM') : 'To'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={toDate} onSelect={(d) => { setToDate(d); setPage(1); }} /></PopoverContent>
-        </Popover>
-        {(fromDate || toDate || filterHostel !== 'all' || filterType !== 'all' || searchTerm) && (
-          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFromDate(undefined); setToDate(undefined); setFilterHostel('all'); setFilterType('all'); setSearchTerm(''); setPage(1); }}>
+        <DateFilterSelector
+          dateFilter={dateFilter}
+          startDate={startDate}
+          endDate={endDate}
+          onDateFilterChange={(v) => { setDateFilter(v); setPage(1); }}
+          onStartDateChange={(d) => { setStartDate(d); setPage(1); }}
+          onEndDateChange={(d) => { setEndDate(d); setPage(1); }}
+          compact
+        />
+        {(dateFilter !== 'all' || filterHostel !== 'all' || filterType !== 'all' || searchTerm) && (
+          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setDateFilter('all'); setStartDate(undefined); setEndDate(undefined); setFilterHostel('all'); setFilterType('all'); setSearchTerm(''); setPage(1); }}>
             Clear
           </Button>
         )}

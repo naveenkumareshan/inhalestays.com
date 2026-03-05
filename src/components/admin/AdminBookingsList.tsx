@@ -32,9 +32,11 @@ import {
 import { adminBookingsService } from "@/api/adminBookingsService";
 import { useToast } from "@/hooks/use-toast";
 import { Filter, Download, FileSpreadsheet, Eye, TicketPercent } from "lucide-react";
-import { format } from "date-fns";
+import { format as formatDate } from "date-fns";
 import { getImageUrl } from "@/lib/utils";
 import { AdminTablePagination, getSerialNumber } from "@/components/admin/AdminTablePagination";
+import { DateFilterSelector } from "@/components/common/DateFilterSelector";
+import { getDateRangeFromFilter } from "@/utils/dateFilterUtils";
 
 interface Booking {
   _id: string;
@@ -81,8 +83,9 @@ interface FilterState {
   status: string;
   paymentStatus: string;
   search: string;
-  startDate: string;
-  endDate: string;
+  dateFilter: string;
+  startDate: Date | undefined;
+  endDate: Date | undefined;
   cabinId: string;
   userId: string;
   sortBy: string;
@@ -106,8 +109,9 @@ const AdminBookingsList = () => {
     status: "completed",
     paymentStatus: "",
     search: "",
-    startDate: "",
-    endDate: "",
+    dateFilter: "all",
+    startDate: undefined,
+    endDate: undefined,
     cabinId: "",
     userId: "",
     sortBy: "createdAt",
@@ -142,8 +146,9 @@ const AdminBookingsList = () => {
           | "completed"
           | "failed";
       if (filters.search) apiFilters.search = filters.search;
-      if (filters.startDate) apiFilters.startDate = filters.startDate;
-      if (filters.endDate) apiFilters.endDate = filters.endDate;
+      const { from: rangeFrom, to: rangeTo } = getDateRangeFromFilter(filters.dateFilter, filters.startDate, filters.endDate);
+      if (rangeFrom) apiFilters.startDate = formatDate(rangeFrom, 'yyyy-MM-dd');
+      if (rangeTo) apiFilters.endDate = formatDate(rangeTo, 'yyyy-MM-dd');
       if (filters.cabinId) apiFilters.cabinId = filters.cabinId;
       if (filters.userId) apiFilters.userId = filters.userId;
 
@@ -175,8 +180,9 @@ const AdminBookingsList = () => {
       status: "completed",
       paymentStatus: "",
       search: "",
-      startDate: "",
-      endDate: "",
+      dateFilter: "all",
+      startDate: undefined,
+      endDate: undefined,
       cabinId: "",
       userId: "",
       sortBy: "createdAt",
@@ -194,8 +200,9 @@ const AdminBookingsList = () => {
       if (filters.paymentStatus)
         exportFilters.paymentStatus = filters.paymentStatus;
       if (filters.search) exportFilters.search = filters.search;
-      if (filters.startDate) exportFilters.startDate = filters.startDate;
-      if (filters.endDate) exportFilters.endDate = filters.endDate;
+      const { from: expFrom, to: expTo } = getDateRangeFromFilter(filters.dateFilter, filters.startDate, filters.endDate);
+      if (expFrom) exportFilters.startDate = formatDate(expFrom, 'yyyy-MM-dd');
+      if (expTo) exportFilters.endDate = formatDate(expTo, 'yyyy-MM-dd');
       if (filters.cabinId) exportFilters.cabinId = filters.cabinId;
       if (filters.userId) exportFilters.userId = filters.userId;
 
@@ -380,19 +387,14 @@ const AdminBookingsList = () => {
             <SelectItem value="asc">↑</SelectItem>
           </SelectContent>
         </Select>
-        <Input
-          type="date"
-          placeholder="From"
-          value={filters.startDate}
-          onChange={(e) => handleFilterChange("startDate", e.target.value)}
-          className="h-8 text-sm w-36"
-        />
-        <Input
-          type="date"
-          placeholder="To"
-          value={filters.endDate}
-          onChange={(e) => handleFilterChange("endDate", e.target.value)}
-          className="h-8 text-sm w-36"
+        <DateFilterSelector
+          dateFilter={filters.dateFilter}
+          startDate={filters.startDate}
+          endDate={filters.endDate}
+          onDateFilterChange={(v) => { setFilters(prev => ({ ...prev, dateFilter: v })); setCurrentPage(1); }}
+          onStartDateChange={(d) => { setFilters(prev => ({ ...prev, startDate: d })); setCurrentPage(1); }}
+          onEndDateChange={(d) => { setFilters(prev => ({ ...prev, endDate: d })); setCurrentPage(1); }}
+          compact
         />
         <Button variant="outline" size="sm" className="h-8 text-sm" onClick={clearFilters}>
           Clear
@@ -485,16 +487,16 @@ const AdminBookingsList = () => {
                     </TableCell>
                     
                      <TableCell>
-                          {format(new Date(booking.createdAt), "dd MMM yyyy h:I:s a")}
+                          {formatDate(new Date(booking.createdAt), "dd MMM yyyy h:mm:ss a")}
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
                         <div>
-                          {format(new Date(booking.startDate), "dd MMM yyyy")}
+                          {formatDate(new Date(booking.startDate), "dd MMM yyyy")}
                         </div>
                         <div className="text-muted-foreground">to</div>
                         <div>
-                          {format(new Date(booking.endDate), "dd MMM yyyy")}
+                          {formatDate(new Date(booking.endDate), "dd MMM yyyy")}
                         </div>
                       </div>
                     </TableCell>
