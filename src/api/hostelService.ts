@@ -94,7 +94,8 @@ export const hostelService = {
 
   createHostel: async (hostelData: Partial<HostelData>) => {
     const { data: { user } } = await supabase.auth.getUser();
-    const sanitized = sanitizeUUIDs({ ...hostelData, created_by: user?.id });
+    const { id, ...rest } = hostelData;
+    const sanitized = sanitizeUUIDs({ ...rest, created_by: user?.id });
     const { data, error } = await supabase
       .from('hostels')
       .insert(sanitized as any)

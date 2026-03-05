@@ -82,7 +82,7 @@ const LocationSelectorComponent: React.FC<LocationSelectorProps> = ({
       {showState && (
         <div>
           <label className="text-sm font-medium mb-1 block">State</label>
-          <Select value={selectedState} onValueChange={handleStateChange} disabled={disabled}>
+          <Select value={selectedState || undefined} onValueChange={handleStateChange} disabled={disabled}>
             <SelectTrigger>
               <SelectValue placeholder="Select state" />
             </SelectTrigger>
@@ -100,7 +100,7 @@ const LocationSelectorComponent: React.FC<LocationSelectorProps> = ({
       {showCity && (
         <div>
           <label className="text-sm font-medium mb-1 block">City</label>
-          <Select value={selectedCity} onValueChange={handleCityChange} disabled={disabled || !selectedState}>
+          <Select value={selectedCity || undefined} onValueChange={handleCityChange} disabled={disabled || !selectedState}>
             <SelectTrigger>
               <SelectValue placeholder="Select city" />
             </SelectTrigger>
@@ -118,7 +118,7 @@ const LocationSelectorComponent: React.FC<LocationSelectorProps> = ({
       {showArea && (
         <div>
           <label className="text-sm font-medium mb-1 block">Area</label>
-          <Select value={selectedArea} onValueChange={onAreaChange} disabled={disabled || !selectedCity}>
+          <Select value={selectedArea || undefined} onValueChange={onAreaChange} disabled={disabled || !selectedCity}>
             <SelectTrigger>
               <SelectValue placeholder="Select area" />
             </SelectTrigger>
