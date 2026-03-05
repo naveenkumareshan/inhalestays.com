@@ -1,103 +1,69 @@
 
 
-# Fix: Seats/Beds Not Showing After Bookings
+# Deep Audit: Partner-Side Hostel & Reading Room Issues
 
-## Root Cause Analysis
+## Critical Issues Found
 
-After thorough investigation, two issues were identified:
+### Issue 1: Partners/Employees CANNOT manage seats (CRITICAL)
+The `seats` table only has:
+- `Admins can manage seats` (ALL for admin role)
+- `Anyone can view seats` (SELECT for public)
 
-### Issue 1: Silent Query Errors
-Both `HostelBedMap.tsx` and `VendorSeats.tsx` have fetch functions that **don't capture query errors**. When a Supabase query fails for any reason, the error is silently swallowed and the page shows "No beds/seats match your filters" instead of surfacing the actual error.
+**No partner or employee policies exist.** This means:
+- `updateSeatPrice()` silently fails for partners
+- `toggleSeatAvailability()` (block/unblock) silently fails for partners
+- Partners see seats but can't edit prices or block/unblock them
+- All seat management operations by partners return empty results with no error
 
-**HostelBedMap.tsx** (`fetchBeds`, ~line 219):
-```typescript
-const { data: bedsData } = await bedsQuery.order('bed_number');
-// ⚠️ error is never destructured — if query fails, bedsData = null → setBeds([])
-```
+### Issue 2: Partners CANNOT update hostel bookings (CRITICAL)
+`hostel_bookings` has partner INSERT but **no partner UPDATE policy**. This means:
+- Partners can create bookings but can't update payment status
+- The due collection flow in `HostelBedMap.tsx` (line 527-531) updates `hostel_bookings.remaining_amount` and `payment_status` — this **silently fails** for partners
+- Partners can't cancel or modify hostel bookings they created
 
-**VendorSeats.tsx** (`fetchSeats`, ~line 179):
-```typescript
-const res = await vendorSeatsService.getSeatsForDate(...);
-if (res.success && res.data) { setSeats(res.data); }
-// ⚠️ if fetch fails, seats stay at [] (initial state), no error shown
-```
+### Issue 3: Employees CANNOT manage hostel rooms
+`hostel_rooms` only has:
+- Admin ALL
+- Partners can manage own hostel rooms
+- Anyone can view active hostel rooms
 
-### Issue 2: Missing Employee RLS Policies
-Employees cannot create hostel bookings or update hostel bed availability because there are **no employee INSERT/UPDATE policies** on:
-- `hostel_bookings` — no employee INSERT policy
-- `hostel_beds` — no employee UPDATE policy
+No employee policy. Since `HostelBedMap.tsx` uses `!inner` join on `hostel_rooms`, and employee can only see rooms with `is_active = true` via the public policy, employees may lose visibility on inactive rooms.
 
-This means when an employee tries to book a hostel bed, the INSERT silently fails, and the bed update also fails.
+### Issue 4: VendorSeats color contrast not updated
+`VendorSeats.tsx` (line 690-698) still uses subtle `-50` tint colors (`bg-emerald-50`, `bg-red-50`, `bg-amber-50`) while `HostelBedMap.tsx` was updated to use `-100` tints. This is an inconsistency — seats page has the same visibility problem that was just fixed for hostel beds.
 
 ## Fix Plan
 
-### Database Migration: Add Missing Employee RLS Policies
+### Database Migration: Add 4 missing RLS policies
 
 ```sql
--- Employee can insert hostel bookings for employer's hostels
-CREATE POLICY "Employees can insert employer hostel bookings"
-ON public.hostel_bookings FOR INSERT TO authenticated
-WITH CHECK (EXISTS (
-  SELECT 1 FROM hostels h
-  WHERE h.id = hostel_bookings.hostel_id
-  AND is_partner_or_employee_of(h.created_by)
-));
+-- 1. Partners/Employees can manage their own cabin seats
+CREATE POLICY "Partners can manage own seats"
+ON public.seats FOR ALL TO authenticated
+USING (EXISTS (SELECT 1 FROM cabins c WHERE c.id = seats.cabin_id AND is_partner_or_employee_of(c.created_by)))
+WITH CHECK (EXISTS (SELECT 1 FROM cabins c WHERE c.id = seats.cabin_id AND is_partner_or_employee_of(c.created_by)));
 
--- Employee can manage employer's hostel beds
-CREATE POLICY "Employees can manage employer hostel beds"
-ON public.hostel_beds FOR ALL TO authenticated
-USING (EXISTS (
-  SELECT 1 FROM hostel_rooms r
-  JOIN hostels h ON h.id = r.hostel_id
-  WHERE r.id = hostel_beds.room_id
-  AND is_partner_or_employee_of(h.created_by)
-))
-WITH CHECK (EXISTS (
-  SELECT 1 FROM hostel_rooms r
-  JOIN hostels h ON h.id = r.hostel_id
-  WHERE r.id = hostel_beds.room_id
-  AND is_partner_or_employee_of(h.created_by)
-));
+-- 2. Partners can update their own hostel bookings
+CREATE POLICY "Partners can update bookings for own hostels"
+ON public.hostel_bookings FOR UPDATE TO authenticated
+USING (EXISTS (SELECT 1 FROM hostels h WHERE h.id = hostel_bookings.hostel_id AND h.created_by = auth.uid()));
+
+-- 3. Employees can manage employer hostel rooms
+CREATE POLICY "Employees can manage employer hostel rooms"
+ON public.hostel_rooms FOR ALL TO authenticated
+USING (EXISTS (SELECT 1 FROM hostels h WHERE h.id = hostel_rooms.hostel_id AND is_partner_or_employee_of(h.created_by)))
+WITH CHECK (EXISTS (SELECT 1 FROM hostels h WHERE h.id = hostel_rooms.hostel_id AND is_partner_or_employee_of(h.created_by)));
 ```
 
-### Code Fix 1: `src/pages/admin/HostelBedMap.tsx` — Add error handling to `fetchBeds`
+### Code Fix: Update VendorSeats color palette
+In `src/pages/vendor/VendorSeats.tsx`, update `statusColors` (line 690-698) to match the HostelBedMap vivid colors:
+- `bg-emerald-50` → `bg-emerald-100`, `border-emerald-400` → `border-emerald-500`
+- `bg-red-50` → `bg-red-100`, `border-red-400` → `border-red-500`
+- `bg-amber-50` → `bg-amber-100`, `border-amber-400` → `border-amber-500`
 
-In the `fetchBeds` callback (~line 207-335), capture errors from all three queries and show a toast when they fail instead of silently setting beds to empty:
-
-```typescript
-// Line ~219: capture error
-const { data: bedsData, error: bedsError } = await bedsQuery.order('bed_number');
-if (bedsError) {
-  console.error('Error fetching beds:', bedsError);
-  toast({ title: 'Error loading beds', description: bedsError.message, variant: 'destructive' });
-  setRefreshing(false);
-  return;
-}
-
-// Line ~241: capture error
-const { data: bookingsData, error: bookingsError } = await bookingsQuery;
-if (bookingsError) console.error('Error fetching bookings:', bookingsError);
-
-// Line ~245: capture error
-const { data: allBookingsData, error: allBookingsError } = await supabase...
-if (allBookingsError) console.error('Error fetching all bookings:', allBookingsError);
-```
-
-### Code Fix 2: `src/pages/vendor/VendorSeats.tsx` — Add error feedback to `fetchSeats`
-
-In the `fetchSeats` callback (~line 173-186), show a toast when seat fetch fails:
-
-```typescript
-const res = await vendorSeatsService.getSeatsForDate(selectedCabinId, dateStr, partnerCabinIds);
-if (res.success && res.data) {
-  setSeats(res.data);
-} else if (!res.success) {
-  toast({ title: 'Error loading seats', description: res.error || 'Failed to fetch seats', variant: 'destructive' });
-}
-```
+Also update the legend indicators (~line 850) to use the matching `500` shade colors.
 
 ### Files Changed
-- **Database migration**: Add 2 employee RLS policies
-- **`src/pages/admin/HostelBedMap.tsx`**: Add error handling to `fetchBeds`
-- **`src/pages/vendor/VendorSeats.tsx`**: Add error toast to `fetchSeats`
+- **Database migration**: 3 new RLS policies
+- **`src/pages/vendor/VendorSeats.tsx`**: Status color contrast update
 
