@@ -91,14 +91,39 @@ const VendorEmployees: React.FC = () => {
   };
 
   const handleResetPassword = async () => {
-    if (!resetPasswordEmployee?.employee_user_id || !newPassword) return;
+    if (!resetPasswordEmployee || !newPassword) return;
     try {
       setResettingPassword(true);
-      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
-        body: { userId: resetPasswordEmployee.employee_user_id, newPassword },
-      });
-      if (error || data?.error) throw new Error(data?.error || error?.message);
-      toast({ title: 'Success', description: 'Password reset successfully' });
+
+      if (!resetPasswordEmployee.employee_user_id) {
+        // No auth account yet — create one
+        const { data, error } = await supabase.functions.invoke('partner-create-employee', {
+          body: {
+            name: resetPasswordEmployee.name,
+            email: resetPasswordEmployee.email,
+            phone: resetPasswordEmployee.phone,
+            password: newPassword,
+          },
+        });
+        if (error) throw new Error(error.message);
+        if (data?.error) throw new Error(data.error);
+        if (data?.userId) {
+          await supabase
+            .from('vendor_employees')
+            .update({ employee_user_id: data.userId } as any)
+            .eq('id', resetPasswordEmployee.id);
+        }
+        toast({ title: 'Success', description: 'Login account created successfully' });
+        fetchEmployees();
+      } else {
+        // Already has auth account — just reset password
+        const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+          body: { userId: resetPasswordEmployee.employee_user_id, newPassword },
+        });
+        if (error || data?.error) throw new Error(data?.error || error?.message);
+        toast({ title: 'Success', description: 'Password reset successfully' });
+      }
+
       setResetPasswordEmployee(null);
       setNewPassword('');
     } catch (e: any) {
@@ -221,11 +246,9 @@ const VendorEmployees: React.FC = () => {
                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setViewingEmployee(emp)}>
                         <Eye className="h-3 w-3" />
                       </Button>
-                      {emp.employee_user_id && (
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setResetPasswordEmployee(emp); setNewPassword(''); }}>
-                          <KeyRound className="h-3 w-3" />
-                        </Button>
-                      )}
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setResetPasswordEmployee(emp); setNewPassword(''); }}>
+                        <KeyRound className="h-3 w-3" />
+                      </Button>
                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setEditingEmployee(emp); setShowForm(true); }}>
                         <Edit className="h-3 w-3" />
                       </Button>
@@ -288,11 +311,14 @@ const VendorEmployees: React.FC = () => {
       <Dialog open={!!resetPasswordEmployee} onOpenChange={(open) => { if (!open) { setResetPasswordEmployee(null); setNewPassword(''); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-sm">Reset Password</DialogTitle>
+            <DialogTitle className="text-sm">{resetPasswordEmployee?.employee_user_id ? 'Reset Password' : 'Create Login'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
-              Set a new password for <span className="font-medium text-foreground">{resetPasswordEmployee?.name}</span> ({resetPasswordEmployee?.email})
+              {resetPasswordEmployee?.employee_user_id
+                ? <>Set a new password for <span className="font-medium text-foreground">{resetPasswordEmployee?.name}</span> ({resetPasswordEmployee?.email})</>
+                : <>Create a login account for <span className="font-medium text-foreground">{resetPasswordEmployee?.name}</span> ({resetPasswordEmployee?.email})</>
+              }
             </p>
             <div className="space-y-1.5">
               <Label className="text-xs">New Password</Label>
@@ -302,7 +328,7 @@ const VendorEmployees: React.FC = () => {
           <DialogFooter>
             <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setResetPasswordEmployee(null); setNewPassword(''); }}>Cancel</Button>
             <Button size="sm" className="h-7 text-xs" onClick={handleResetPassword} disabled={resettingPassword || newPassword.length < 6}>
-              {resettingPassword ? 'Resetting...' : 'Reset Password'}
+              {resettingPassword ? 'Processing...' : (resetPasswordEmployee?.employee_user_id ? 'Reset Password' : 'Create Login')}
             </Button>
           </DialogFooter>
         </DialogContent>
