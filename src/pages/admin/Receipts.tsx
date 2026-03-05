@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/currency';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 
 interface ReceiptRow {
   id: string;
@@ -43,6 +44,7 @@ const Receipts: React.FC = () => {
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [cabins, setCabins] = useState<{ id: string; name: string }[]>([]);
+  const [paymentLabels, setPaymentLabels] = useState<Record<string, string>>({});
   const [filterCabin, setFilterCabin] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -102,6 +104,10 @@ const Receipts: React.FC = () => {
         bookingSerial: r.booking_id ? bookingMap[r.booking_id]?.serial_number || '' : '',
       }));
 
+      // Resolve custom payment method labels
+      const customLabels = await resolvePaymentMethodLabels(mapped.map(r => r.payment_method));
+      setPaymentLabels(customLabels);
+
       setReceipts(mapped);
     } catch (err) {
       toast({ title: 'Error loading receipts', variant: 'destructive' });
@@ -136,15 +142,7 @@ const Receipts: React.FC = () => {
   const totalAmount = useMemo(() => filtered.reduce((s, r) => s + r.amount, 0), [filtered]);
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  const methodLabel = (m: string) => {
-    switch (m) {
-      case 'cash': return 'Cash';
-      case 'upi': return 'UPI';
-      case 'bank_transfer': return 'Bank';
-      case 'online': return 'Online';
-      default: return m;
-    }
-  };
+  const methodLabel = (m: string) => getMethodLabel(m, paymentLabels);
 
   return (
     <div className="space-y-4">

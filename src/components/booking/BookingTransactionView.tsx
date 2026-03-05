@@ -9,6 +9,7 @@ import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { format, differenceInDays } from 'date-fns';
 import { CreditCard, Calendar, RefreshCw, IndianRupee, Clock, TicketPercent, Wallet, Receipt, ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 
 interface ReceiptRow {
   id: string;
@@ -38,6 +39,7 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
     totalMonths: number;
   } | null>(null);
   const [dueData, setDueData] = useState<any>(null);
+  const [paymentLabels, setPaymentLabels] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -70,7 +72,12 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
         .select('*')
         .eq('booking_id', bookingId)
         .order('created_at', { ascending: false });
-      setReceipts((rcpts || []) as ReceiptRow[]);
+      const receiptData = (rcpts || []) as ReceiptRow[];
+      setReceipts(receiptData);
+
+      // Resolve custom payment method labels
+      const customLabels = await resolvePaymentMethodLabels(receiptData.map(r => r.payment_method));
+      setPaymentLabels(customLabels);
 
       // Fetch due for this booking
       const dueRes = await vendorSeatsService.getDueForBooking(bookingId);
@@ -232,7 +239,7 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[12px] font-medium">₹{Number(r.amount).toLocaleString()}</span>
-                  <span className="text-[10px] text-muted-foreground capitalize">{r.payment_method}</span>
+                  <span className="text-[10px] text-muted-foreground capitalize">{getMethodLabel(r.payment_method, paymentLabels)}</span>
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                   <span>{format(new Date(r.created_at), 'dd MMM yyyy, HH:mm')}</span>

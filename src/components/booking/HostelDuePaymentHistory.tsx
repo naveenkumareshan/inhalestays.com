@@ -7,6 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ChevronDown, Receipt } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 
 interface DuePayment {
   id: string;
@@ -38,16 +39,6 @@ interface HostelDuePaymentHistoryProps {
   defaultOpen?: boolean;
 }
 
-const methodLabel = (m: string) => {
-  switch (m) {
-    case 'cash': return 'Cash';
-    case 'upi': return 'UPI';
-    case 'bank_transfer': return 'Bank Transfer';
-    case 'online': return 'Online';
-    default: return m;
-  }
-};
-
 export const HostelDuePaymentHistory: React.FC<HostelDuePaymentHistoryProps> = ({
   dueId,
   dueInfo,
@@ -58,6 +49,7 @@ export const HostelDuePaymentHistory: React.FC<HostelDuePaymentHistoryProps> = (
   const [receipts, setReceipts] = useState<ReceiptInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(defaultOpen);
+  const [paymentLabels, setPaymentLabels] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!dueId) return;
@@ -75,7 +67,12 @@ export const HostelDuePaymentHistory: React.FC<HostelDuePaymentHistoryProps> = (
           .eq('receipt_type', 'due_collection')
           .order('created_at', { ascending: true }),
       ]);
-      if (paymentsRes.data) setPayments(paymentsRes.data as DuePayment[]);
+      if (paymentsRes.data) {
+        const pData = paymentsRes.data as DuePayment[];
+        setPayments(pData);
+        const customLabels = await resolvePaymentMethodLabels(pData.map(p => p.payment_method));
+        setPaymentLabels(customLabels);
+      }
       if (receiptsRes.data) setReceipts(receiptsRes.data as ReceiptInfo[]);
       setLoading(false);
     };
@@ -122,7 +119,7 @@ export const HostelDuePaymentHistory: React.FC<HostelDuePaymentHistoryProps> = (
                 <div className="text-[10px] font-medium text-primary">Receipt: {receipt.serial_number}</div>
               )}
               <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                <span>{methodLabel(p.payment_method)}</span>
+                <span>{getMethodLabel(p.payment_method, paymentLabels)}</span>
                 {p.collected_by_name && <span>by {p.collected_by_name}</span>}
               </div>
               {p.transaction_id && <div className="text-[10px] text-muted-foreground">Txn: {p.transaction_id}</div>}
