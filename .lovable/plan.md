@@ -1,35 +1,26 @@
 
 
-# Fix: Search Not Working on Bookings Pages
+# Fix: Hostel Receipts — Collected By, Txn ID, and Date+Time
 
-## Issues Found
+## Issues
 
-### Issue 1: Reading Room Bookings Search (AdminBookingsList)
-In `src/api/adminBookingsService.ts` line 34, search only filters by `serial_number`:
-```typescript
-query = query.or(`serial_number.ilike.%${filters.search}%`);
-```
-Searching by student name, email, or phone does nothing. Supabase `.or()` cannot filter across joined tables directly. The fix is to first query `profiles` for matching user IDs, then add those IDs to the filter.
+1. **Collected By** shows `-` for online student bookings because `collected_by_name` is not set when receipts are created in `hostelBookingService.ts`
+2. **Txn ID** column is combined with Notes — transaction_id is sometimes empty for online payments
+3. **Date column** only shows date (`toLocaleDateString`), not time
 
-### Issue 2: Hostel Bookings Search (HostelBookingsList)
-In `src/components/admin/HostelBookingsList.tsx` line 72-76, the client-side filter references wrong field names:
-- `booking.student?.name` — data uses `booking.profiles?.name`
-- `booking._id` — data uses `booking.id`
+## Changes
 
-The search silently matches nothing because `booking.student` is always `undefined`.
+### 1. `src/api/hostelBookingService.ts` — Set `collected_by_name` on receipt creation
 
-## Fix Plan
+When creating a receipt during student booking, set `collected_by_name` to `'InhaleStays.com'` (matching the convention from the reading room payment verification flow) since it's an online payment.
 
-### Change 1: `src/api/adminBookingsService.ts` — Expand search to include user name/phone
-Before the main query, if `filters.search` is set, do a quick lookup on `profiles` to find matching `user_id`s, then combine `serial_number.ilike` OR `user_id.in.(matchedIds)` in the `.or()` clause.
+### 2. `src/pages/admin/HostelReceipts.tsx` — Display changes
 
-### Change 2: `src/components/admin/HostelBookingsList.tsx` — Fix field references
-Update `getFilteredBookings()`:
-- `booking.student?.name` → `booking.profiles?.name`
-- `booking.student?.email` → `booking.profiles?.email`
-- `booking._id` → `booking.id`
+- **Collected By**: Show `'InhaleStays.com'` as fallback when `collected_by_name` is empty and `payment_method` is `'online'`
+- **Txn ID**: Split into its own dedicated column, separate from Notes
+- **Date**: Change from `toLocaleDateString` to `toLocaleString('en-IN')` to include time
 
 ### Files Changed
-- `src/api/adminBookingsService.ts` — search with profile name/phone/email lookup
-- `src/components/admin/HostelBookingsList.tsx` — fix field name references in client-side filter
+- `src/api/hostelBookingService.ts` — Add `collected_by_name: 'InhaleStays.com'` to receipt insert
+- `src/pages/admin/HostelReceipts.tsx` — Date+time display, collected_by fallback logic
 
