@@ -525,8 +525,8 @@ const VendorSeats: React.FC = () => {
 
     const dueDate = manualDueDate || defaultDueDate;
 
-    // Proportional end date is the due date itself
-    const proportionalEndDate = dueDate;
+    // Validity always spans the full booking period
+    const proportionalEndDate = computedEndDate;
     const proportionalDays = Math.ceil((proportionalEndDate.getTime() - bookingStartDate.getTime()) / (1000 * 60 * 60 * 24));
 
     return { advanceAmount, remainingDue, proportionalDays, dueDate, proportionalEndDate, totalDays };

@@ -801,19 +801,8 @@ export const vendorSeatsService = {
 
       const totalPaid = Number(due.advance_paid) + newPaidAmount;
       const booking = due.bookings as any;
-      let proportionalEndDate = due.proportional_end_date;
-
-      if (booking?.start_date && booking?.end_date) {
-        const totalDays = Math.ceil((new Date(booking.end_date).getTime() - new Date(booking.start_date).getTime()) / (1000 * 60 * 60 * 24));
-        if (remaining <= 0) {
-          proportionalEndDate = booking.end_date;
-        } else {
-          const newDays = Math.floor((totalPaid / Number(due.total_fee)) * totalDays);
-          const newEnd = new Date(booking.start_date);
-          newEnd.setDate(newEnd.getDate() + newDays);
-          proportionalEndDate = newEnd.toISOString().split('T')[0];
-        }
-      }
+      // Validity always spans the full booking period
+      let proportionalEndDate = booking?.end_date || due.proportional_end_date;
 
       await supabase.from('dues').update({
         paid_amount: newPaidAmount,

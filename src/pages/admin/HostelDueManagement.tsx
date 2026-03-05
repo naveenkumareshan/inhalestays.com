@@ -196,22 +196,9 @@ const HostelDueManagement: React.FC = () => {
     const dueAmount = Number(selectedDue.due_amount);
     const newStatus = newPaid >= dueAmount ? 'paid' : 'partially_paid';
 
-    // Calculate proportional end date
-    let proportionalEndDate: string | null = null;
+    // Validity always spans the full booking period
     const booking = selectedDue.hostel_bookings;
-    if (booking?.start_date && booking?.end_date) {
-      const totalFee = Number(selectedDue.total_fee);
-      const totalPaidSoFar = Number(selectedDue.advance_paid) + newPaid;
-      if (totalFee > 0) {
-        const start = new Date(booking.start_date);
-        const end = new Date(booking.end_date);
-        const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-        const coveredDays = Math.round((totalPaidSoFar / totalFee) * totalDays);
-        const propDate = new Date(start);
-        propDate.setDate(propDate.getDate() + coveredDays);
-        proportionalEndDate = format(propDate, 'yyyy-MM-dd');
-      }
-    }
+    const proportionalEndDate: string | null = booking?.end_date || null;
 
     // Insert due payment
     const { error: paymentError } = await supabase.from('hostel_due_payments').insert({
