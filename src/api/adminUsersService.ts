@@ -74,35 +74,18 @@ export const adminUsersService = {
         }
       }
 
-      // For partners viewing students, restrict to students who have bookings at partner's properties
+      // For partners viewing students, restrict to students linked via student_property_links
       if (isPartner && authUser && role === 'student') {
         const { getEffectiveOwnerId } = await import('@/utils/getEffectiveOwnerId');
         const { ownerId } = await getEffectiveOwnerId();
-        const [cabinsRes, hostelsRes] = await Promise.all([
-          supabase.from('cabins').select('id').eq('created_by', ownerId),
-          supabase.from('hostels').select('id').eq('created_by', ownerId),
-        ]);
-        const cabinIds = (cabinsRes.data || []).map(c => c.id);
-        const hostelIds = (hostelsRes.data || []).map(h => h.id);
 
-        const studentIdSet = new Set<string>();
+        const { data: links } = await supabase
+          .from('student_property_links')
+          .select('student_user_id')
+          .eq('partner_user_id', ownerId);
 
-        if (cabinIds.length > 0) {
-          const { data: rrBookings } = await supabase
-            .from('bookings')
-            .select('user_id')
-            .in('cabin_id', cabinIds);
-          (rrBookings || []).forEach(b => studentIdSet.add(b.user_id));
-        }
-        if (hostelIds.length > 0) {
-          const { data: hostelBookings } = await supabase
-            .from('hostel_bookings')
-            .select('user_id')
-            .in('hostel_id', hostelIds);
-          (hostelBookings || []).forEach(b => studentIdSet.add(b.user_id));
-        }
+        const partnerStudentIds = (links || []).map((l: any) => l.student_user_id);
 
-        const partnerStudentIds = Array.from(studentIdSet);
         if (partnerStudentIds.length === 0) {
           return { success: true, data: [], count: 0, totalCount: 0, pagination: { totalPages: 1, currentPage: page } };
         }

@@ -96,6 +96,7 @@ export interface StudentProfile {
   phone: string;
   serialNumber: string;
   profilePicture: string;
+  linked?: boolean;
 }
 
 export interface PartnerBookingData {
@@ -384,27 +385,71 @@ export const vendorSeatsService = {
     }
   },
 
-  searchStudents: async (query: string): Promise<{ success: boolean; data?: StudentProfile[]; error?: string }> => {
+  searchStudents: async (query: string, partnerId?: string): Promise<{ success: boolean; data?: StudentProfile[]; error?: string }> => {
     try {
       const searchTerm = `%${query}%`;
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, name, email, phone, serial_number, profile_picture')
-        .or(`name.ilike.${searchTerm},phone.ilike.${searchTerm},email.ilike.${searchTerm}`)
-        .limit(20);
+      const results: StudentProfile[] = [];
+      const foundIds = new Set<string>();
 
-      if (error) throw error;
+      // Step 1: If partnerId provided, search linked students first
+      if (partnerId) {
+        const { data: links } = await supabase
+          .from('student_property_links')
+          .select('student_user_id')
+          .eq('partner_user_id', partnerId);
 
-      const profiles: StudentProfile[] = (data || []).map(p => ({
-        id: p.id,
-        name: p.name || '',
-        email: p.email || '',
-        phone: p.phone || '',
-        serialNumber: p.serial_number || '',
-        profilePicture: p.profile_picture || '',
-      }));
+        const linkedIds = (links || []).map((l: any) => l.student_user_id);
 
-      return { success: true, data: profiles };
+        if (linkedIds.length > 0) {
+          const { data: linkedProfiles } = await supabase
+            .from('profiles')
+            .select('id, name, email, phone, serial_number, profile_picture')
+            .in('id', linkedIds)
+            .or(`name.ilike.${searchTerm},phone.ilike.${searchTerm},email.ilike.${searchTerm}`)
+            .limit(10);
+
+          (linkedProfiles || []).forEach(p => {
+            foundIds.add(p.id);
+            results.push({
+              id: p.id,
+              name: p.name || '',
+              email: p.email || '',
+              phone: p.phone || '',
+              serialNumber: p.serial_number || '',
+              profilePicture: p.profile_picture || '',
+              linked: true,
+            });
+          });
+        }
+      }
+
+      // Step 2: Global search if results < 5 (or no partnerId = admin mode)
+      if (results.length < 5) {
+        let globalQuery = supabase
+          .from('profiles')
+          .select('id, name, email, phone, serial_number, profile_picture')
+          .or(`name.ilike.${searchTerm},phone.ilike.${searchTerm},email.ilike.${searchTerm}`)
+          .limit(10);
+
+        const { data: globalData } = await globalQuery;
+
+        (globalData || []).forEach(p => {
+          if (!foundIds.has(p.id)) {
+            foundIds.add(p.id);
+            results.push({
+              id: p.id,
+              name: p.name || '',
+              email: p.email || '',
+              phone: p.phone || '',
+              serialNumber: p.serial_number || '',
+              profilePicture: p.profile_picture || '',
+              linked: !partnerId, // admin = no distinction
+            });
+          }
+        });
+      }
+
+      return { success: true, data: results.slice(0, 20) };
     } catch (error) {
       console.error('Error searching students:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed' };
@@ -535,6 +580,18 @@ export const vendorSeatsService = {
         } as any);
       } catch (e) {
         console.error('Receipt creation failed:', e);
+      }
+
+      // Auto-link student to partner
+      try {
+        const { getEffectiveOwnerId } = await import('@/utils/getEffectiveOwnerId');
+        const { ownerId } = await getEffectiveOwnerId();
+        await supabase.from('student_property_links').upsert(
+          { student_user_id: data.userId, partner_user_id: ownerId },
+          { onConflict: 'student_user_id,partner_user_id' }
+        );
+      } catch (e) {
+        console.error('Auto-link student failed:', e);
       }
 
       return { success: true, serialNumber: insertedData?.serial_number || serialData || '' };
