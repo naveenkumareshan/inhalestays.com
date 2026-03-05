@@ -73,6 +73,7 @@ export const hostelBookingService = {
         payment_method: bookingData.payment_method || 'online',
         transaction_id: bookingData.transaction_id || bookingData.razorpay_payment_id || '',
         receipt_type: 'booking_payment',
+        collected_by_name: 'InhaleStays.com',
       });
     }
 

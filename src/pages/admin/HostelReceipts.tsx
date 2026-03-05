@@ -235,15 +235,16 @@ const HostelReceipts: React.FC = () => {
               <TableHead className="text-xs">Type</TableHead>
               <TableHead className="text-xs">Booking ID</TableHead>
               <TableHead className="text-xs">Collected By</TableHead>
-              <TableHead className="text-xs">Txn ID / Notes</TableHead>
-              <TableHead className="text-xs">Date</TableHead>
+              <TableHead className="text-xs">Txn ID</TableHead>
+              <TableHead className="text-xs">Notes</TableHead>
+              <TableHead className="text-xs">Date & Time</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
             ) : paginated.length === 0 ? (
-              <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground text-xs">No receipts found</TableCell></TableRow>
+              <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground text-xs">No receipts found</TableCell></TableRow>
             ) : (
               paginated.map((r, index) => (
                 <TableRow key={r.id}>
@@ -263,13 +264,10 @@ const HostelReceipts: React.FC = () => {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-xs font-mono text-muted-foreground">{r.bookingSerial || '-'}</TableCell>
-                  <TableCell className="text-xs">{r.collected_by_name || '-'}</TableCell>
-                  <TableCell className="text-xs max-w-[150px]">
-                    {r.transaction_id ? <div className="font-mono truncate">{r.transaction_id}</div> : null}
-                    {r.notes ? <div className="text-muted-foreground text-[10px] italic truncate">{r.notes}</div> : null}
-                    {!r.transaction_id && !r.notes ? '-' : null}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString('en-IN')}</TableCell>
+                  <TableCell className="text-xs">{r.collected_by_name || (r.payment_method === 'online' ? 'InhaleStays.com' : '-')}</TableCell>
+                  <TableCell className="text-xs font-mono max-w-[120px] truncate">{r.transaction_id || '-'}</TableCell>
+                  <TableCell className="text-xs max-w-[120px] text-muted-foreground italic truncate">{r.notes || '-'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString('en-IN')}</TableCell>
                 </TableRow>
               ))
             )}
