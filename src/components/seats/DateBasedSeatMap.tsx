@@ -221,6 +221,7 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
     return {
       ...seat,
       isAvailable: categoryMismatch ? false : (availabilityInfo?.isAvailable ?? seat.isAvailable),
+      isFutureBooked: seat.isFutureBooked,
       isCategoryMismatch: !!categoryMismatch,
       conflictingBookings: availabilityInfo?.conflictingBookings || [],
       isDateFiltered: true,
@@ -229,6 +230,9 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
 
   const availableCount = transformedSeats.filter(
     (seat) => seat.isAvailable
+  ).length;
+  const futureBookedCount = transformedSeats.filter(
+    (seat) => seat.isFutureBooked && seat.isAvailable
   ).length;
   const unavailableCount = transformedSeats.length - availableCount;
 
@@ -322,6 +326,9 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
       {exportcsv && (
         <div className="flex gap-4 mb-4">
           <Badge variant="secondary">Available: {availableCount}</Badge>
+          {futureBookedCount > 0 && (
+            <Badge className="bg-violet-100 text-violet-800 border-violet-400">Future Booked: {futureBookedCount}</Badge>
+          )}
           <Badge variant="destructive">Unavailable: {unavailableCount}</Badge>
           <Badge variant="outline">Total: {transformedSeats.length}</Badge>
         </div>

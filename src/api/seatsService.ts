@@ -259,12 +259,23 @@ export const seatsService = {
 
       const bookedSeatIds = new Set(conflicting.map(b => b.seat_id));
 
-      // Return ALL seats, marking booked ones as unavailable
+      // Query future bookings (start_date > selected endDate)
+      const nextDay = new Date(endDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const { data: futureBookings } = await supabase.rpc('get_conflicting_seat_bookings', {
+        p_cabin_id: cabinId,
+        p_start_date: nextDay.toISOString().split('T')[0],
+        p_end_date: '2099-12-31',
+      });
+      const futureSeatIds = new Set((futureBookings || []).map((b: any) => b.seat_id));
+
+      // Return ALL seats, marking booked ones as unavailable + future-booked flag
       return {
         success: true,
         data: (seats || []).map(s => ({
           ...mapRow(s),
           isAvailable: s.is_available && !bookedSeatIds.has(s.id),
+          isFutureBooked: !bookedSeatIds.has(s.id) && futureSeatIds.has(s.id),
         })),
       };
     } catch (e) {

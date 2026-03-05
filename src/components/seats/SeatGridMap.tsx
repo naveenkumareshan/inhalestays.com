@@ -15,6 +15,7 @@ export interface Seat {
     y: number;
   };
   isAvailable: boolean;
+  isFutureBooked?: boolean;
   price: number;
   unavailableUntil?: string;
 }
@@ -67,6 +68,10 @@ export const SeatGridMap: React.FC<SeatGridMapProps> = ({
     
     if (!seat.isAvailable) {
       return 'bg-[#D3E4FD] text-blue-600 border-blue-200 cursor-not-allowed';
+    }
+
+    if (seat.isFutureBooked) {
+      return 'bg-violet-100 text-violet-800 border-violet-400 hover:bg-violet-200';
     }
     
     return 'bg-[#d4f7c4] text-cabin-green border-cabin-green hover:bg-cabin-green/10';
@@ -182,7 +187,7 @@ export const SeatGridMap: React.FC<SeatGridMapProps> = ({
               <div>
                 Status: {
                   seat.isAvailable
-                    ? "Available"
+                    ? (seat.isFutureBooked ? "Future Booked" : "Available")
                     : "Unavailable"
                 }
               </div>
@@ -225,6 +230,10 @@ export const SeatGridMap: React.FC<SeatGridMapProps> = ({
         <div className="flex items-center">
           <div className="w-4 h-4 bg-[#d4f7c4] border border-cabin-green rounded-sm mr-2"></div>
           <span>Available</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-4 h-4 bg-violet-100 border border-violet-400 rounded-sm mr-2"></div>
+          <span>Future Booked</span>
         </div>
         <div className="flex items-center">
           <div className="w-4 h-4 bg-cabin-dark rounded-sm mr-2"></div>

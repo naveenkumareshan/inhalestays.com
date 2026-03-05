@@ -14,6 +14,7 @@ interface ViewerSeat {
   price: number;
   position: { x: number; y: number };
   isAvailable: boolean;
+  isFutureBooked?: boolean;
   unavailableUntil?: string;
   conflictingBookings?: any[];
   sectionId?: string;
@@ -40,9 +41,11 @@ interface SeatButtonProps {
 
 const MemoizedSeatButton = memo(({ seat, isSelected, onSelect }: SeatButtonProps) => {
   const isBooked = !seat.isAvailable;
+  const isFutureBooked = seat.isFutureBooked && !isBooked;
   let seatClass = 'bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100 cursor-pointer';
   if (isSelected) seatClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/50 cursor-pointer';
   else if (isBooked) seatClass = 'bg-muted border-muted-foreground/30 text-muted-foreground cursor-not-allowed';
+  else if (isFutureBooked) seatClass = 'bg-violet-50 border-violet-400 text-violet-800 hover:bg-violet-100 cursor-pointer';
 
   return (
     <Tooltip>
@@ -70,7 +73,7 @@ const MemoizedSeatButton = memo(({ seat, isSelected, onSelect }: SeatButtonProps
           <p className="font-bold">Seat {seat.number}</p>
           {seat.category && <p>{seat.category}</p>}
           <p>₹{seat.price}/month</p>
-          <p>{seat.isAvailable ? '✅ Available' : '❌ Booked'}</p>
+          <p>{seat.isAvailable ? (seat.isFutureBooked ? '🟣 Future Booked' : '✅ Available') : '❌ Booked'}</p>
           {!seat.isAvailable && seat.unavailableUntil && (
             <p>Until: {format(new Date(seat.unavailableUntil), 'dd MMM yyyy')}</p>
           )}
@@ -81,6 +84,7 @@ const MemoizedSeatButton = memo(({ seat, isSelected, onSelect }: SeatButtonProps
 }, (prev, next) => 
   prev.seat._id === next.seat._id &&
   prev.seat.isAvailable === next.seat.isAvailable &&
+  prev.seat.isFutureBooked === next.seat.isFutureBooked &&
   prev.isSelected === next.isSelected &&
   prev.seat.price === next.seat.price
 );
@@ -267,9 +271,11 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
             const isSelected = selectedSeat?._id === seat._id;
             const dotColor = isSelected
               ? 'bg-primary'
-              : seat.isAvailable
-                ? 'bg-emerald-500'
-                : 'bg-muted-foreground/50';
+              : !seat.isAvailable
+                ? 'bg-muted-foreground/50'
+                : seat.isFutureBooked
+                  ? 'bg-violet-500'
+                  : 'bg-emerald-500';
             return (
               <div
                 key={seat._id}
@@ -295,6 +301,10 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
         <div className="flex items-center gap-1">
           <div className="w-3 h-2.5 rounded border border-emerald-400 bg-emerald-50" />
           <span>Available</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-2.5 rounded border border-violet-400 bg-violet-50" />
+          <span>Future Booked</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-3 h-2.5 rounded border border-primary bg-primary" />
