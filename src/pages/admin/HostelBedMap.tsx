@@ -711,7 +711,7 @@ const HostelBedMap: React.FC = () => {
           advance_paid: advanceAmt,
           due_amount: remaining,
           due_date: format(dueDate, 'yyyy-MM-dd'),
-          proportional_end_date: advanceComputed.proportionalEndDate ? format(advanceComputed.proportionalEndDate, 'yyyy-MM-dd') : null,
+          proportional_end_date: format(computedEndDate, 'yyyy-MM-dd'),
           status: 'pending',
         } as any);
       }
