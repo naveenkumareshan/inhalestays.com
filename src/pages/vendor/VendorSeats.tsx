@@ -471,15 +471,27 @@ const VendorSeats: React.FC = () => {
     setUpdating(false);
   };
 
-  // Student search
+  // Student search with partner isolation
   useEffect(() => {
     if (studentQuery.length < 2) { setStudentResults([]); return; }
     const timer = setTimeout(async () => {
-      const res = await vendorSeatsService.searchStudents(studentQuery);
+      // Determine partnerId for isolation
+      const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+      let partnerId: string | undefined;
+      if (!isAdmin && user?.id) {
+        try {
+          const { getEffectiveOwnerId } = await import('@/utils/getEffectiveOwnerId');
+          const { ownerId } = await getEffectiveOwnerId();
+          partnerId = ownerId;
+        } catch {
+          partnerId = user.id;
+        }
+      }
+      const res = await vendorSeatsService.searchStudents(studentQuery, partnerId);
       if (res.success && res.data) setStudentResults(res.data);
     }, 300);
     return () => clearTimeout(timer);
-  }, [studentQuery]);
+  }, [studentQuery, user]);
 
   // Compute end date
   const computedEndDate = useMemo(() => {
@@ -569,10 +581,27 @@ const VendorSeats: React.FC = () => {
         phone: newStudentPhone,
         serialNumber: '',
         profilePicture: '',
+        linked: true,
       };
       setSelectedStudent(student);
       setStudentQuery(newStudentName);
       setShowNewStudent(false);
+
+      // Auto-link to partner
+      try {
+        const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+        if (!isAdmin) {
+          const { getEffectiveOwnerId } = await import('@/utils/getEffectiveOwnerId');
+          const { ownerId } = await getEffectiveOwnerId();
+          await supabase.from('student_property_links').upsert(
+            { student_user_id: res.userId, partner_user_id: ownerId },
+            { onConflict: 'student_user_id,partner_user_id' }
+          );
+        }
+      } catch (e) {
+        console.error('Auto-link failed:', e);
+      }
+
       toast({ title: res.existing ? 'Existing student selected' : 'Student created & selected' });
     } else {
       toast({ title: 'Error', description: res.error || 'Failed to create student', variant: 'destructive' });
@@ -1316,9 +1345,29 @@ const VendorSeats: React.FC = () => {
                               <div
                                 key={s.id}
                                 className="px-2 py-1.5 text-[11px] hover:bg-muted cursor-pointer border-b last:border-0"
-                                onClick={() => { setSelectedStudent(s); setStudentQuery(s.name); setStudentResults([]); }}
+                                onClick={async () => {
+                                  setSelectedStudent(s);
+                                  setStudentQuery(s.name);
+                                  setStudentResults([]);
+                                  // Auto-link unlinked student on selection
+                                  if (!s.linked && user?.role !== 'admin' && user?.role !== 'super_admin') {
+                                    try {
+                                      const { getEffectiveOwnerId } = await import('@/utils/getEffectiveOwnerId');
+                                      const { ownerId } = await getEffectiveOwnerId();
+                                      await supabase.from('student_property_links').upsert(
+                                        { student_user_id: s.id, partner_user_id: ownerId },
+                                        { onConflict: 'student_user_id,partner_user_id' }
+                                      );
+                                    } catch (e) { console.error('Auto-link on select failed:', e); }
+                                  }
+                                }}
                               >
-                                <div className="font-medium">{s.name}</div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-medium">{s.name}</span>
+                                  {!s.linked && user?.role !== 'admin' && user?.role !== 'super_admin' && (
+                                    <Badge variant="outline" className="text-[8px] h-3.5 px-1 py-0 border-amber-400 text-amber-600">Global</Badge>
+                                  )}
+                                </div>
                                 <div className="text-muted-foreground">{s.phone} · {s.email}</div>
                               </div>
                             ))}

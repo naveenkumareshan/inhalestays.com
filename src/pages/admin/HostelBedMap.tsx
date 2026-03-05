@@ -76,6 +76,7 @@ interface StudentProfile {
   phone: string;
   serial_number: string;
   profile_picture: string | null;
+  linked?: boolean;
 }
 
 const HostelBedMap: React.FC = () => {
@@ -548,19 +549,64 @@ const HostelBedMap: React.FC = () => {
     setUpdating(false);
   };
 
-  // Student search
+  // Student search with partner isolation
   useEffect(() => {
     if (studentQuery.length < 2) { setStudentResults([]); return; }
     const timer = setTimeout(async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, name, email, phone, serial_number, profile_picture')
-        .or(`name.ilike.%${studentQuery}%,phone.ilike.%${studentQuery}%,email.ilike.%${studentQuery}%`)
-        .limit(10);
-      if (data) setStudentResults(data as StudentProfile[]);
+      const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+      let partnerId: string | undefined;
+      if (!isAdmin && user?.id) {
+        try {
+          const { ownerId } = await getEffectiveOwnerId();
+          partnerId = ownerId;
+        } catch {
+          partnerId = user.id;
+        }
+      }
+
+      // Two-tier search: linked first, then global
+      const searchTerm = `%${studentQuery}%`;
+      const results: StudentProfile[] = [];
+      const foundIds = new Set<string>();
+
+      if (partnerId) {
+        const { data: links } = await supabase
+          .from('student_property_links')
+          .select('student_user_id')
+          .eq('partner_user_id', partnerId);
+        const linkedIds = (links || []).map((l: any) => l.student_user_id);
+        if (linkedIds.length > 0) {
+          const { data: linkedProfiles } = await supabase
+            .from('profiles')
+            .select('id, name, email, phone, serial_number, profile_picture')
+            .in('id', linkedIds)
+            .or(`name.ilike.${searchTerm},phone.ilike.${searchTerm},email.ilike.${searchTerm}`)
+            .limit(10);
+          (linkedProfiles || []).forEach((p: any) => {
+            foundIds.add(p.id);
+            results.push({ ...p, linked: true } as any);
+          });
+        }
+      }
+
+      if (results.length < 5) {
+        const { data: globalData } = await supabase
+          .from('profiles')
+          .select('id, name, email, phone, serial_number, profile_picture')
+          .or(`name.ilike.${searchTerm},phone.ilike.${searchTerm},email.ilike.${searchTerm}`)
+          .limit(10);
+        (globalData || []).forEach((p: any) => {
+          if (!foundIds.has(p.id)) {
+            foundIds.add(p.id);
+            results.push({ ...p, linked: !partnerId } as any);
+          }
+        });
+      }
+
+      setStudentResults(results.slice(0, 15));
     }, 300);
     return () => clearTimeout(timer);
-  }, [studentQuery]);
+  }, [studentQuery, user]);
 
   // Compute end date
   const computedEndDate = useMemo(() => {
@@ -617,26 +663,50 @@ const HostelBedMap: React.FC = () => {
     setBookingPrice(String(calculatedPrice));
   }, [selectedDuration, selectedBed]);
 
-  // Create new student
+  // Create new student via edge function
   const handleCreateStudent = async () => {
     if (!newStudentName || !newStudentEmail) {
       toast({ title: 'Name and email are required', variant: 'destructive' });
       return;
     }
     setCreatingStudent(true);
-    // Check existing
-    const { data: existing } = await supabase
-      .from('profiles')
-      .select('id, name, email, phone, serial_number, profile_picture')
-      .eq('email', newStudentEmail)
-      .maybeSingle();
-    if (existing) {
-      setSelectedStudent(existing as StudentProfile);
-      setStudentQuery(existing.name || '');
+    try {
+      const { data, error } = await supabase.functions.invoke('create-student', {
+        body: { name: newStudentName, email: newStudentEmail, phone: newStudentPhone },
+      });
+      if (error) throw error;
+      if (data?.error) { toast({ title: 'Error', description: data.error, variant: 'destructive' }); setCreatingStudent(false); return; }
+
+      const userId = data.userId;
+      const student: StudentProfile = {
+        id: userId,
+        name: newStudentName,
+        email: newStudentEmail,
+        phone: newStudentPhone,
+        serial_number: '',
+        profile_picture: null,
+      };
+      setSelectedStudent(student);
+      setStudentQuery(newStudentName);
       setShowNewStudent(false);
-      toast({ title: 'Existing student selected' });
-    } else {
-      toast({ title: 'Student must register first', description: 'Ask the student to create an account via the app.', variant: 'destructive' });
+
+      // Auto-link to partner
+      try {
+        const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+        if (!isAdmin) {
+          const { ownerId } = await getEffectiveOwnerId();
+          await supabase.from('student_property_links').upsert(
+            { student_user_id: userId, partner_user_id: ownerId },
+            { onConflict: 'student_user_id,partner_user_id' }
+          );
+        }
+      } catch (e) {
+        console.error('Auto-link failed:', e);
+      }
+
+      toast({ title: data.existing ? 'Existing student selected' : 'Student created & selected' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Failed to create student', variant: 'destructive' });
     }
     setCreatingStudent(false);
   };
@@ -683,6 +753,20 @@ const HostelBedMap: React.FC = () => {
     if (!error && newBooking) {
       // Update bed availability
       await supabase.from('hostel_beds').update({ is_available: false }).eq('id', selectedBed.id);
+
+      // Auto-link student to partner
+      try {
+        const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+        if (!isAdmin) {
+          const { ownerId } = await getEffectiveOwnerId();
+          await supabase.from('student_property_links').upsert(
+            { student_user_id: selectedStudent.id, partner_user_id: ownerId },
+            { onConflict: 'student_user_id,partner_user_id' }
+          );
+        }
+      } catch (e) {
+        console.error('Auto-link student failed:', e);
+      }
 
       // Receipt = just the amount collected (advanceAmt already includes any portion toward security deposit)
       const receiptAmount = advanceAmt;
@@ -1246,8 +1330,28 @@ const HostelBedMap: React.FC = () => {
                         {studentResults.length > 0 && !selectedStudent && (
                           <div className="border rounded mt-1 max-h-[150px] overflow-y-auto">
                             {studentResults.map(s => (
-                              <div key={s.id} className="px-2 py-1.5 text-[11px] hover:bg-muted cursor-pointer border-b last:border-0" onClick={() => { setSelectedStudent(s); setStudentQuery(s.name || ''); setStudentResults([]); }}>
-                                <div className="font-medium">{s.name}</div>
+                              <div key={s.id} className="px-2 py-1.5 text-[11px] hover:bg-muted cursor-pointer border-b last:border-0"
+                                onClick={async () => {
+                                  setSelectedStudent(s);
+                                  setStudentQuery(s.name || '');
+                                  setStudentResults([]);
+                                  // Auto-link unlinked student on selection
+                                  if (!(s as any).linked && user?.role !== 'admin' && user?.role !== 'super_admin') {
+                                    try {
+                                      const { ownerId } = await getEffectiveOwnerId();
+                                      await supabase.from('student_property_links').upsert(
+                                        { student_user_id: s.id, partner_user_id: ownerId },
+                                        { onConflict: 'student_user_id,partner_user_id' }
+                                      );
+                                    } catch (e) { console.error('Auto-link on select failed:', e); }
+                                  }
+                                }}>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-medium">{s.name}</span>
+                                  {!(s as any).linked && user?.role !== 'admin' && user?.role !== 'super_admin' && (
+                                    <Badge variant="outline" className="text-[8px] h-3.5 px-1 py-0 border-amber-400 text-amber-600">Global</Badge>
+                                  )}
+                                </div>
                                 <div className="text-muted-foreground">{s.phone} · {s.email}</div>
                               </div>
                             ))}
@@ -1264,7 +1368,7 @@ const HostelBedMap: React.FC = () => {
                         <Collapsible open={showNewStudent} onOpenChange={setShowNewStudent}>
                           <CollapsibleTrigger asChild>
                             <Button variant="outline" size="sm" className="w-full h-7 text-[11px] gap-1">
-                              <UserPlus className="h-3 w-3" /> Find by Email
+                              <UserPlus className="h-3 w-3" /> Create New Student
                               <ChevronDown className={cn("h-3 w-3 ml-auto transition-transform", showNewStudent && "rotate-180")} />
                             </Button>
                           </CollapsibleTrigger>
@@ -1273,7 +1377,7 @@ const HostelBedMap: React.FC = () => {
                             <Input className="h-7 text-xs" placeholder="Email *" type="email" value={newStudentEmail} onChange={e => setNewStudentEmail(e.target.value)} />
                             <Input className="h-7 text-xs" placeholder="Phone" value={newStudentPhone} onChange={e => setNewStudentPhone(e.target.value)} />
                             <Button size="sm" className="w-full h-7 text-[11px]" onClick={handleCreateStudent} disabled={creatingStudent || !newStudentName || !newStudentEmail}>
-                              {creatingStudent ? 'Searching...' : 'Find & Select'}
+                              {creatingStudent ? 'Creating...' : 'Create & Select'}
                             </Button>
                           </CollapsibleContent>
                         </Collapsible>

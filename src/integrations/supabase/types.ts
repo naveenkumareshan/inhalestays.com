@@ -3382,6 +3382,35 @@ export type Database = {
         }
         Relationships: []
       }
+      student_property_links: {
+        Row: {
+          created_at: string | null
+          id: string
+          partner_user_id: string
+          student_user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          partner_user_id: string
+          student_user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          partner_user_id?: string
+          student_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_property_links_student_user_id_fkey"
+            columns: ["student_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_plans: {
         Row: {
           capacity_upgrade_enabled: boolean
