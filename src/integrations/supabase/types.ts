@@ -416,6 +416,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           floors: Json | null
+          free_trial_days: number
           full_address: string | null
           grid_size: number
           id: string
@@ -463,6 +464,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           floors?: Json | null
+          free_trial_days?: number
           full_address?: string | null
           grid_size?: number
           id?: string
@@ -510,6 +512,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           floors?: Json | null
+          free_trial_days?: number
           full_address?: string | null
           grid_size?: number
           id?: string
@@ -1727,6 +1730,7 @@ export type Database = {
           food_menu_image: string | null
           food_policy_type: string
           food_price_monthly: number
+          free_trial_days: number
           gender: string
           id: string
           images: string[] | null
@@ -1744,6 +1748,7 @@ export type Database = {
           security_deposit: number
           serial_number: string | null
           show_food_price: boolean
+          starting_price: number
           state_id: string | null
           stay_type: string
           updated_at: string
@@ -1773,6 +1778,7 @@ export type Database = {
           food_menu_image?: string | null
           food_policy_type?: string
           food_price_monthly?: number
+          free_trial_days?: number
           gender?: string
           id?: string
           images?: string[] | null
@@ -1790,6 +1796,7 @@ export type Database = {
           security_deposit?: number
           serial_number?: string | null
           show_food_price?: boolean
+          starting_price?: number
           state_id?: string | null
           stay_type?: string
           updated_at?: string
@@ -1819,6 +1826,7 @@ export type Database = {
           food_menu_image?: string | null
           food_policy_type?: string
           food_price_monthly?: number
+          free_trial_days?: number
           gender?: string
           id?: string
           images?: string[] | null
@@ -1836,6 +1844,7 @@ export type Database = {
           security_deposit?: number
           serial_number?: string | null
           show_food_price?: boolean
+          starting_price?: number
           state_id?: string | null
           stay_type?: string
           updated_at?: string

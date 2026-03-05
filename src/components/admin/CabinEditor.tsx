@@ -120,6 +120,7 @@ export function CabinEditor({
     workingDays: existingCabin?.working_days ?? existingCabin?.workingDays ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     allowedDurations: existingCabin?.allowed_durations ?? existingCabin?.allowedDurations ?? ['daily', 'weekly', 'monthly'],
     slotsApplicableDurations: existingCabin?.slots_applicable_durations ?? existingCabin?.slotsApplicableDurations ?? ['daily', 'weekly', 'monthly'],
+    free_trial_days: existingCabin?.free_trial_days ?? 0,
   });
 
   // Partner details state
@@ -429,6 +430,17 @@ export function CabinEditor({
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">Base price shown to students. Actual seat prices set via categories.</p>
                 </div>
+
+                {isAdmin && (
+                  <div className="border rounded-lg p-3 space-y-2">
+                    <Label htmlFor="free_trial_days" className="text-sm font-medium">Free Trial Days (Admin)</Label>
+                    <div className="flex items-center gap-2">
+                      <Input id="free_trial_days" name="free_trial_days" type="number" value={cabin.free_trial_days} onChange={(e) => setCabin(prev => ({ ...prev, free_trial_days: Number(e.target.value) || 0 }))} className="max-w-[120px]" min={0} max={365} />
+                      <span className="text-sm text-muted-foreground">days</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Partner can manage this property for free during the trial period. Set 0 to use global default.</p>
+                  </div>
+                )}
 
                 {/* Locker */}
                 <div className="border rounded-lg p-3 space-y-3">

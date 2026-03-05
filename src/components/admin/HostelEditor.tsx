@@ -45,6 +45,8 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
     logo_image: existingHostel?.logo_image || '',
     images: existingHostel?.images || [],
     security_deposit: existingHostel?.security_deposit || 0,
+    starting_price: existingHostel?.starting_price || 0,
+    free_trial_days: existingHostel?.free_trial_days || 0,
     advance_booking_enabled: existingHostel?.advance_booking_enabled ?? false,
     advance_percentage: existingHostel?.advance_percentage ?? 50,
     advance_flat_amount: existingHostel?.advance_flat_amount ?? 0,
@@ -384,14 +386,36 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent className="px-4 pb-4 pt-0 space-y-4">
-                <div>
-                  <Label htmlFor="security_deposit" className="text-sm font-medium">Security Deposit (₹)</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-sm text-muted-foreground">₹</span>
-                    <Input id="security_deposit" name="security_deposit" type="number" value={hostel.security_deposit} onChange={handleNumberChange} className="max-w-[180px]" min={0} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="starting_price" className="text-sm font-medium">Starting Price (₹) *</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm text-muted-foreground">₹</span>
+                      <Input id="starting_price" name="starting_price" type="number" value={hostel.starting_price} onChange={handleNumberChange} className="max-w-[180px]" min={0} />
+                      <span className="text-sm text-muted-foreground">/month</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Base price displayed to students on listing page</p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Refundable deposit collected at check-in</p>
+                  <div>
+                    <Label htmlFor="security_deposit" className="text-sm font-medium">Security Deposit (₹)</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm text-muted-foreground">₹</span>
+                      <Input id="security_deposit" name="security_deposit" type="number" value={hostel.security_deposit} onChange={handleNumberChange} className="max-w-[180px]" min={0} />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Refundable deposit collected at check-in</p>
+                  </div>
                 </div>
+
+                {isAdmin && (
+                  <div className="border rounded-lg p-3 space-y-2">
+                    <Label htmlFor="free_trial_days" className="text-sm font-medium">Free Trial Days (Admin)</Label>
+                    <div className="flex items-center gap-2">
+                      <Input id="free_trial_days" name="free_trial_days" type="number" value={hostel.free_trial_days} onChange={handleNumberChange} className="max-w-[120px]" min={0} max={365} />
+                      <span className="text-sm text-muted-foreground">days</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Partner can manage this property for free during the trial period from creation date. Set 0 to use global default.</p>
+                  </div>
+                )}
 
                 <div className="border rounded-lg p-3 space-y-3">
                   <div className="flex items-center gap-2">

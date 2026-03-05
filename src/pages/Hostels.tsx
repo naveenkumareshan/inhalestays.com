@@ -248,6 +248,10 @@ export default function Hostels() {
                         <span className="text-[10px] bg-accent text-accent-foreground px-1.5 py-0.5 rounded-md font-medium">New</span>
                       )}
                       {(() => {
+                        const startingPrice = hostel.starting_price > 0 ? hostel.starting_price : null;
+                        if (startingPrice) {
+                          return <span className="text-[11px] font-semibold text-foreground">From {formatCurrency(startingPrice)}/mo</span>;
+                        }
                         const prices = hostel.hostel_rooms?.flatMap((r: any) => r.hostel_sharing_options?.map((o: any) => o.price_monthly) || []).filter((p: number) => p > 0) || [];
                         const minPrice = prices.length > 0 ? Math.min(...prices) : null;
                         return minPrice ? (
