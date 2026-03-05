@@ -16,6 +16,7 @@ interface BedData {
   bed_number: number;
   is_available: boolean;
   is_blocked: boolean;
+  is_future_booked?: boolean;
   room_id: string;
   sharing_option_id: string;
   sharingType?: string;
@@ -106,6 +107,7 @@ export const HostelFloorView: React.FC<HostelFloorViewProps> = ({
                     let bgClass = 'bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100';
                     if (isSelected) bgClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/30';
                     else if (isDisabledByFilter) bgClass = 'bg-muted/50 border-border/50 text-muted-foreground/40';
+                    else if (bed.is_future_booked) bgClass = 'bg-violet-50 border-violet-400 text-violet-800';
                     else if (!isAvailable) bgClass = 'bg-blue-50 border-blue-400 text-blue-800';
 
                     const canSelect = !readOnly && isAvailable && matchesFilter;
