@@ -96,11 +96,7 @@ export default function HostelBedTransferManagement({ hostelId }: HostelBedTrans
         .eq('id', selectedBooking.id);
       if (bookingErr) throw bookingErr;
 
-      // Mark old bed as available, new bed as occupied
-      await Promise.all([
-        supabase.from('hostel_beds').update({ is_available: true }).eq('id', selectedBooking.bed_id),
-        supabase.from('hostel_beds').update({ is_available: false }).eq('id', targetBedId),
-      ]);
+      // Bed availability is now handled by database trigger
 
       toast({ title: 'Transfer Successful', description: 'Booking transferred to new bed' });
       setIsDialogOpen(false);

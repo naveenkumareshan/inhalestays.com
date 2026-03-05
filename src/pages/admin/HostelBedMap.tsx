@@ -485,10 +485,7 @@ const HostelBedMap: React.FC = () => {
       .update({ bed_id: transferTargetBedId, room_id: targetBed.room_id })
       .eq('id', transferBookingId);
     if (!error) {
-      await Promise.all([
-        supabase.from('hostel_beds').update({ is_available: true }).eq('id', selectedBed.id),
-        supabase.from('hostel_beds').update({ is_available: false }).eq('id', transferTargetBedId),
-      ]);
+      // Bed availability is now handled by database trigger
       toast({ title: 'Bed transferred successfully' });
       setTransferDialogOpen(false);
       setSheetOpen(false);
@@ -791,8 +788,7 @@ const HostelBedMap: React.FC = () => {
     }).select('id, serial_number').single();
 
     if (!error && newBooking) {
-      // Update bed availability
-      await supabase.from('hostel_beds').update({ is_available: false }).eq('id', selectedBed.id);
+      // Bed availability is now handled by database trigger
 
       // Auto-link student to partner
       try {

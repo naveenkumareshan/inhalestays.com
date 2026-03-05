@@ -60,8 +60,7 @@ export const hostelBookingService = {
       .single();
     if (error) throw error;
 
-    // Mark bed as unavailable
-    await supabase.from('hostel_beds').update({ is_available: false }).eq('id', bookingData.bed_id);
+    // Bed availability is now handled by database trigger (trg_sync_hostel_bed_availability)
 
     // Create receipt if payment was made
     if (paymentStatus !== 'pending') {
@@ -127,9 +126,7 @@ export const hostelBookingService = {
       .eq('id', bookingId)
       .single();
 
-    if (booking?.bed_id) {
-      await supabase.from('hostel_beds').update({ is_available: true }).eq('id', booking.bed_id);
-    }
+    // Bed availability is now handled by database trigger (trg_sync_hostel_bed_availability)
 
     const { data, error } = await supabase
       .from('hostel_bookings')
