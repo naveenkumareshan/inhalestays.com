@@ -1,34 +1,31 @@
 
 
-# Fix: Vendor Employee Sidebar Empty — Permissions Not Loaded
+# Fix: Vendor Employee Cannot See Sidebar — Missing RLS Policy
 
 ## Problem
-When a `vendor_employee` logs in, the sidebar is completely empty. The `useVendorEmployeePermissions` hook reads permissions from `user?.permissions`, but `AuthContext.buildUser()` never queries the `vendor_employees` table to populate this field — so it's always `undefined`, all permission checks return `false`, and every sidebar item is hidden.
+When a `vendor_employee` logs in, the `buildUser` function in `AuthContext.tsx` queries the `vendor_employees` table to fetch their permissions. However, the RLS policy on `vendor_employees` only allows access to:
+- The **partner** who owns the employee (`partner_user_id = auth.uid()`)
+- **Admins**
 
-## Root Cause
-In `src/contexts/AuthContext.tsx`, the `buildUser` function only fetches the user's role from `user_roles`. It never fetches the employee's `permissions` array from `vendor_employees`, nor the `vendorId` (partner_user_id) needed for data scoping.
+There is **no policy allowing the employee to read their own record**. The query silently returns no rows, so `permissions` stays as an empty array and every sidebar item is hidden.
 
 ## Fix
-Update `buildUser` in `AuthContext.tsx` to fetch permissions and vendorId from `vendor_employees` when the role is `vendor_employee`:
+Add an RLS policy on `vendor_employees` that lets an employee SELECT their own row:
 
-```typescript
-// After determining role is 'vendor_employee':
-const { data: empData } = await supabase
-  .from('vendor_employees')
-  .select('permissions, partner_user_id')
-  .eq('employee_user_id', supabaseUser.id)
-  .maybeSingle();
-
-// Then include in the returned User object:
-permissions: empData?.permissions || [],
-vendorId: empData?.partner_user_id,
+```sql
+CREATE POLICY "Employees can view own record"
+ON public.vendor_employees
+FOR SELECT
+USING (employee_user_id = auth.uid());
 ```
 
-## File to Modify
+This is a single database migration. No code changes needed — the existing `AuthContext.tsx` logic from the previous fix will work once it can actually read the data.
 
-| File | Change |
-|------|--------|
-| `src/contexts/AuthContext.tsx` | In `buildUser`, when role is `vendor_employee`, query `vendor_employees` table to get `permissions` and `partner_user_id`, and set them on the User object |
+## Files to Change
 
-This is a single-file change. No UI modifications.
+| Change | Detail |
+|--------|--------|
+| **Database migration** | Add SELECT RLS policy on `vendor_employees` for `employee_user_id = auth.uid()` |
+
+No UI or code file modifications required.
 
