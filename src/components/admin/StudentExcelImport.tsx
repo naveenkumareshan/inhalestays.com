@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,9 +74,16 @@ const StudentExcelImport = () => {
     setValidationErrors([]);
 
     const fetchProperties = async () => {
+      let ownerId = user?.id;
+      if (isPartner && user?.id) {
+        try {
+          const result = await getEffectiveOwnerId();
+          ownerId = result.ownerId;
+        } catch {}
+      }
       if (propertyType === 'reading_room') {
         let query = supabase.from('cabins').select('id, name, floors');
-        if (isPartner && user?.id) query = query.eq('created_by', user.id);
+        if (isPartner && ownerId) query = query.eq('created_by', ownerId);
         const { data } = await query.order('name');
         setProperties(
           (data || []).map((c: any) => ({
@@ -86,7 +94,7 @@ const StudentExcelImport = () => {
         );
       } else {
         let query = supabase.from('hostels').select('id, name');
-        if (isPartner && user?.id) query = query.eq('created_by', user.id);
+        if (isPartner && ownerId) query = query.eq('created_by', ownerId);
         const { data } = await query.order('name');
         setProperties((data || []).map((h: any) => ({ id: h.id, name: h.name })));
       }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -101,11 +102,18 @@ export const VendorProfile: React.FC = () => {
 
   const fetchProperties = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      let effectiveOwnerId: string;
+      try {
+        const { ownerId } = await getEffectiveOwnerId();
+        effectiveOwnerId = ownerId;
+      } catch {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        effectiveOwnerId = user.id;
+      }
       const [cabinsRes, hostelsRes] = await Promise.all([
-        supabase.from('cabins').select('id, name, capacity, is_active, is_approved').eq('created_by', user.id),
-        supabase.from('hostels').select('id, name, is_active, is_approved').eq('created_by', user.id),
+        supabase.from('cabins').select('id, name, capacity, is_active, is_approved').eq('created_by', effectiveOwnerId),
+        supabase.from('hostels').select('id, name, is_active, is_approved').eq('created_by', effectiveOwnerId),
       ]);
       const props: PropertyInfo[] = [
         ...(cabinsRes.data || []).map(c => ({ id: c.id, name: c.name, type: 'Reading Room' as const, capacity: c.capacity || 0, is_active: c.is_active !== false, is_approved: (c as any).is_approved ?? true })),
