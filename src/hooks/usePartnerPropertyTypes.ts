@@ -45,7 +45,7 @@ export function usePartnerPropertyTypes(): PartnerPropertyTypes {
     };
 
     fetchPropertyTypes();
-  }, [user?.id, isPartner]);
+  }, [user?.id, user?.vendorId, isPartner]);
 
   return state;
 }
