@@ -10,6 +10,7 @@ export interface VendorEmployeeData {
   permissions: string[];
   status: string;
   salary: number;
+  employee_user_id?: string;
   created_at: string;
   updated_at: string;
 }

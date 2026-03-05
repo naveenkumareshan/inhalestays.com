@@ -38,15 +38,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check caller has admin role
-    const { data: hasAdmin, error: roleError } = await callerClient.rpc("has_role", {
-      _user_id: caller.id,
-      _role: "admin",
-    });
+    // Check caller has admin or vendor role
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    if (roleError || !hasAdmin) {
+    const { data: roles } = await adminClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", caller.id);
+
+    const callerRoles = (roles || []).map((r: any) => r.role);
+    const isAdmin = callerRoles.includes("admin") || callerRoles.includes("super_admin");
+    const isVendor = callerRoles.includes("vendor");
+
+    if (!isAdmin && !isVendor) {
       return new Response(
-        JSON.stringify({ error: "Forbidden: admin role required" }),
+        JSON.stringify({ error: "Forbidden: admin or vendor role required" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -75,8 +81,24 @@ Deno.serve(async (req) => {
       );
     }
 
+    // If vendor, verify the target user is their employee
+    if (isVendor && !isAdmin) {
+      const { data: empRecord } = await adminClient
+        .from("vendor_employees")
+        .select("id")
+        .eq("partner_user_id", caller.id)
+        .eq("employee_user_id", userId)
+        .maybeSingle();
+
+      if (!empRecord) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden: can only reset password for your own employees" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // Use service role to update the user's password
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
       password: newPassword,
     });

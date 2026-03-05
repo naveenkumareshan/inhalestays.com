@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -51,8 +51,10 @@ const badgeCls = (s: string) => {
 
 const AdminBookings = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const routePrefix = location.pathname.startsWith('/admin') ? '/admin' : '/partner';
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -122,7 +124,7 @@ const AdminBookings = () => {
           <span className="font-semibold">₹{(b.seatPrice || 0).toLocaleString()}</span>
           <span className="text-muted-foreground ml-2">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</span>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/admin/bookings/${b.bookingId || b._id}/cabin`)}>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`${routePrefix}/bookings/${b.bookingId || b._id}/cabin`)}>
           <Eye className="h-3.5 w-3.5" />
         </Button>
       </div>
@@ -217,7 +219,7 @@ const AdminBookings = () => {
                         </TableCell>
                         <TableCell className="py-1 px-2 text-right">
                           <Tooltip><TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate(`/admin/bookings/${b.bookingId || b._id}/cabin`)}>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate(`${routePrefix}/bookings/${b.bookingId || b._id}/cabin`)}>
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
                           </TooltipTrigger><TooltipContent>Details</TooltipContent></Tooltip>

@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Eye, Trash2, Users, Copy } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, Users, Copy, KeyRound } from 'lucide-react';
 import { getPublicAppUrl } from '@/utils/appUrl';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { vendorEmployeeService, VendorEmployeeData } from '@/api/vendorEmployeeService';
 import { VendorEmployeeForm } from '@/components/vendor/VendorEmployeeForm';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Table,
@@ -44,6 +48,9 @@ const VendorEmployees: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<VendorEmployeeData | null>(null);
   const [viewingEmployee, setViewingEmployee] = useState<VendorEmployeeData | null>(null);
+  const [resetPasswordEmployee, setResetPasswordEmployee] = useState<VendorEmployeeData | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -81,6 +88,24 @@ const VendorEmployees: React.FC = () => {
     setShowForm(false);
     setEditingEmployee(null);
     fetchEmployees();
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetPasswordEmployee?.employee_user_id || !newPassword) return;
+    try {
+      setResettingPassword(true);
+      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+        body: { userId: resetPasswordEmployee.employee_user_id, newPassword },
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message);
+      toast({ title: 'Success', description: 'Password reset successfully' });
+      setResetPasswordEmployee(null);
+      setNewPassword('');
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'Failed to reset password', variant: 'destructive' });
+    } finally {
+      setResettingPassword(false);
+    }
   };
 
   if (loading) {
@@ -196,6 +221,11 @@ const VendorEmployees: React.FC = () => {
                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setViewingEmployee(emp)}>
                         <Eye className="h-3 w-3" />
                       </Button>
+                      {emp.employee_user_id && (
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setResetPasswordEmployee(emp); setNewPassword(''); }}>
+                          <KeyRound className="h-3 w-3" />
+                        </Button>
+                      )}
                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setEditingEmployee(emp); setShowForm(true); }}>
                         <Edit className="h-3 w-3" />
                       </Button>
@@ -251,6 +281,30 @@ const VendorEmployees: React.FC = () => {
               </p>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={!!resetPasswordEmployee} onOpenChange={(open) => { if (!open) { setResetPasswordEmployee(null); setNewPassword(''); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Reset Password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Set a new password for <span className="font-medium text-foreground">{resetPasswordEmployee?.name}</span> ({resetPasswordEmployee?.email})
+            </p>
+            <div className="space-y-1.5">
+              <Label className="text-xs">New Password</Label>
+              <Input type="password" placeholder="Min 6 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="h-8 text-xs" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setResetPasswordEmployee(null); setNewPassword(''); }}>Cancel</Button>
+            <Button size="sm" className="h-7 text-xs" onClick={handleResetPassword} disabled={resettingPassword || newPassword.length < 6}>
+              {resettingPassword ? 'Resetting...' : 'Reset Password'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

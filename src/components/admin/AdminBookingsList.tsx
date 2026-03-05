@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,7 +91,9 @@ interface FilterState {
 
 const AdminBookingsList = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const routePrefix = location.pathname.startsWith('/admin') ? '/admin' : '/partner';
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showExtensionDialog, setShowExtensionDialog] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -305,7 +307,7 @@ const AdminBookingsList = () => {
 
   const handleViewDetails = (booking: Booking) => {
     const bookingType = booking.cabinId ? "cabin" : "hostel";
-    navigate(`/admin/bookings/${booking.bookingId || booking._id}/${bookingType}`);
+    navigate(`${routePrefix}/bookings/${booking.bookingId || booking._id}/${bookingType}`);
   };
 
 
