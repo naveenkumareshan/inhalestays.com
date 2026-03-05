@@ -164,13 +164,26 @@ export const adminBookingsService = {
 
   getBookingById: async (id: string) => {
     try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number, price)')
-        .eq('id', id)
-        .single();
+      const selectQuery = '*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number, price)';
 
-      if (error) throw error;
+      // Dual-lookup: try serial_number first, then fall back to UUID
+      let { data } = await supabase
+        .from('bookings')
+        .select(selectQuery)
+        .eq('serial_number', id)
+        .maybeSingle();
+
+      if (!data) {
+        const res = await supabase
+          .from('bookings')
+          .select(selectQuery)
+          .eq('id', id)
+          .single();
+        if (res.error) throw res.error;
+        data = res.data;
+      }
+
+      if (!data) throw new Error('Booking not found');
 
       const profile = data.profiles as any;
       const cabin = data.cabins as any;

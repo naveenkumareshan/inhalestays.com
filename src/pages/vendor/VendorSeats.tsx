@@ -40,6 +40,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
+import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 
 type ViewMode = 'grid' | 'table';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked';
@@ -113,6 +114,7 @@ const VendorSeats: React.FC = () => {
   // Booking success state
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [lastInvoiceData, setLastInvoiceData] = useState<InvoiceData | null>(null);
+  const [customPaymentLabels, setCustomPaymentLabels] = useState<Record<string, string>>({});
 
   // New student form
   const [showNewStudent, setShowNewStudent] = useState(false);
@@ -182,6 +184,20 @@ const VendorSeats: React.FC = () => {
   }, [selectedCabinId, selectedDate, cabins]);
 
   useEffect(() => { fetchSeats(); }, [fetchSeats]);
+
+  // Resolve custom payment method labels from bookings & receipts
+  useEffect(() => {
+    const allMethods = new Set<string>();
+    seats.forEach(s => {
+      s.allBookings?.forEach(b => {
+        if (b.paymentMethod) allMethods.add(b.paymentMethod);
+      });
+    });
+    const methods = Array.from(allMethods).filter(m => m?.startsWith('custom_'));
+    if (methods.length > 0) {
+      resolvePaymentMethodLabels(methods).then(setCustomPaymentLabels);
+    }
+  }, [seats]);
 
   // Sync selectedSeat with refreshed seats array after price/data changes
   useEffect(() => {
@@ -1229,7 +1245,7 @@ const VendorSeats: React.FC = () => {
 
                     <div className="grid grid-cols-2 gap-y-1">
                       <div><span className="text-muted-foreground">Payment:</span></div>
-                      <div>{lastInvoiceData.paymentMethod === 'cash' ? 'Cash' : lastInvoiceData.paymentMethod === 'upi' ? 'UPI' : lastInvoiceData.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'Payment Link'}</div>
+                      <div>{getMethodLabel(lastInvoiceData.paymentMethod || '', customPaymentLabels)}</div>
                       {lastInvoiceData.transactionId && (
                         <>
                           <div><span className="text-muted-foreground">Txn ID:</span></div>
@@ -1728,7 +1744,7 @@ const VendorSeats: React.FC = () => {
                             <div className="text-emerald-600">Discount: ₹{b.discountAmount}{b.discountReason ? ` (${b.discountReason})` : ''}</div>
                           )}
                           {b.paymentMethod && b.paymentMethod !== 'online' && (
-                            <div className="text-muted-foreground">Payment: {b.paymentMethod === 'upi' ? 'UPI' : b.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'Cash'}</div>
+                            <div className="text-muted-foreground">Payment: {getMethodLabel(b.paymentMethod || '', customPaymentLabels)}</div>
                           )}
                           {b.collectedByName && <div className="text-muted-foreground">Collected by: {b.collectedByName}</div>}
                           {b.transactionId && <div className="text-muted-foreground">Txn ID: {b.transactionId}</div>}
@@ -1998,7 +2014,7 @@ const VendorSeats: React.FC = () => {
                   </div>
                   {r.serial_number && <div className="text-[10px] font-medium text-primary">{r.serial_number}</div>}
                   <div className="flex justify-between text-[10px] text-muted-foreground">
-                    <span>{r.payment_method === 'cash' ? 'Cash' : r.payment_method === 'upi' ? 'UPI' : r.payment_method === 'bank_transfer' ? 'Bank Transfer' : r.payment_method}</span>
+                    <span>{getMethodLabel(r.payment_method || '', customPaymentLabels)}</span>
                     <span>{new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                   </div>
                   {r.transaction_id && <div className="text-[10px] text-muted-foreground">Txn: {r.transaction_id}</div>}
