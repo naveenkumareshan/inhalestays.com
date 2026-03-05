@@ -867,9 +867,9 @@ const HostelBedMap: React.FC = () => {
   // Status helpers
   const statusColors = (status?: string) => {
     switch (status) {
-      case 'available': return 'bg-emerald-50 border-emerald-400 dark:bg-emerald-950 dark:border-emerald-700';
-      case 'booked': return 'bg-red-50 border-red-400 dark:bg-red-950 dark:border-red-700';
-      case 'expiring_soon': return 'bg-amber-50 border-amber-400 dark:bg-amber-950 dark:border-amber-700';
+      case 'available': return 'bg-emerald-100 border-emerald-500 dark:bg-emerald-900 dark:border-emerald-600';
+      case 'booked': return 'bg-red-100 border-red-500 dark:bg-red-900 dark:border-red-600';
+      case 'expiring_soon': return 'bg-amber-100 border-amber-500 dark:bg-amber-900 dark:border-amber-600';
       case 'blocked': return 'bg-muted border-muted-foreground/30';
       default: return 'bg-muted border-border';
     }
@@ -1026,9 +1026,9 @@ const HostelBedMap: React.FC = () => {
 
       {/* ──── Legend ──── */}
       <div className="flex items-center gap-3 px-1 text-[10px] text-muted-foreground flex-wrap">
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-400 inline-block" /> Available</span>
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-400 inline-block" /> Booked</span>
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block" /> Expiring</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block" /> Available</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" /> Booked</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block" /> Expiring</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-muted-foreground/40 inline-block" /> Blocked</span>
         <span className="ml-auto">{filteredBeds.length} beds</span>
       </div>
