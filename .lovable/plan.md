@@ -1,67 +1,35 @@
 
 
-# Fix: Hostel Booking Created Before Payment Confirmation
+# Fix: Search Not Working on Bookings Pages
 
-## Root Cause
+## Issues Found
 
-In `src/pages/HostelBooking.tsx` (line 197), the booking is created **before** the Razorpay payment modal opens:
-
+### Issue 1: Reading Room Bookings Search (AdminBookingsList)
+In `src/api/adminBookingsService.ts` line 34, search only filters by `serial_number`:
+```typescript
+query = query.or(`serial_number.ilike.%${filters.search}%`);
 ```
-1. hostelBookingService.createBooking(bookingData)  ← booking inserted with status='pending'
-2. razorpayService.createOrder(...)                  ← Razorpay order created
-3. rzp.open()                                        ← payment modal opens
-4. User closes modal / payment fails                 ← booking stays as 'pending' forever
-```
+Searching by student name, email, or phone does nothing. Supabase `.or()` cannot filter across joined tables directly. The fix is to first query `profiles` for matching user IDs, then add those IDs to the filter.
 
-The `createBooking` call (line 47-57 of `hostelBookingService.ts`) inserts the booking with `status: 'pending'` and `payment_status: 'pending'` since no `razorpay_payment_id` exists yet. The database trigger then marks the bed as unavailable.
+### Issue 2: Hostel Bookings Search (HostelBookingsList)
+In `src/components/admin/HostelBookingsList.tsx` line 72-76, the client-side filter references wrong field names:
+- `booking.student?.name` — data uses `booking.profiles?.name`
+- `booking._id` — data uses `booking.id`
 
-There is **no `modal.ondismiss` handler** on the Razorpay options (line 240-276), so when the user closes/cancels the payment modal, the pending booking is never cleaned up. The bed stays blocked, and the booking shows up in operations.
-
-Additionally, if the `razorpayService.createOrder()` call fails after booking creation (line 214-216), the `throw` goes to the catch block but never cancels the already-created booking.
+The search silently matches nothing because `booking.student` is always `undefined`.
 
 ## Fix Plan
 
-### Change 1: `src/pages/HostelBooking.tsx` — Add cleanup on payment failure/dismissal
+### Change 1: `src/api/adminBookingsService.ts` — Expand search to include user name/phone
+Before the main query, if `filters.search` is set, do a quick lookup on `profiles` to find matching `user_id`s, then combine `serial_number.ilike` OR `user_id.in.(matchedIds)` in the `.or()` clause.
 
-Add `modal.ondismiss` handler to cancel the booking when payment is dismissed, and cancel the booking if order creation fails:
-
-```typescript
-// After line 216 (order creation failure), cancel the booking:
-if (!orderResponse.success || !orderResponse.data) {
-  await hostelBookingService.cancelBooking(booking.id, 'Payment order creation failed');
-  throw new Error(...);
-}
-
-// In razorpayOptions (~line 240), add modal.ondismiss:
-modal: {
-  ondismiss: async () => {
-    await hostelBookingService.cancelBooking(booking.id, 'Payment cancelled by user');
-    toast({ title: "Booking Cancelled", description: "Payment was not completed", variant: "destructive" });
-    setIsProcessing(false);
-  },
-},
-
-// In the handler's catch block (~line 268), cancel on verification failure:
-catch (err) {
-  await hostelBookingService.cancelBooking(booking.id, 'Payment verification failed');
-  toast({ ... });
-}
-```
-
-### Change 2: `src/pages/HostelBooking.tsx` — Also cancel on outer catch
-
-The outer catch block (~line 277) should also attempt to cancel any created booking. Use a `bookingRef` to track the created booking ID:
-
-```typescript
-let createdBookingId: string | null = null;
-// After booking creation:
-createdBookingId = booking.id;
-// In outer catch:
-if (createdBookingId) {
-  await hostelBookingService.cancelBooking(createdBookingId, 'Booking process failed');
-}
-```
+### Change 2: `src/components/admin/HostelBookingsList.tsx` — Fix field references
+Update `getFilteredBookings()`:
+- `booking.student?.name` → `booking.profiles?.name`
+- `booking.student?.email` → `booking.profiles?.email`
+- `booking._id` → `booking.id`
 
 ### Files Changed
-- **`src/pages/HostelBooking.tsx`**: Add payment dismissal/failure cleanup handlers to cancel pending bookings
+- `src/api/adminBookingsService.ts` — search with profile name/phone/email lookup
+- `src/components/admin/HostelBookingsList.tsx` — fix field name references in client-side filter
 
