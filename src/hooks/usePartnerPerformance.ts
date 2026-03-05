@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, subMonths, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear, differenceInDays } from 'date-fns';
 
@@ -165,10 +166,16 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
         .eq('user_id', user.id)
         .maybeSingle();
 
+      let effectiveOwnerId = user.id;
+      try {
+        const { ownerId } = await getEffectiveOwnerId();
+        effectiveOwnerId = ownerId;
+      } catch {}
+
       const [cabinsRes, hostelsRes, paymentModesRes] = await Promise.all([
-        supabase.from('cabins').select('id, name').eq('created_by', user.id),
-        supabase.from('hostels').select('id, name').eq('created_by', user.id),
-        supabase.from('partner_payment_modes').select('id, label').eq('partner_user_id', user.id).eq('is_active', true),
+        supabase.from('cabins').select('id, name').eq('created_by', effectiveOwnerId),
+        supabase.from('hostels').select('id, name').eq('created_by', effectiveOwnerId),
+        supabase.from('partner_payment_modes').select('id, label').eq('partner_user_id', effectiveOwnerId).eq('is_active', true),
       ]);
 
       // Build custom payment mode label map

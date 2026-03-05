@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -61,7 +62,17 @@ const Receipts: React.FC = () => {
   }, []);
 
   const fetchCabins = async () => {
-    const { data } = await supabase.from('cabins').select('id, name').order('name');
+    let query = supabase.from('cabins').select('id, name').order('name');
+    try {
+      const { ownerId, userId } = await getEffectiveOwnerId();
+      // For non-admin users, filter by owner
+      const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', userId);
+      const isAdmin = roles?.some(r => r.role === 'admin' || r.role === 'super_admin');
+      if (!isAdmin) {
+        query = query.eq('created_by', ownerId);
+      }
+    } catch {}
+    const { data } = await query;
     setCabins(data || []);
   };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -62,7 +63,12 @@ const HostelReceipts: React.FC = () => {
   const fetchHostels = async () => {
     let query = supabase.from('hostels').select('id, name').order('name');
     if (user?.role && user.role !== 'admin' && user.role !== 'super_admin' && user.id) {
-      query = query.eq('created_by', user.id);
+      try {
+        const { ownerId } = await getEffectiveOwnerId();
+        query = query.eq('created_by', ownerId);
+      } catch {
+        query = query.eq('created_by', user.id);
+      }
     }
     const { data } = await query;
     setHostels(data || []);

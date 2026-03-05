@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { format, differenceInDays } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,7 +66,12 @@ const HostelDueManagement: React.FC = () => {
       .order('name');
 
     if (user?.role && user.role !== 'admin' && user.role !== 'super_admin' && user.id) {
-      hostelsQuery = hostelsQuery.eq('created_by', user.id);
+      try {
+        const { ownerId } = await getEffectiveOwnerId();
+        hostelsQuery = hostelsQuery.eq('created_by', ownerId);
+      } catch {
+        hostelsQuery = hostelsQuery.eq('created_by', user.id);
+      }
     }
 
     const { data: hostelsData } = await hostelsQuery;

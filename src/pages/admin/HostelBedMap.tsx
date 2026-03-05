@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { format, addDays, addMonths, subDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -172,9 +173,14 @@ const HostelBedMap: React.FC = () => {
         .eq('is_active', true)
         .order('name');
 
-      // Filter for non-admin users
+      // Filter for non-admin users (use effective owner for employees)
       if (user?.role && user.role !== 'admin' && user.role !== 'super_admin' && user.id) {
-        query = query.eq('created_by', user.id);
+        try {
+          const { ownerId } = await getEffectiveOwnerId();
+          query = query.eq('created_by', ownerId);
+        } catch {
+          query = query.eq('created_by', user.id);
+        }
       }
 
       const { data } = await query;
