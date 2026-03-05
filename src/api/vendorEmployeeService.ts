@@ -21,6 +21,7 @@ export interface VendorEmployeeCreateData {
   role?: string;
   permissions?: string[];
   salary?: number;
+  employee_user_id?: string;
 }
 
 export interface VendorEmployeeUpdateData {
@@ -57,17 +58,22 @@ export const vendorEmployeeService = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { success: false, error: 'Not authenticated' };
 
+      const insertData: any = {
+        partner_user_id: user.id,
+        name: employeeData.name,
+        email: employeeData.email,
+        phone: employeeData.phone,
+        role: employeeData.role || 'staff',
+        permissions: employeeData.permissions || [],
+        salary: employeeData.salary || 0,
+      };
+      if (employeeData.employee_user_id) {
+        insertData.employee_user_id = employeeData.employee_user_id;
+      }
+
       const { data, error } = await supabase
         .from('vendor_employees')
-        .insert({
-          partner_user_id: user.id,
-          name: employeeData.name,
-          email: employeeData.email,
-          phone: employeeData.phone,
-          role: employeeData.role || 'staff',
-          permissions: employeeData.permissions || [],
-          salary: employeeData.salary || 0,
-        })
+        .insert(insertData)
         .select()
         .single();
 

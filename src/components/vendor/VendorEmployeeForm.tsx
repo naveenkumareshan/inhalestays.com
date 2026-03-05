@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { vendorEmployeeService, VendorEmployeeData } from '@/api/vendorEmployeeService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VendorEmployeeFormProps {
   employee?: VendorEmployeeData;
@@ -88,6 +89,7 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
     name: employee?.name || '',
     email: employee?.email || '',
     phone: employee?.phone || '',
+    password: '',
     role: employee?.role || 'staff',
     permissions: employee?.permissions || [] as string[],
     salary: employee?.salary || 0,
@@ -95,6 +97,8 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  const isEditing = !!employee;
 
   const handlePermissionChange = (permissionId: string) => {
     const updated = formData.permissions.includes(permissionId)
@@ -109,9 +113,18 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
       toast({ title: "Error", description: "Please fill all required fields", variant: "destructive" });
       return;
     }
+    if (!isEditing && !formData.password) {
+      toast({ title: "Error", description: "Password is required for new employees", variant: "destructive" });
+      return;
+    }
+    if (!isEditing && formData.password.length < 6) {
+      toast({ title: "Error", description: "Password must be at least 6 characters", variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
     try {
-      if (employee) {
+      if (isEditing) {
         const res = await vendorEmployeeService.updateEmployee(employee.id, formData);
         if (res.success) {
           toast({ title: "Success", description: "Employee updated successfully" });
@@ -120,9 +133,38 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
           throw new Error(res.error);
         }
       } else {
-        const res = await vendorEmployeeService.createEmployee(formData);
+        // Step 1: Create auth user via edge function
+        const { data: fnData, error: fnError } = await supabase.functions.invoke(
+          'partner-create-employee',
+          {
+            body: {
+              name: formData.name,
+              email: formData.email,
+              phone: formData.phone,
+              password: formData.password,
+            },
+          }
+        );
+
+        if (fnError) throw new Error(fnError.message || 'Failed to create employee account');
+        if (fnData?.error) throw new Error(fnData.error);
+
+        const employeeUserId = fnData?.userId;
+        if (!employeeUserId) throw new Error('No user ID returned from account creation');
+
+        // Step 2: Insert into vendor_employees with the auth user link
+        const res = await vendorEmployeeService.createEmployee({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          role: formData.role,
+          permissions: formData.permissions,
+          salary: formData.salary,
+          employee_user_id: employeeUserId,
+        });
+
         if (res.success) {
-          toast({ title: "Success", description: "Employee added successfully" });
+          toast({ title: "Success", description: "Employee added successfully. They can now log in with the provided credentials." });
           onSubmit();
         } else {
           throw new Error(res.error);
@@ -140,7 +182,7 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
   return (
     <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="text-sm">{employee ? 'Edit Employee' : 'Add New Employee'}</CardTitle>
+        <CardTitle className="text-sm">{isEditing ? 'Edit Employee' : 'Add New Employee'}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -151,12 +193,18 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
             </div>
             <div>
               <Label className="text-xs">Email *</Label>
-              <Input className="h-8 text-xs" type="email" value={formData.email} onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))} required />
+              <Input className="h-8 text-xs" type="email" value={formData.email} onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))} required disabled={isEditing} />
             </div>
             <div>
               <Label className="text-xs">Phone *</Label>
               <Input className="h-8 text-xs" value={formData.phone} onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))} required />
             </div>
+            {!isEditing && (
+              <div>
+                <Label className="text-xs">Password *</Label>
+                <Input className="h-8 text-xs" type="password" value={formData.password} onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))} required minLength={6} placeholder="Min 6 characters" />
+              </div>
+            )}
             <div>
               <Label className="text-xs">Role</Label>
               <Select value={formData.role} onValueChange={(v) => setFormData(prev => ({ ...prev, role: v }))}>
@@ -172,7 +220,7 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
               <Label className="text-xs">Monthly Salary (₹)</Label>
               <Input className="h-8 text-xs" type="number" min="0" value={formData.salary} onChange={(e) => setFormData(prev => ({ ...prev, salary: parseInt(e.target.value) || 0 }))} />
             </div>
-            {employee && (
+            {isEditing && (
               <div>
                 <Label className="text-xs">Status</Label>
                 <Select value={formData.status} onValueChange={(v) => setFormData(prev => ({ ...prev, status: v }))}>
@@ -238,7 +286,7 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
           <div className="flex justify-end gap-2 pt-2 border-t">
             <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={onCancel}>Cancel</Button>
             <Button type="submit" size="sm" className="h-7 text-xs" disabled={loading}>
-              {loading ? "Saving..." : employee ? "Update Employee" : "Add Employee"}
+              {loading ? "Saving..." : isEditing ? "Update Employee" : "Add Employee"}
             </Button>
           </div>
         </form>
