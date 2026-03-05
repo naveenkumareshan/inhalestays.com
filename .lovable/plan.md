@@ -1,48 +1,70 @@
 
 
-# Fix: Partner Employee Sidebar Not Showing Permitted Items
+# Fix: Vendor Employees Blocked by RLS on All Data Tables
 
-## Problem
-Two bugs prevent `vendor_employee` users from seeing their assigned sidebar items.
+## Root Cause
 
-## Root Causes
+Every table's vendor RLS policy uses `created_by = auth.uid()` (or equivalent). For a vendor employee, `auth.uid()` returns **their own user ID**, not the partner's. So every query returns empty — the sidebar property detection (`usePartnerPropertyTypes`) finds no cabins, and even if we force the sidebar open, the actual pages would show no data.
 
-### 1. `usePartnerPropertyTypes` queries the wrong user ID
-In `src/hooks/usePartnerPropertyTypes.ts`, the hook queries `cabins.created_by = user.id` and `hostels.created_by = user.id`. For a `vendor_employee`, `user.id` is the **employee's** ID, not the partner's. Since the employee never created any properties, `hasReadingRooms` and `hasHostels` are always `false`, and all property-related sidebar sections are hidden.
+The only reason "Complaints" works is because that table has a broad SELECT policy.
 
-**Fix**: When the user is a `vendor_employee`, use `user.vendorId` (the partner's user ID already stored from `AuthContext`) instead of `user.id`.
+## Verified Data
 
-### 2. Section-level permission gates are too restrictive
-In `src/components/admin/AdminSidebar.tsx`, the outer gate for each collapsible section checks a single specific permission, but employees may have other permissions within that section:
+- Employee `9e02376e...` has 12 permissions including `seats_available_map`, `view_bookings`, etc.
+- Partner `edb417fa...` owns cabin "Toppers reading room" (`is_active: false`, `is_approved: true`)
+- Employee cannot SELECT this cabin due to RLS — no policy grants access via `partner_user_id`
 
-- **Reading Rooms section** (line 111): gated by `hasPermission('view_bookings')` — an employee with only `seats_available_map` is blocked from the entire section
-- **Hostels section** (line 192): gated by `hasPermission('view_reading_rooms')` — this is a Reading Room permission, not a Hostel permission
-- **Users section** (line 267): gated by `hasPermission('manage_students')` — should also allow `view_students`
+## Solution
 
-**Fix**: Change section gates to `hasAnyPermission([...all relevant sub-permissions...])` so any granted sub-permission opens the section, while individual items are still filtered by `hasAccess`.
+### 1. Create a reusable helper function (database migration)
 
-## Changes
+```sql
+CREATE OR REPLACE FUNCTION public.is_partner_or_employee_of(owner_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    auth.uid() = owner_id
+    OR EXISTS (
+      SELECT 1 FROM public.vendor_employees
+      WHERE employee_user_id = auth.uid()
+        AND partner_user_id = owner_id
+        AND status = 'active'
+    )
+$$;
+```
+
+### 2. Add vendor employee SELECT policies on critical tables
+
+Using the helper function, add new policies on the tables the employee needs:
+
+| Table | Policy | Condition |
+|-------|--------|-----------|
+| `cabins` | Vendor employees can view employer cabins | `is_partner_or_employee_of(created_by)` |
+| `seats` | Vendor employees can view employer seats | Join to cabins, check `is_partner_or_employee_of(c.created_by)` |
+| `bookings` | Vendor employees can view/manage employer bookings | Join to cabins, check `is_partner_or_employee_of(c.created_by)` |
+| `dues` | Fix broken employee policy | Replace `c.created_by = auth.uid()` with `is_partner_or_employee_of(c.created_by)` |
+| `due_payments` | Vendor employees can manage employer due payments | Join to dues → cabins, check helper |
+| `complaints` | Vendor employees can view/update employer complaints | Join to cabins/hostels, check helper |
+
+### 3. Fix `usePartnerPropertyTypes` dependency
+
+Also update `useEffect` dependency to include `user.vendorId` so it re-fetches when vendorId becomes available:
+
+```typescript
+}, [user?.id, user?.vendorId, isPartner]);
+```
+
+### 4. Fix sidebar `propertyTypes.loading` check
+
+Add `propertyTypes.loading` to the sidebar's loading check so it doesn't render with stale false values.
+
+## Files to Change
 
 | File | Change |
 |------|--------|
-| `src/hooks/usePartnerPropertyTypes.ts` | Use `user.vendorId` instead of `user.id` when role is `vendor_employee` |
-| `src/components/admin/AdminSidebar.tsx` | Fix section-level permission gates to use `hasAnyPermission` with all relevant permissions for that section |
-
-### Detailed gate fixes in AdminSidebar
-
-```text
-Reading Rooms section gate:
-  Before: hasPermission('view_bookings')
-  After:  hasAnyPermission(['view_bookings','seats_available_map','view_due_management','view_receipts','view_key_deposits','view_reading_rooms'])
-
-Hostels section gate:
-  Before: hasPermission('view_reading_rooms')
-  After:  hasAnyPermission(['view_bed_map','view_hostel_due_management','view_hostel_bookings','view_hostel_receipts','view_hostel_deposits'])
-
-Users section gate:
-  Before: hasPermission('manage_students')
-  After:  hasAnyPermission(['view_students','manage_students','view_coupons'])
-```
-
-No database or UI design changes required.
+| **Database migration** | Create `is_partner_or_employee_of()` function + add/fix RLS policies on 6 tables |
+| `src/hooks/usePartnerPropertyTypes.ts` | Add `user?.vendorId` to useEffect deps |
+| `src/components/admin/AdminSidebar.tsx` | Include `propertyTypes.loading` in loading check |
 
