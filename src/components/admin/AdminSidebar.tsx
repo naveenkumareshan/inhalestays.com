@@ -108,7 +108,7 @@ export function AdminSidebar() {
   ];
 
   // Reading Rooms section - only show for admin or partners with reading rooms
-  if (user?.role === 'admin' || (hasPermission('view_bookings') && (!isPartner || propertyTypes.hasReadingRooms))) {
+  if (user?.role === 'admin' || (hasAnyPermission(['view_bookings','seats_available_map','view_due_management','view_receipts','view_key_deposits','view_reading_rooms'] as any) && (!isPartner || propertyTypes.hasReadingRooms))) {
     const readingRoomSubItems: MenuItem[] = [];
 
     if (user?.role === 'admin' || hasPermission('seats_available_map')) {
@@ -189,7 +189,7 @@ export function AdminSidebar() {
   }
 
   // ===== HOSTELS SECTION (moved ABOVE Users) =====
-  if (user?.role === 'admin' || (hasPermission('view_reading_rooms') && (!isPartner || propertyTypes.hasHostels))) {
+  if (user?.role === 'admin' || (hasAnyPermission(['view_bed_map','view_hostel_due_management','view_hostel_bookings','view_hostel_receipts','view_hostel_deposits','view_reading_rooms'] as any) && (!isPartner || propertyTypes.hasHostels))) {
     const hostelSubItems: MenuItem[] = [
       {
         title: 'Bed Map',
@@ -264,7 +264,7 @@ export function AdminSidebar() {
   }
 
   // ===== USERS SECTION (moved BELOW Hostels) =====
-  if (user?.role === 'admin' || hasPermission('manage_students')) {
+  if (user?.role === 'admin' || hasAnyPermission(['view_students','manage_students','view_coupons'] as any)) {
     menuItems.push({
       title: 'Users',
       icon: Users,

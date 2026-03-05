@@ -27,7 +27,8 @@ export function usePartnerPropertyTypes(): PartnerPropertyTypes {
     }
 
     const fetchPropertyTypes = async () => {
-      const userId = user.id;
+      // For vendor_employee, use the partner's user ID (vendorId) since properties are created by the partner
+      const userId = user.role === 'vendor_employee' && user.vendorId ? user.vendorId : user.id;
 
       const [cabinsRes, hostelsRes, laundryRes] = await Promise.all([
         supabase.from('cabins').select('id').eq('created_by', userId).limit(1),
