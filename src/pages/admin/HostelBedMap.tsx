@@ -89,6 +89,8 @@ const HostelBedMap: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedFloor, setSelectedFloor] = useState<string>('all');
+  const [selectedRoom, setSelectedRoom] = useState<string>('all');
 
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -347,9 +349,39 @@ const HostelBedMap: React.FC = () => {
     }
   }, [beds]);
 
+  // Available floors and rooms for filters
+  const availableFloors = useMemo(() => {
+    if (selectedHostelId === 'all') return [];
+    const floors = [...new Set(beds.map(b => b.floor))].sort((a, b) => a - b);
+    return floors.map(f => ({ value: String(f), label: `Floor ${f}` }));
+  }, [beds, selectedHostelId]);
+
+  const availableRooms = useMemo(() => {
+    let filtered = beds;
+    if (selectedHostelId !== 'all') {
+      filtered = filtered.filter(b => b.hostelId === selectedHostelId);
+    }
+    if (selectedFloor !== 'all') {
+      filtered = filtered.filter(b => String(b.floor) === selectedFloor);
+    }
+    const rooms = [...new Map(filtered.map(b => [b.room_id, b.roomNumber])).entries()]
+      .sort((a, b) => a[1].localeCompare(b[1], undefined, { numeric: true }));
+    return rooms.map(([id, name]) => ({ value: id, label: name }));
+  }, [beds, selectedHostelId, selectedFloor]);
+
+  // Reset floor/room filters on hostel change
+  useEffect(() => { setSelectedFloor('all'); setSelectedRoom('all'); }, [selectedHostelId]);
+  useEffect(() => { setSelectedRoom('all'); }, [selectedFloor]);
+
   // Filtered beds
   const filteredBeds = useMemo(() => {
     let result = beds;
+    if (selectedFloor !== 'all') {
+      result = result.filter(b => String(b.floor) === selectedFloor);
+    }
+    if (selectedRoom !== 'all') {
+      result = result.filter(b => b.room_id === selectedRoom);
+    }
     if (statusFilter !== 'all') {
       result = result.filter(b => b.dateStatus === statusFilter);
     }
@@ -367,7 +399,7 @@ const HostelBedMap: React.FC = () => {
       return a.bed_number - b.bed_number;
     });
     return result;
-  }, [beds, statusFilter, searchTerm]);
+  }, [beds, statusFilter, searchTerm, selectedFloor, selectedRoom]);
 
   // Stats
   const stats = useMemo(() => {
@@ -919,6 +951,34 @@ const HostelBedMap: React.FC = () => {
             ))}
           </SelectContent>
         </Select>
+
+        {selectedHostelId !== 'all' && availableFloors.length > 0 && (
+          <Select value={selectedFloor} onValueChange={setSelectedFloor}>
+            <SelectTrigger className="h-8 w-[120px] text-xs">
+              <SelectValue placeholder="Floor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs font-medium">All Floors</SelectItem>
+              {availableFloors.map(f => (
+                <SelectItem key={f.value} value={f.value} className="text-xs">{f.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {selectedHostelId !== 'all' && availableRooms.length > 0 && (
+          <Select value={selectedRoom} onValueChange={setSelectedRoom}>
+            <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectValue placeholder="Room" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs font-medium">All Rooms</SelectItem>
+              {availableRooms.map(r => (
+                <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         <Popover>
           <PopoverTrigger asChild>
