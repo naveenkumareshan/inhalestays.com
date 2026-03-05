@@ -1,103 +1,67 @@
 
 
-# Fix: Hostel Beds Show as Available After Booking
+# Fix: Hostel Booking Created Before Payment Confirmation
 
 ## Root Cause
 
-The `hostel_beds.is_available` flag is **not being updated** when students book beds online. Here's why:
+In `src/pages/HostelBooking.tsx` (line 197), the booking is created **before** the Razorpay payment modal opens:
 
-1. In `hostelBookingService.ts` (line 64), after creating a booking, the code runs:
-   ```typescript
-   await supabase.from('hostel_beds').update({ is_available: false }).eq('id', bedId);
-   ```
-2. **Students have no UPDATE permission on `hostel_beds`** — the RLS policies only grant UPDATE to admins, partners, and employees. So this update **silently fails** for student bookings.
-
-3. While the admin bed map (`HostelBedMap.tsx` page) correctly determines status from booking data (not the `is_available` flag), the **student-facing booking flow** checks `is_available` before allowing a booking (line 42-44 of `hostelBookingService.ts`). Additionally, the student-facing bed map component also uses `b.is_available` in its availability calculation.
-
-4. Result: After a student books bed X, `is_available` remains `true` → bed X appears available to the next student → **double bookings become possible**, and the visual bed map shows booked beds as available.
-
-This also explains why **partner-created bookings** work — partners have UPDATE permission on `hostel_beds`, so the flag gets set correctly.
-
-## Fix: Database Trigger for Automatic `is_available` Sync
-
-Instead of relying on application code (which fails when the user lacks permissions), add a database trigger that automatically updates `hostel_beds.is_available` when bookings are created or cancelled.
-
-### Migration SQL
-
-```sql
--- Trigger: Auto-set bed is_available=false when booking is created
-CREATE OR REPLACE FUNCTION sync_hostel_bed_availability()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF TG_OP = 'INSERT' THEN
-    -- New booking → mark bed unavailable
-    IF NEW.status IN ('confirmed', 'pending') THEN
-      UPDATE hostel_beds SET is_available = false WHERE id = NEW.bed_id;
-    END IF;
-    RETURN NEW;
-  ELSIF TG_OP = 'UPDATE' THEN
-    -- Booking cancelled → check if any other active booking exists for this bed
-    IF OLD.status IN ('confirmed', 'pending') AND NEW.status NOT IN ('confirmed', 'pending') THEN
-      IF NOT EXISTS (
-        SELECT 1 FROM hostel_bookings
-        WHERE bed_id = NEW.bed_id
-          AND id != NEW.id
-          AND status IN ('confirmed', 'pending')
-          AND end_date >= CURRENT_DATE
-      ) THEN
-        UPDATE hostel_beds SET is_available = true WHERE id = NEW.bed_id;
-      END IF;
-    END IF;
-    -- Bed transfer: update old and new bed
-    IF OLD.bed_id != NEW.bed_id THEN
-      -- Free old bed if no other active bookings
-      IF NOT EXISTS (
-        SELECT 1 FROM hostel_bookings
-        WHERE bed_id = OLD.bed_id AND id != NEW.id
-          AND status IN ('confirmed', 'pending') AND end_date >= CURRENT_DATE
-      ) THEN
-        UPDATE hostel_beds SET is_available = true WHERE id = OLD.bed_id;
-      END IF;
-      -- Mark new bed unavailable
-      UPDATE hostel_beds SET is_available = false WHERE id = NEW.bed_id;
-    END IF;
-    RETURN NEW;
-  END IF;
-  RETURN NULL;
-END;
-$$;
-
-CREATE TRIGGER trg_sync_hostel_bed_availability
-AFTER INSERT OR UPDATE ON hostel_bookings
-FOR EACH ROW
-EXECUTE FUNCTION sync_hostel_bed_availability();
-
--- Fix existing out-of-sync data: mark beds with active bookings as unavailable
-UPDATE hostel_beds SET is_available = false
-WHERE id IN (
-  SELECT DISTINCT bed_id FROM hostel_bookings
-  WHERE status IN ('confirmed', 'pending')
-    AND end_date >= CURRENT_DATE
-)
-AND is_available = true;
+```
+1. hostelBookingService.createBooking(bookingData)  ← booking inserted with status='pending'
+2. razorpayService.createOrder(...)                  ← Razorpay order created
+3. rzp.open()                                        ← payment modal opens
+4. User closes modal / payment fails                 ← booking stays as 'pending' forever
 ```
 
-### Code Cleanup
+The `createBooking` call (line 47-57 of `hostelBookingService.ts`) inserts the booking with `status: 'pending'` and `payment_status: 'pending'` since no `razorpay_payment_id` exists yet. The database trigger then marks the bed as unavailable.
 
-Remove the now-redundant manual `is_available` updates in:
+There is **no `modal.ondismiss` handler** on the Razorpay options (line 240-276), so when the user closes/cancels the payment modal, the pending booking is never cleaned up. The bed stays blocked, and the booking shows up in operations.
 
-1. **`src/api/hostelBookingService.ts`** (line 64): Remove `await supabase.from('hostel_beds').update(...)` — trigger handles it
-2. **`src/pages/admin/HostelBedMap.tsx`** (line 795): Remove the manual update after booking creation — trigger handles it
-3. **`src/pages/admin/HostelBedMap.tsx`** (lines 489-490): Remove manual updates during bed transfer — trigger handles it
-4. **`src/components/admin/HostelBedTransferManagement.tsx`** (lines 101-102): Remove manual updates — trigger handles it
+Additionally, if the `razorpayService.createOrder()` call fails after booking creation (line 214-216), the `throw` goes to the catch block but never cancels the already-created booking.
+
+## Fix Plan
+
+### Change 1: `src/pages/HostelBooking.tsx` — Add cleanup on payment failure/dismissal
+
+Add `modal.ondismiss` handler to cancel the booking when payment is dismissed, and cancel the booking if order creation fails:
+
+```typescript
+// After line 216 (order creation failure), cancel the booking:
+if (!orderResponse.success || !orderResponse.data) {
+  await hostelBookingService.cancelBooking(booking.id, 'Payment order creation failed');
+  throw new Error(...);
+}
+
+// In razorpayOptions (~line 240), add modal.ondismiss:
+modal: {
+  ondismiss: async () => {
+    await hostelBookingService.cancelBooking(booking.id, 'Payment cancelled by user');
+    toast({ title: "Booking Cancelled", description: "Payment was not completed", variant: "destructive" });
+    setIsProcessing(false);
+  },
+},
+
+// In the handler's catch block (~line 268), cancel on verification failure:
+catch (err) {
+  await hostelBookingService.cancelBooking(booking.id, 'Payment verification failed');
+  toast({ ... });
+}
+```
+
+### Change 2: `src/pages/HostelBooking.tsx` — Also cancel on outer catch
+
+The outer catch block (~line 277) should also attempt to cancel any created booking. Use a `bookingRef` to track the created booking ID:
+
+```typescript
+let createdBookingId: string | null = null;
+// After booking creation:
+createdBookingId = booking.id;
+// In outer catch:
+if (createdBookingId) {
+  await hostelBookingService.cancelBooking(createdBookingId, 'Booking process failed');
+}
+```
 
 ### Files Changed
-- **Database migration**: 1 trigger function + data fix for existing out-of-sync beds
-- **`src/api/hostelBookingService.ts`**: Remove manual bed update
-- **`src/pages/admin/HostelBedMap.tsx`**: Remove 2 manual bed updates
-- **`src/components/admin/HostelBedTransferManagement.tsx`**: Remove manual bed update
+- **`src/pages/HostelBooking.tsx`**: Add payment dismissal/failure cleanup handlers to cancel pending bookings
 
