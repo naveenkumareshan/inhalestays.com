@@ -382,9 +382,8 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
 
       const seatFees = sumReceipts(rrCurrent, 'booking_payment');
       const bedFees = sumReceipts(hCurrent, 'booking_payment');
-      const lockerAmount = sumReceipts(rrCurrent, 'locker_payment') + sumReceipts(hCurrent, 'locker_payment');
-      const securityDeposit = sumReceipts(rrCurrent, 'deposit') + sumReceipts(hCurrent, 'deposit') +
-        sumReceipts(rrCurrent, 'security_deposit') + sumReceipts(hCurrent, 'security_deposit');
+      const lockerAmount = sumReceipts(rrCurrent, 'locker_payment');
+      const securityDeposit = sumReceipts(hCurrent, 'deposit') + sumReceipts(hCurrent, 'security_deposit');
       const roomFees = seatFees + bedFees;
       const foodCollection = sumReceipts(hCurrent, 'food_payment');
       const depositCollection = securityDeposit;
@@ -396,9 +395,8 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
 
       const prevSeatFees = sumReceipts(rrPrev, 'booking_payment');
       const prevBedFees = sumReceipts(hPrev, 'booking_payment');
-      const prevLockerAmount = sumReceipts(rrPrev, 'locker_payment') + sumReceipts(hPrev, 'locker_payment');
-      const prevSecurityDeposit = sumReceipts(rrPrev, 'deposit') + sumReceipts(hPrev, 'deposit') +
-        sumReceipts(rrPrev, 'security_deposit') + sumReceipts(hPrev, 'security_deposit');
+      const prevLockerAmount = sumReceipts(rrPrev, 'locker_payment');
+      const prevSecurityDeposit = sumReceipts(hPrev, 'deposit') + sumReceipts(hPrev, 'security_deposit');
       const prevRoomFees = prevSeatFees + prevBedFees;
       const prevFoodCollection = sumReceipts(hPrev, 'food_payment');
       const prevDepositCollection = prevSecurityDeposit;
