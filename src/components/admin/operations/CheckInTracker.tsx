@@ -176,8 +176,8 @@ const CheckInTracker = () => {
   const getFinancials = (b: any) => {
     const due = duesMap[b.id];
     if (module === 'reading_room') {
-      const price = Number(b.total_price || 0);
       const deposit = Number(b.locker_price || 0);
+      const price = Number(b.total_price || 0) - deposit;
       if (due) {
         const paid = Number(due.advance_paid || 0) + Number(due.paid_amount || 0);
         const remaining = Math.max(0, Number(due.due_amount || 0) - Number(due.paid_amount || 0));
