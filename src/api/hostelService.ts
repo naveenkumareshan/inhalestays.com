@@ -125,11 +125,12 @@ export const hostelService = {
   },
 
   getUserHostels: async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { getEffectiveOwnerId } = await import('@/utils/getEffectiveOwnerId');
+    const { ownerId } = await getEffectiveOwnerId();
     const { data, error } = await supabase
       .from('hostels')
       .select('*, states(name), cities(name), areas(name)')
-      .eq('created_by', user?.id ?? '')
+      .eq('created_by', ownerId)
       .order('created_at', { ascending: false });
     if (error) throw error;
     return data;

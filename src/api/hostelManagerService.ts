@@ -1,17 +1,17 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 
 export const hostelManagerService = {
-  // Get cabins managed by the logged-in user (filtered by created_by)
+  // Get cabins managed by the logged-in user (or their employer for employees)
   getManagedCabins: async (filters = {}) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { success: false, error: 'Not authenticated' };
+      const { ownerId } = await getEffectiveOwnerId();
 
       const { data, error } = await supabase
         .from('cabins')
         .select('*')
-        .eq('created_by', user.id)
+        .eq('created_by', ownerId)
         .order('name');
 
       if (error) throw error;
@@ -25,14 +25,13 @@ export const hostelManagerService = {
   // Get revenue statistics for cabins managed by the logged-in user
   getCabinRevenueStats: async (period = 'month') => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { success: false, error: 'Not authenticated' };
+      const { ownerId } = await getEffectiveOwnerId();
 
       // Get owned cabin IDs
       const { data: cabins } = await supabase
         .from('cabins')
         .select('id')
-        .eq('created_by', user.id);
+        .eq('created_by', ownerId);
 
       const cabinIds = (cabins || []).map(c => c.id);
       if (cabinIds.length === 0) return { success: true, data: { totalRevenue: 0, bookingCount: 0 } };
@@ -61,13 +60,12 @@ export const hostelManagerService = {
   // Get booking statistics for cabins managed by the logged-in user
   getCabinBookingStats: async (period = 'month') => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { success: false, error: 'Not authenticated' };
+      const { ownerId } = await getEffectiveOwnerId();
 
       const { data: cabins } = await supabase
         .from('cabins')
         .select('id')
-        .eq('created_by', user.id);
+        .eq('created_by', ownerId);
 
       const cabinIds = (cabins || []).map(c => c.id);
       if (cabinIds.length === 0) return { success: true, data: { active: 0, completed: 0, total: 0 } };
@@ -89,13 +87,12 @@ export const hostelManagerService = {
   // Get seat statistics for cabins managed by the logged-in user
   getCabinSeatsStats: async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { success: false, error: 'Not authenticated' };
+      const { ownerId } = await getEffectiveOwnerId();
 
       const { data: cabins } = await supabase
         .from('cabins')
         .select('id')
-        .eq('created_by', user.id);
+        .eq('created_by', ownerId);
 
       const cabinIds = (cabins || []).map(c => c.id);
       if (cabinIds.length === 0) return { success: true, data: { total: 0, available: 0, occupied: 0 } };

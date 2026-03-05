@@ -76,9 +76,11 @@ export const adminUsersService = {
 
       // For partners viewing students, restrict to students who have bookings at partner's properties
       if (isPartner && authUser && role === 'student') {
+        const { getEffectiveOwnerId } = await import('@/utils/getEffectiveOwnerId');
+        const { ownerId } = await getEffectiveOwnerId();
         const [cabinsRes, hostelsRes] = await Promise.all([
-          supabase.from('cabins').select('id').eq('created_by', authUser.id),
-          supabase.from('hostels').select('id').eq('created_by', authUser.id),
+          supabase.from('cabins').select('id').eq('created_by', ownerId),
+          supabase.from('hostels').select('id').eq('created_by', ownerId),
         ]);
         const cabinIds = (cabinsRes.data || []).map(c => c.id);
         const hostelIds = (hostelsRes.data || []).map(h => h.id);
@@ -117,10 +119,12 @@ export const adminUsersService = {
 
       // For partners viewing employees, restrict to their own employees
       if (isPartner && authUser && role === 'vendor_employee') {
+        const { getEffectiveOwnerId } = await import('@/utils/getEffectiveOwnerId');
+        const { ownerId: empOwnerId } = await getEffectiveOwnerId();
         const { data: empRows } = await supabase
           .from('vendor_employees')
           .select('user_id')
-          .eq('partner_user_id', authUser.id);
+          .eq('partner_user_id', empOwnerId);
         const empIds = (empRows || []).map((e: any) => e.user_id).filter(Boolean);
         if (empIds.length === 0) {
           return { success: true, data: [], count: 0, totalCount: 0, pagination: { totalPages: 1, currentPage: page } };

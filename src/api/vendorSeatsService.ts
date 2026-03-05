@@ -215,7 +215,9 @@ export const vendorSeatsService = {
           .eq('user_id', authUser.id);
         const isAdmin = roleData?.some(r => r.role === 'admin' || r.role === 'super_admin');
         if (!isAdmin) {
-          cabinsQuery = cabinsQuery.eq('created_by', authUser.id);
+          const { getEffectiveOwnerId } = await import('@/utils/getEffectiveOwnerId');
+          const { ownerId } = await getEffectiveOwnerId();
+          cabinsQuery = cabinsQuery.eq('created_by', ownerId);
         }
       }
 
