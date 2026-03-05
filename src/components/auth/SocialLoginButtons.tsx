@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FcGoogle } from 'react-icons/fc';
+import { FaApple } from 'react-icons/fa';
 import { useToast } from '@/hooks/use-toast';
 import { lovable } from '@/integrations/lovable/index';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,18 +14,16 @@ interface SocialLoginButtonsProps {
 
 export function SocialLoginButtons({ onLoginSuccess, onLoginError }: SocialLoginButtonsProps) {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<'google' | 'apple' | null>(null);
 
-  const handleGoogleLogin = async () => {
-    setIsLoading(true);
+  const handleOAuthLogin = async (provider: 'google' | 'apple') => {
+    setIsLoading(provider);
     try {
       const isCapacitor = !!(window as any).Capacitor;
 
       if (isCapacitor) {
-        // Capacitor: bypass Lovable wrapper (needs server routes unavailable in native builds)
-        // Opens system browser for Google login, redirects to published URL
         const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
+          provider,
           options: {
             redirectTo: 'https://inhalestays-com.lovable.app/student-login',
           },
@@ -33,17 +32,15 @@ export function SocialLoginButtons({ onLoginSuccess, onLoginError }: SocialLogin
         if (error) {
           toast({
             title: "Login Failed",
-            description: "Failed to login with Google. Please try again.",
+            description: `Failed to login with ${provider === 'google' ? 'Google' : 'Apple'}. Please try again.`,
             variant: "destructive"
           });
           onLoginError?.(error);
         }
-        // Browser will navigate away; session picked up by onAuthStateChange on return
         return;
       }
 
-      // Web: use Lovable managed OAuth wrapper
-      const result = await lovable.auth.signInWithOAuth("google", {
+      const result = await lovable.auth.signInWithOAuth(provider, {
         redirect_uri: window.location.origin,
       });
 
@@ -52,7 +49,7 @@ export function SocialLoginButtons({ onLoginSuccess, onLoginError }: SocialLogin
       if (result.error) {
         toast({
           title: "Login Failed",
-          description: "Failed to login with Google. Please try again.",
+          description: `Failed to login with ${provider === 'google' ? 'Google' : 'Apple'}. Please try again.`,
           variant: "destructive"
         });
         onLoginError?.(result.error);
@@ -61,29 +58,39 @@ export function SocialLoginButtons({ onLoginSuccess, onLoginError }: SocialLogin
 
       onLoginSuccess?.({ success: true });
     } catch (error) {
-      console.error('Google login error:', error);
+      console.error(`${provider} login error:`, error);
       toast({
         title: "Login Failed",
-        description: "Failed to login with Google. Please try again.",
+        description: `Failed to login with ${provider === 'google' ? 'Google' : 'Apple'}. Please try again.`,
         variant: "destructive"
       });
       onLoginError?.(error);
     } finally {
-      setIsLoading(false);
+      setIsLoading(null);
     }
   };
 
   return (
     <div className="space-y-3">
       <Button
-        onClick={handleGoogleLogin}
+        onClick={() => handleOAuthLogin('google')}
         variant="outline"
         type="button"
         className="w-full flex items-center justify-center gap-2"
-        disabled={isLoading}
+        disabled={!!isLoading}
       >
         <FcGoogle className="h-4 w-4" />
-        <span>{isLoading ? 'Connecting...' : 'Continue with Google'}</span>
+        <span>{isLoading === 'google' ? 'Connecting...' : 'Continue with Google'}</span>
+      </Button>
+      <Button
+        onClick={() => handleOAuthLogin('apple')}
+        variant="outline"
+        type="button"
+        className="w-full flex items-center justify-center gap-2"
+        disabled={!!isLoading}
+      >
+        <FaApple className="h-5 w-5" />
+        <span>{isLoading === 'apple' ? 'Connecting...' : 'Continue with Apple'}</span>
       </Button>
     </div>
   );
