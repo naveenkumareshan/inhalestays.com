@@ -1623,7 +1623,7 @@ const VendorSeats: React.FC = () => {
                         <PaymentMethodSelector
                           value={paymentMethod}
                           onValueChange={setPaymentMethod}
-                          partnerId={user?.id}
+                          partnerId={user?.vendorId || user?.id}
                           idPrefix="pm"
                           columns={3}
                         />

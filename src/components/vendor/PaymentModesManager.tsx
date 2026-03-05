@@ -35,7 +35,7 @@ export const PaymentModesManager: React.FC = () => {
     const { data } = await supabase
       .from('partner_payment_modes')
       .select('*')
-      .eq('partner_user_id', user.id)
+      .eq('partner_user_id', user.vendorId || user.id)
       .order('display_order');
     setModes((data as PaymentMode[]) || []);
     setLoading(false);
@@ -47,7 +47,7 @@ export const PaymentModesManager: React.FC = () => {
     if (!newLabel.trim() || !user?.id) return;
     setAdding(true);
     const { error } = await supabase.from('partner_payment_modes').insert({
-      partner_user_id: user.id,
+      partner_user_id: user.vendorId || user.id,
       label: newLabel.trim(),
       mode_type: newType,
       display_order: modes.length,

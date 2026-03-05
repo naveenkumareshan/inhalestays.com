@@ -9,9 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Wallet, AlertTriangle, IndianRupee, Calendar as CalendarIcon, Search, Banknote, Smartphone, Building2, CreditCard, Receipt, Pencil } from 'lucide-react';
+import { Wallet, AlertTriangle, IndianRupee, Calendar as CalendarIcon, Search, Receipt, Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +18,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Textarea } from '@/components/ui/textarea';
 import { HostelDuePaymentHistory } from '@/components/booking/HostelDuePaymentHistory';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
+import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
+import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 
 const HostelDueManagement: React.FC = () => {
   const [dues, setDues] = useState<any[]>([]);
@@ -51,6 +52,7 @@ const HostelDueManagement: React.FC = () => {
   const [editDateValue, setEditDateValue] = useState<string>('');
   const [editMaxDate, setEditMaxDate] = useState<string>('');
   const [savingDate, setSavingDate] = useState(false);
+  const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -166,6 +168,9 @@ const HostelDueManagement: React.FC = () => {
       .eq('booking_id', due.booking_id)
       .order('created_at', { ascending: false });
     setReceipts(data || []);
+    const methods = (data || []).map((r: any) => r.payment_method);
+    const labels = await resolvePaymentMethodLabels(methods);
+    setCustomLabels(prev => ({ ...prev, ...labels }));
     setReceiptsLoading(false);
   };
 
@@ -451,27 +456,16 @@ const HostelDueManagement: React.FC = () => {
 
               <div>
                 <Label className="text-xs">Payment Method</Label>
-                <RadioGroup value={collectMethod} onValueChange={setCollectMethod} className="grid grid-cols-2 gap-1.5 mt-1">
-                  <div className="flex items-center gap-1.5 border rounded p-1.5">
-                    <RadioGroupItem value="cash" id="hdc_cash" className="h-3 w-3" />
-                    <Label htmlFor="hdc_cash" className="text-[10px] cursor-pointer flex items-center gap-1"><Banknote className="h-3 w-3" /> Cash</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5 border rounded p-1.5">
-                    <RadioGroupItem value="upi" id="hdc_upi" className="h-3 w-3" />
-                    <Label htmlFor="hdc_upi" className="text-[10px] cursor-pointer flex items-center gap-1"><Smartphone className="h-3 w-3" /> UPI</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5 border rounded p-1.5">
-                    <RadioGroupItem value="bank_transfer" id="hdc_bank" className="h-3 w-3" />
-                    <Label htmlFor="hdc_bank" className="text-[10px] cursor-pointer flex items-center gap-1"><Building2 className="h-3 w-3" /> Bank</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5 border rounded p-1.5">
-                    <RadioGroupItem value="online" id="hdc_online" className="h-3 w-3" />
-                    <Label htmlFor="hdc_online" className="text-[10px] cursor-pointer flex items-center gap-1"><CreditCard className="h-3 w-3" /> Online</Label>
-                  </div>
-                </RadioGroup>
+                <PaymentMethodSelector
+                  value={collectMethod}
+                  onValueChange={setCollectMethod}
+                  partnerId={user?.vendorId || user?.id}
+                  idPrefix="hdc"
+                  columns={2}
+                />
               </div>
 
-              {(collectMethod === 'upi' || collectMethod === 'bank_transfer') && (
+              {(collectMethod === 'upi' || collectMethod === 'bank_transfer' || collectMethod.startsWith('custom_')) && (
                 <div>
                   <Label className="text-xs">Transaction ID</Label>
                   <Input className="h-8 text-xs" value={collectTxnId} onChange={e => setCollectTxnId(e.target.value)} />
@@ -527,7 +521,7 @@ const HostelDueManagement: React.FC = () => {
                   <Separator className="my-1" />
                   <div className="grid grid-cols-2 gap-1">
                     <div><span className="text-muted-foreground">Amount:</span> <span className="font-medium">₹{Number(r.amount).toLocaleString()}</span></div>
-                    <div><span className="text-muted-foreground">Method:</span> {r.payment_method}</div>
+                    <div><span className="text-muted-foreground">Method:</span> {getMethodLabel(r.payment_method, customLabels)}</div>
                     <div><span className="text-muted-foreground">Date:</span> {format(new Date(r.created_at), 'dd MMM yy, hh:mm a')}</div>
                     <div><span className="text-muted-foreground">By:</span> {r.collected_by_name || '-'}</div>
                     {r.transaction_id && <div className="col-span-2"><span className="text-muted-foreground">Txn ID:</span> {r.transaction_id}</div>}

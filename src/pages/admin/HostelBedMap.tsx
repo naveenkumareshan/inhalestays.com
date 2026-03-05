@@ -29,6 +29,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
+import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 
 type ViewMode = 'grid' | 'table';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked';
@@ -159,7 +160,7 @@ const HostelBedMap: React.FC = () => {
   const [dueCollectMethod, setDueCollectMethod] = useState('cash');
   const [dueCollectTxnId, setDueCollectTxnId] = useState('');
   const [collectingDue, setCollectingDue] = useState(false);
-
+  const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -1435,7 +1436,7 @@ const HostelBedMap: React.FC = () => {
                         <PaymentMethodSelector
                           value={paymentMethod}
                           onValueChange={setPaymentMethod}
-                          partnerId={user?.id}
+                          partnerId={user?.vendorId || user?.id}
                           idPrefix="hpm"
                           columns={3}
                         />
@@ -1522,7 +1523,7 @@ const HostelBedMap: React.FC = () => {
                                     <PaymentMethodSelector
                                       value={dueCollectMethod}
                                       onValueChange={setDueCollectMethod}
-                                      partnerId={user?.id}
+                                      partnerId={user?.vendorId || user?.id}
                                       idPrefix={`hdc_${b.bookingId}`}
                                       columns={2}
                                       compact
@@ -1547,7 +1548,11 @@ const HostelBedMap: React.FC = () => {
                             onClick={async () => {
                               setReceiptDialogLoading(true); setReceiptDialogOpen(true);
                               const { data } = await supabase.from('hostel_receipts').select('*').eq('booking_id', b.bookingId).order('created_at', { ascending: true });
-                              setReceiptDialogData(data || []); setReceiptDialogLoading(false);
+                              setReceiptDialogData(data || []);
+                              const methods = (data || []).map((r: any) => r.payment_method);
+                              const labels = await resolvePaymentMethodLabels(methods);
+                              setCustomLabels(prev => ({ ...prev, ...labels }));
+                              setReceiptDialogLoading(false);
                             }}>
                             <IndianRupee className="h-2.5 w-2.5" /> Receipts
                           </Button>
@@ -1585,7 +1590,11 @@ const HostelBedMap: React.FC = () => {
                           onClick={async () => {
                             setReceiptDialogLoading(true); setReceiptDialogOpen(true);
                             const { data } = await supabase.from('hostel_receipts').select('*').eq('booking_id', b.bookingId).order('created_at', { ascending: true });
-                            setReceiptDialogData(data || []); setReceiptDialogLoading(false);
+                            setReceiptDialogData(data || []);
+                            const methods = (data || []).map((r: any) => r.payment_method);
+                            const labels = await resolvePaymentMethodLabels(methods);
+                            setCustomLabels(prev => ({ ...prev, ...labels }));
+                            setReceiptDialogLoading(false);
                           }}>
                           <IndianRupee className="h-2.5 w-2.5" /> Receipts
                         </Button>
@@ -1656,7 +1665,7 @@ const HostelBedMap: React.FC = () => {
                   </div>
                   {r.serial_number && <div className="text-[10px] font-medium text-primary">{r.serial_number}</div>}
                   <div className="flex justify-between text-[10px] text-muted-foreground">
-                    <span>{r.payment_method === 'cash' ? 'Cash' : r.payment_method === 'upi' ? 'UPI' : r.payment_method === 'bank_transfer' ? 'Bank Transfer' : r.payment_method}</span>
+                    <span>{getMethodLabel(r.payment_method, customLabels)}</span>
                     <span>{new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                   </div>
                   {r.transaction_id && <div className="text-[10px] text-muted-foreground">Txn: {r.transaction_id}</div>}

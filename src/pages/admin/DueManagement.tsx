@@ -8,9 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Wallet, AlertTriangle, IndianRupee, Calendar, Search, Banknote, Smartphone, Building2, CreditCard, Receipt, Pencil } from 'lucide-react';
+import { Wallet, AlertTriangle, IndianRupee, Calendar, Search, Receipt, Pencil } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +17,9 @@ import { useToast } from '@/hooks/use-toast';
 import { vendorSeatsService, VendorCabin } from '@/api/vendorSeatsService';
 import { Textarea } from '@/components/ui/textarea';
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
+import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
+import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 
 const DueManagement: React.FC = () => {
   const [dues, setDues] = useState<any[]>([]);
@@ -50,6 +52,8 @@ const DueManagement: React.FC = () => {
   const [editMaxDate, setEditMaxDate] = useState<string>('');
   const [savingDate, setSavingDate] = useState(false);
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
+  const [partnerId, setPartnerId] = useState<string>('');
+  const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
 
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -68,6 +72,16 @@ const DueManagement: React.FC = () => {
   };
 
   useEffect(() => { fetchData(); }, [filterCabin, filterStatus]);
+
+  // Resolve partner ID and custom labels for payment methods
+  useEffect(() => {
+    (async () => {
+      try {
+        const { ownerId } = await getEffectiveOwnerId();
+        setPartnerId(ownerId);
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   const handleSearch = () => fetchData();
 
@@ -100,6 +114,10 @@ const DueManagement: React.FC = () => {
       .eq('booking_id', due.booking_id)
       .order('created_at', { ascending: false });
     setReceipts(data || []);
+    // Resolve custom payment method labels
+    const methods = (data || []).map((r: any) => r.payment_method);
+    const labels = await resolvePaymentMethodLabels(methods);
+    setCustomLabels(prev => ({ ...prev, ...labels }));
     setReceiptsLoading(false);
   };
 
@@ -368,27 +386,16 @@ const DueManagement: React.FC = () => {
 
               <div>
                 <Label className="text-xs">Payment Method</Label>
-                <RadioGroup value={collectMethod} onValueChange={setCollectMethod} className="grid grid-cols-2 gap-1.5 mt-1">
-                  <div className="flex items-center gap-1.5 border rounded p-1.5">
-                    <RadioGroupItem value="cash" id="dc_cash" className="h-3 w-3" />
-                    <Label htmlFor="dc_cash" className="text-[10px] cursor-pointer flex items-center gap-1"><Banknote className="h-3 w-3" /> Cash</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5 border rounded p-1.5">
-                    <RadioGroupItem value="upi" id="dc_upi" className="h-3 w-3" />
-                    <Label htmlFor="dc_upi" className="text-[10px] cursor-pointer flex items-center gap-1"><Smartphone className="h-3 w-3" /> UPI</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5 border rounded p-1.5">
-                    <RadioGroupItem value="bank_transfer" id="dc_bank" className="h-3 w-3" />
-                    <Label htmlFor="dc_bank" className="text-[10px] cursor-pointer flex items-center gap-1"><Building2 className="h-3 w-3" /> Bank</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5 border rounded p-1.5">
-                    <RadioGroupItem value="online" id="dc_online" className="h-3 w-3" />
-                    <Label htmlFor="dc_online" className="text-[10px] cursor-pointer flex items-center gap-1"><CreditCard className="h-3 w-3" /> Online</Label>
-                  </div>
-                </RadioGroup>
+                <PaymentMethodSelector
+                  value={collectMethod}
+                  onValueChange={setCollectMethod}
+                  partnerId={partnerId}
+                  idPrefix="dc"
+                  columns={2}
+                />
               </div>
 
-              {(collectMethod === 'upi' || collectMethod === 'bank_transfer') && (
+              {(collectMethod === 'upi' || collectMethod === 'bank_transfer' || collectMethod.startsWith('custom_')) && (
                 <div>
                   <Label className="text-xs">Transaction ID</Label>
                   <Input className="h-8 text-xs" value={collectTxnId} onChange={e => setCollectTxnId(e.target.value)} />
@@ -440,7 +447,7 @@ const DueManagement: React.FC = () => {
                   <Separator className="my-1" />
                   <div className="grid grid-cols-2 gap-1">
                     <div><span className="text-muted-foreground">Amount:</span> <span className="font-medium">₹{Number(r.amount).toLocaleString()}</span></div>
-                    <div><span className="text-muted-foreground">Method:</span> {r.payment_method}</div>
+                    <div><span className="text-muted-foreground">Method:</span> {getMethodLabel(r.payment_method, customLabels)}</div>
                     <div><span className="text-muted-foreground">Date:</span> {format(new Date(r.created_at), 'dd MMM yy, hh:mm a')}</div>
                     <div><span className="text-muted-foreground">By:</span> {r.collected_by_name || '-'}</div>
                     {r.transaction_id && <div className="col-span-2"><span className="text-muted-foreground">Txn ID:</span> {r.transaction_id}</div>}
