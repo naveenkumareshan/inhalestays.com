@@ -15,6 +15,7 @@ export interface DateFilterProps {
   onDateFilterChange: (filter: string) => void;
   onStartDateChange: (date: Date | undefined) => void;
   onEndDateChange: (date: Date | undefined) => void;
+  compact?: boolean;
 }
 
 export const DateFilterSelector: React.FC<DateFilterProps> = ({
@@ -23,12 +24,13 @@ export const DateFilterSelector: React.FC<DateFilterProps> = ({
   endDate,
   onDateFilterChange,
   onStartDateChange,
-  onEndDateChange
+  onEndDateChange,
+  compact
 }) => {
   return (
-    <div className="flex flex-col md:flex-row gap-4">
+    <div className={cn("flex", compact ? "flex-row gap-2" : "flex-col md:flex-row gap-4")}>
       <Select value={dateFilter} onValueChange={onDateFilterChange}>
-        <SelectTrigger className="w-[200px]">
+        <SelectTrigger className={compact ? "w-[140px] h-7 text-[11px]" : "w-[200px]"}>
           <SelectValue placeholder="Select date range" />
         </SelectTrigger>
         <SelectContent>
@@ -52,11 +54,12 @@ export const DateFilterSelector: React.FC<DateFilterProps> = ({
               <Button
                 variant="outline"
                 className={cn(
-                  "w-[150px] justify-start text-left font-normal",
+                  "justify-start text-left font-normal",
+                  compact ? "w-[120px] h-7 text-[11px]" : "w-[150px]",
                   !startDate && "text-muted-foreground"
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
+                <CalendarIcon className={cn("mr-2", compact ? "h-3 w-3" : "h-4 w-4")} />
                 {startDate ? format(startDate, "dd MMM yyyy") : "Start Date"}
               </Button>
             </PopoverTrigger>
@@ -76,11 +79,12 @@ export const DateFilterSelector: React.FC<DateFilterProps> = ({
               <Button
                 variant="outline"
                 className={cn(
-                  "w-[150px] justify-start text-left font-normal",
+                  "justify-start text-left font-normal",
+                  compact ? "w-[120px] h-7 text-[11px]" : "w-[150px]",
                   !endDate && "text-muted-foreground"
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
+                <CalendarIcon className={cn("mr-2", compact ? "h-3 w-3" : "h-4 w-4")} />
                 {endDate ? format(endDate, "dd MMM yyyy") : "End Date"}
               </Button>
             </PopoverTrigger>

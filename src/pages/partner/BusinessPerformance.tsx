@@ -160,6 +160,7 @@ export default function BusinessPerformance() {
             onDateFilterChange={v => setFilters(f => ({ ...f, dateFilter: v }))}
             onStartDateChange={d => setFilters(f => ({ ...f, startDate: d }))}
             onEndDateChange={d => setFilters(f => ({ ...f, endDate: d }))}
+            compact
           />
         </div>
       </div>
