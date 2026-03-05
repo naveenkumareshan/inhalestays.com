@@ -216,7 +216,14 @@ const HostelBedMap: React.FC = () => {
       bedsQuery = bedsQuery.in('hostel_rooms.hostel_id', hostels.map(h => h.id));
     }
 
-    const { data: bedsData } = await bedsQuery.order('bed_number');
+    const { data: bedsData, error: bedsError } = await bedsQuery.order('bed_number');
+
+    if (bedsError) {
+      console.error('Error fetching beds:', bedsError);
+      toast({ title: 'Error loading beds', description: bedsError.message, variant: 'destructive' });
+      setRefreshing(false);
+      return;
+    }
 
     if (!bedsData || bedsData.length === 0) {
       setBeds([]);
@@ -238,11 +245,12 @@ const HostelBedMap: React.FC = () => {
       bookingsQuery = bookingsQuery.in('hostel_id', hostels.map(h => h.id));
     }
 
-    const { data: bookingsData } = await bookingsQuery;
+    const { data: bookingsData, error: bookingsError } = await bookingsQuery;
+    if (bookingsError) console.error('Error fetching bookings:', bookingsError);
 
     // Also fetch all bookings (current + future) for all these beds
     const bedIds = bedsData.map((b: any) => b.id);
-    const { data: allBookingsData } = await supabase
+    const { data: allBookingsData, error: allBookingsError } = await supabase
       .from('hostel_bookings')
       .select('*, profiles:user_id(name, email, phone, serial_number, profile_picture)')
       .in('bed_id', bedIds)

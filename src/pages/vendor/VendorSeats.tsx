@@ -179,6 +179,9 @@ const VendorSeats: React.FC = () => {
     const res = await vendorSeatsService.getSeatsForDate(selectedCabinId, dateStr, partnerCabinIds);
     if (res.success && res.data) {
       setSeats(res.data);
+    } else if (!res.success) {
+      console.error('Error fetching seats:', res.error);
+      toast({ title: 'Error loading seats', description: res.error || 'Failed to fetch seats', variant: 'destructive' });
     }
     setRefreshing(false);
   }, [selectedCabinId, selectedDate, cabins]);
