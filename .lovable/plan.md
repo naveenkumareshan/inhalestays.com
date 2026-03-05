@@ -1,33 +1,61 @@
 
 
-# Fix: Google OAuth 404 Error
+# Plan: Share Button for Partner Properties + Business Performance Breakdown
 
-## Root Cause
+## 1. Add Share Button to Partner Property Management
 
-The user accesses the app from their custom domain `https://inhalestays.com` (visible in auth logs). The `SocialLoginButtons` component sets `redirect_uri: window.location.origin`, which becomes `https://inhalestays.com`. The Lovable Cloud OAuth callback (`/~oauth`) only works on the `*.lovable.app` domain, so the redirect back to the custom domain hits a 404.
+**Problem**: Partners/employees cannot share their property details. Students already have share functionality via `ShareButton` + `shareUtils`.
 
-## Fix
+**Solution**: Add share buttons to property cards in both management views.
 
-**`src/components/auth/SocialLoginButtons.tsx`**:
-- Change the `redirect_uri` to always use the lovable.app published URL (`https://inhalestays-com.lovable.app`) for the OAuth callback, since the `/~oauth` handler is only available there.
-- After OAuth completes on the lovable.app domain, the session will be established via Supabase which works across domains.
+### Files to Change
 
-```typescript
-const LOVABLE_APP_URL = 'https://inhalestays-com.lovable.app';
+**`src/components/admin/CabinManagement.tsx`** (Reading Room cards):
+- Import `ShareButton` and `generateCabinShareText`
+- Add a Share button to each cabin card's action row (next to Edit, Activate, etc.)
+- Uses the same link format as student view (`/book-seat/{serialNumber}`)
 
-const result = await lovable.auth.signInWithOAuth(provider, {
-  redirect_uri: LOVABLE_APP_URL,
-});
-```
+**`src/components/admin/HostelItem.tsx`** (Hostel cards):
+- Import `ShareButton` and `generateHostelShareText`
+- Add a Share button to the actions row
+- Uses the same link format as student view (`/hostels/{serial_number}`)
 
-- Also update the Capacitor branch redirect to match (already correct: `https://inhalestays-com.lovable.app/student-login`).
+Both will use `useAuth` to pass `user?.id` for referral tracking, matching student behavior exactly.
 
-**`src/pages/StudentLogin.tsx`**:
-- The existing `getSession()` check on mount already handles detecting the session after redirect — no changes needed here.
+---
+
+## 2. Business Performance: Add Available Seats + Split Fee Boxes
+
+**Problem**: 
+- "Available Seats" card is missing from summary
+- "Fees Collected" lumps everything together instead of showing Seat Fees, Locker Amount, Bed Fees, Security Deposit separately
+
+**Solution**:
+
+### `src/hooks/usePartnerPerformance.ts`:
+- Add new fields to `PerformanceData`: `seatFees`, `lockerAmount`, `bedFees`, `securityDeposit`, `availableSeats` (and `prev*` variants for growth)
+- Split the current `roomFees` calculation:
+  - `seatFees` = RR `booking_payment` receipts only
+  - `bedFees` = Hostel `booking_payment` receipts only
+  - `lockerAmount` = RR `locker_payment` receipts (+ hostel if applicable)
+  - `securityDeposit` = receipts with type `deposit` or `security_deposit`
+- Compute `availableSeats = totalSeats - occupiedSeats`
+
+### `src/pages/partner/BusinessPerformance.tsx`:
+- Replace the single "Fees Collected" + "Deposits Collected" cards with 4 separate cards:
+  1. Seat Fees (reading room booking payments)
+  2. Locker Amount
+  3. Bed Fees (hostel booking payments)  
+  4. Security Deposit
+- Add "Available Seats/Beds" summary card to the first row
+- Update Revenue Breakdown table to show: Seat Fees, Bed Fees, Locker Amount, Security Deposit, Food Collection, Due Payments, Total Revenue
 
 ### Files to Change
 
 | File | Change |
 |------|--------|
-| `src/components/auth/SocialLoginButtons.tsx` | Set `redirect_uri` to the lovable.app URL instead of `window.location.origin` |
+| `src/components/admin/CabinManagement.tsx` | Add ShareButton per cabin card |
+| `src/components/admin/HostelItem.tsx` | Add ShareButton per hostel card |
+| `src/hooks/usePartnerPerformance.ts` | Split fees into seat/bed/locker/deposit; add availableSeats |
+| `src/pages/partner/BusinessPerformance.tsx` | Show 4 fee boxes + available seats card + updated revenue breakdown |
 
