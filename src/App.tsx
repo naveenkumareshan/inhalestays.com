@@ -104,6 +104,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const Laundry = lazy(() => import("./pages/Laundry"));
 const LaundryRequest = lazy(() => import("./pages/LaundryRequest"));
 const MessMarketplace = lazy(() => import("./pages/MessMarketplace"));
+const MessDetail = lazy(() => import("./pages/MessDetail"));
 const MessDashboard = lazy(() => import("./pages/students/MessDashboard"));
 const ComplaintsPage = lazy(() => import("./components/profile/ComplaintsPage"));
 const SupportPage = lazy(() => import("./components/profile/SupportPage"));
@@ -316,6 +317,7 @@ function App() {
               <Route path="/laundry" element={<StudentSuspense><Laundry /></StudentSuspense>} />
               <Route path="/laundry-request" element={<StudentSuspense><Laundry /></StudentSuspense>} />
               <Route path="/mess" element={<StudentSuspense><MessMarketplace /></StudentSuspense>} />
+              <Route path="/mess/:id" element={<StudentSuspense><MessDetail /></StudentSuspense>} />
               <Route path="/privacy-policy" element={<StudentSuspense><PrivacyPolicy /></StudentSuspense>} />
               <Route path="/terms" element={<StudentSuspense><TermsAndConditions /></StudentSuspense>} />
               
