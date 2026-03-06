@@ -1,10 +1,13 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { hostelService } from '@/api/hostelService';
-import { MapPin, Hotel, Star, Utensils } from 'lucide-react';
+import { MapPin, Hotel, Star, Utensils, Search, SlidersHorizontal, X } from 'lucide-react';
 import { formatCurrency } from '@/utils/currency';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useSponsoredListings } from '@/hooks/useSponsoredListings';
 
 const genderFilters = [
@@ -19,9 +22,13 @@ export default function Hostels() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [genderFilter, setGenderFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [draftGenderFilter, setDraftGenderFilter] = useState('all');
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Determine dominant city from loaded hostels for sponsored targeting
   const dominantCityId = React.useMemo(() => {
     const cityCount: Record<string, number> = {};
     hostels.forEach(h => { if (h.city_id) cityCount[h.city_id] = (cityCount[h.city_id] || 0) + 1; });
@@ -50,10 +57,33 @@ export default function Hostels() {
   };
 
   const filteredHostels = hostels.filter(hostel => {
-    return genderFilter === 'all' || hostel.gender === genderFilter;
+    const matchesGender = genderFilter === 'all' || hostel.gender === genderFilter;
+    const query = searchQuery.toLowerCase().trim();
+    const matchesSearch = !query ||
+      hostel.name?.toLowerCase().includes(query) ||
+      hostel.areas?.name?.toLowerCase().includes(query) ||
+      hostel.cities?.name?.toLowerCase().includes(query);
+    return matchesGender && matchesSearch;
   });
 
+  // Merge sponsored listings into filtered results
   const displayHostels = mergeListings(filteredHostels);
+
+  const activeFiltersCount = genderFilter !== 'all' ? 1 : 0;
+
+  const handleOpenFilters = () => {
+    setDraftGenderFilter(genderFilter);
+    setFiltersOpen(true);
+  };
+
+  const handleApplyFilters = () => {
+    setGenderFilter(draftGenderFilter);
+    setFiltersOpen(false);
+  };
+
+  const handleResetFilters = () => {
+    setDraftGenderFilter('all');
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -62,22 +92,46 @@ export default function Hostels() {
         <div className="px-3 pt-3 pb-2 max-w-lg lg:max-w-5xl mx-auto">
           <h1 className="text-[16px] font-semibold mb-2 lg:text-xl">Hostels</h1>
 
-          {/* Gender filter pills */}
-          <div className="flex gap-1.5 pb-1">
-            {genderFilters.map((g) => (
-              <button
-                key={g.id}
-                onClick={() => setGenderFilter(g.id)}
-                className={`px-3 py-1 rounded-xl border text-[11px] font-medium transition-colors ${
-                  genderFilter === g.id
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-card text-foreground border-border hover:bg-muted'
-                }`}
-              >
-                {g.label}
-              </button>
-            ))}
+          {/* Search + Filters row */}
+          <div className="flex gap-2 mb-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search hostels..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-8 pl-8 pr-3 rounded-xl border border-border bg-card text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl h-8 px-3 text-[11px] font-medium flex-shrink-0"
+              onClick={handleOpenFilters}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5" />
+              Filters
+              {activeFiltersCount > 0 && (
+                <Badge className="ml-1.5 h-4 w-4 p-0 flex items-center justify-center text-[9px] rounded-full">
+                  {activeFiltersCount}
+                </Badge>
+              )}
+            </Button>
           </div>
+
+          {/* Active filter chips */}
+          {genderFilter !== 'all' && (
+            <div className="flex gap-1.5 pb-1">
+              <span
+                className="inline-flex items-center gap-1 text-[10px] font-medium bg-secondary/10 text-secondary px-2 py-0.5 rounded-lg cursor-pointer"
+                onClick={() => setGenderFilter('all')}
+              >
+                {genderFilter}
+                <X className="h-3 w-3" />
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -105,7 +159,7 @@ export default function Hostels() {
           <div className="text-center py-12">
             <p className="text-[14px] font-medium text-foreground mb-1">No hostels found</p>
             <p className="text-[12px] text-muted-foreground">
-              {genderFilter !== 'all' ? 'Try selecting a different filter' : 'No hostels available'}
+              {genderFilter !== 'all' ? 'Try adjusting your filter' : 'No hostels available'}
             </p>
           </div>
         ) : (
@@ -133,6 +187,7 @@ export default function Hostels() {
                   }
                 } : undefined}
               >
+                {/* Sponsored badge */}
                 {hostel.sponsoredTier === 'featured' && (
                   <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded-md z-10">Featured</span>
                 )}
@@ -218,6 +273,40 @@ export default function Hostels() {
           </div>
         )}
       </div>
+      {/* Filter drawer */}
+      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle className="text-[14px]">Filters</SheetTitle>
+          </SheetHeader>
+          <div className="py-4">
+            <p className="text-[12px] font-medium text-muted-foreground mb-2">Gender</p>
+            <div className="flex flex-wrap gap-2">
+              {genderFilters.map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => setDraftGenderFilter(g.id)}
+                 className={`px-3 py-1.5 rounded-xl border text-[11px] font-medium transition-colors ${
+                    draftGenderFilter === g.id
+                       ? 'bg-secondary text-secondary-foreground border-secondary'
+                       : 'bg-card text-foreground border-border hover:bg-muted'
+                  }`}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <SheetFooter className="flex-row gap-2 pt-2">
+            <Button variant="outline" size="sm" className="flex-1 rounded-xl text-[12px]" onClick={handleResetFilters}>
+              Reset
+            </Button>
+            <Button size="sm" className="flex-1 rounded-xl text-[12px]" onClick={handleApplyFilters}>
+              Apply Filters
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
