@@ -57,3 +57,27 @@ export const generateHostelShareText = (hostel: HostelShareData, lowestPrice?: n
   if (lowestPrice && lowestPrice < Infinity) lines.push(`💰 From ₹${lowestPrice}`);
   return { text: lines.join("\n"), url, title: hostel.name };
 };
+
+export interface MessShareData {
+  id: string;
+  name: string;
+  food_type?: string;
+  location?: string;
+  serial_number?: string;
+}
+
+export const generateMessShareText = (mess: MessShareData, startingPrice?: number, userId?: string) => {
+  const slug = mess.serial_number || mess.id;
+  const url = buildUrl(`/mess/${slug}`, userId);
+  const lines = [
+    `🍽 ${mess.name} — Mess / Food on InhaleStays`,
+    ``,
+  ];
+  if (mess.food_type) {
+    const label = mess.food_type === 'veg' ? '🟢 Veg' : mess.food_type === 'non_veg' ? '🔴 Non-Veg' : '🟡 Veg & Non-Veg';
+    lines.push(label);
+  }
+  if (mess.location) lines.push(`📍 ${mess.location}`);
+  if (startingPrice && startingPrice > 0) lines.push(`💰 From ₹${startingPrice}`);
+  return { text: lines.join("\n"), url, title: mess.name };
+};

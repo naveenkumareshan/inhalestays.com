@@ -197,3 +197,24 @@ export const createMessReceipt = async (receipt: any) => {
   if (error) throw error;
   return data;
 };
+
+// ── Lookup by serial number or UUID ──
+export const getMessPartnerById = async (id: string) => {
+  const { data, error } = await supabase
+    .from('mess_partners' as any)
+    .select('*, profiles:user_id(name, email, phone)')
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  return data as any;
+};
+
+export const getMessPartnerBySerialNumber = async (serialNumber: string) => {
+  const { data, error } = await supabase
+    .from('mess_partners' as any)
+    .select('*, profiles:user_id(name, email, phone)')
+    .eq('serial_number', serialNumber)
+    .single();
+  if (error) throw error;
+  return data as any;
+};

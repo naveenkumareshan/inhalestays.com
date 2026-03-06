@@ -45,6 +45,7 @@ export function MessEditor({ onSave, onCancel, existingMess, isAdmin = true }: M
     contact_number: existingMess?.contact_number || '',
     food_type: existingMess?.food_type || 'both',
     capacity: existingMess?.capacity?.toString() || '',
+    starting_price: existingMess?.starting_price?.toString() || '',
     logo_image: existingMess?.logo_image || '',
     images: existingMess?.images || [],
     is_active: existingMess?.is_active ?? true,
@@ -161,6 +162,7 @@ export function MessEditor({ onSave, onCancel, existingMess, isAdmin = true }: M
       contact_number: mess.contact_number,
       food_type: mess.food_type,
       capacity: mess.capacity ? parseInt(mess.capacity) : null,
+      starting_price: mess.starting_price ? parseFloat(mess.starting_price) : null,
       logo_image: mess.logo_image,
       images: mess.images,
     };
@@ -227,6 +229,11 @@ export function MessEditor({ onSave, onCancel, existingMess, isAdmin = true }: M
                   <div>
                     <Label htmlFor="capacity" className="text-sm">Capacity</Label>
                     <Input id="capacity" name="capacity" type="number" value={mess.capacity} onChange={handleInputChange} />
+                  </div>
+                  <div>
+                    <Label htmlFor="starting_price" className="text-sm">Starting Price (₹)</Label>
+                    <Input id="starting_price" name="starting_price" type="number" value={mess.starting_price} onChange={handleInputChange} placeholder="e.g., 2000" />
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Shown on marketplace. Leave empty to auto-compute from packages.</p>
                   </div>
                   <div>
                     <Label htmlFor="contact_number" className="text-sm">Contact Number</Label>

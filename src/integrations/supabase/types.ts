@@ -2420,6 +2420,7 @@ export type Database = {
       }
       mess_partners: {
         Row: {
+          average_rating: number | null
           capacity: number | null
           contact_number: string
           created_at: string
@@ -2434,11 +2435,14 @@ export type Database = {
           logo_image: string | null
           name: string
           opening_days: Json
+          review_count: number | null
           serial_number: string | null
+          starting_price: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          average_rating?: number | null
           capacity?: number | null
           contact_number?: string
           created_at?: string
@@ -2453,11 +2457,14 @@ export type Database = {
           logo_image?: string | null
           name: string
           opening_days?: Json
+          review_count?: number | null
           serial_number?: string | null
+          starting_price?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          average_rating?: number | null
           capacity?: number | null
           contact_number?: string
           created_at?: string
@@ -2472,7 +2479,9 @@ export type Database = {
           logo_image?: string | null
           name?: string
           opening_days?: Json
+          review_count?: number | null
           serial_number?: string | null
+          starting_price?: number | null
           updated_at?: string
           user_id?: string
         }

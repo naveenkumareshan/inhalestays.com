@@ -1,31 +1,75 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { addDays, format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
-import { Loader2, UtensilsCrossed, MapPin, Clock, Star, ArrowLeft } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMessPartners, getMealTimings, getMessPackages, getWeeklyMenu, createMessSubscription, createMessReceipt, getMyMessSubscriptions } from '@/api/messService';
+import {
+  getMessPartnerById, getMessPartnerBySerialNumber,
+  getMealTimings, getMessPackages, getWeeklyMenu,
+  createMessSubscription, createMessReceipt, getMyMessSubscriptions,
+} from '@/api/messService';
 import { reviewsService } from '@/api/reviewsService';
 import { calculateBookingEndDate } from '@/utils/dateCalculations';
 import { formatCurrency } from '@/utils/currency';
 import { getImageUrl } from '@/lib/utils';
-import { format, addDays } from 'date-fns';
+import { isUUID } from '@/utils/idUtils';
+import { CabinImageSlider } from '@/components/CabinImageSlider';
+import { ShareButton } from '@/components/ShareButton';
+import { generateMessShareText } from '@/utils/shareUtils';
+import { cn } from '@/lib/utils';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import {
+  ArrowLeft, CalendarIcon, Clock, IndianRupee, Loader2,
+  MapPin, Star, UtensilsCrossed, Users,
+} from 'lucide-react';
 
 const MEAL_LABELS: Record<string, string> = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
 const FOOD_LABELS: Record<string, string> = { veg: '🟢 Veg', non_veg: '🔴 Non-Veg', both: '🟡 Veg & Non-Veg' };
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
+type MealPlan = 'breakfast' | 'lunch' | 'dinner' | 'lunch_dinner' | 'full_day';
+const MEAL_PLAN_OPTIONS: { id: MealPlan; label: string; meals: string[] }[] = [
+  { id: 'breakfast', label: 'Breakfast', meals: ['breakfast'] },
+  { id: 'lunch', label: 'Lunch', meals: ['lunch'] },
+  { id: 'dinner', label: 'Dinner', meals: ['dinner'] },
+  { id: 'lunch_dinner', label: 'Lunch + Dinner', meals: ['lunch', 'dinner'] },
+  { id: 'full_day', label: 'Full Day', meals: ['breakfast', 'lunch', 'dinner'] },
+];
+
+const MessDetailSkeleton = () => (
+  <div className="min-h-screen bg-background pb-24">
+    <Skeleton className="w-full aspect-[4/3]" />
+    <div className="px-3 pt-3 space-y-2">
+      <Skeleton className="h-6 w-3/4" />
+      <Skeleton className="h-4 w-1/2" />
+    </div>
+    <div className="px-3 pt-3 flex gap-2">
+      <Skeleton className="h-8 w-24 rounded-full" />
+      <Skeleton className="h-8 w-20 rounded-full" />
+    </div>
+    <div className="px-3 pt-4 space-y-3">
+      <Skeleton className="h-[120px] w-full rounded-xl" />
+      <Skeleton className="h-[200px] w-full rounded-xl" />
+    </div>
+  </div>
+);
+
 export default function MessDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated } = useAuth();
+  const heroRef = useRef<HTMLDivElement>(null);
 
   const [mess, setMess] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -33,20 +77,19 @@ export default function MessDetail() {
   const [messPackages, setMessPackages] = useState<any[]>([]);
   const [messMenu, setMessMenu] = useState<any[]>([]);
   const [messReviews, setMessReviews] = useState<any[]>([]);
+  const [showDetails, setShowDetails] = useState(true);
+  const [showMenuDialog, setShowMenuDialog] = useState(false);
 
-  // Subscribe form
-  const [selectedPackage, setSelectedPackage] = useState<any>(null);
-  const [startDate, setStartDate] = useState(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
+  // Step flow
+  const [selectedMealPlan, setSelectedMealPlan] = useState<MealPlan | null>(null);
+  const [durationType, setDurationType] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
+  const [durationCount, setDurationCount] = useState(1);
+  const [checkInDate, setCheckInDate] = useState<Date>(addDays(new Date(), 1));
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
-  const [showSubscribe, setShowSubscribe] = useState(false);
 
-  // Review form
-  const [showReviewForm, setShowReviewForm] = useState(false);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewTitle, setReviewTitle] = useState('');
-  const [reviewComment, setReviewComment] = useState('');
-  const [reviewSubId, setReviewSubId] = useState('');
-  const [submittingReview, setSubmittingReview] = useState(false);
+  // Reviews
   const [userSubs, setUserSubs] = useState<any[]>([]);
 
   useEffect(() => {
@@ -61,11 +104,28 @@ export default function MessDetail() {
     }
   }, [user?.id, mess?.id]);
 
+  // Collapse hero when meal plan selected
+  useEffect(() => {
+    if (selectedMealPlan) setShowDetails(false);
+  }, [selectedMealPlan]);
+
+  // Re-show hero on scroll to top
+  useEffect(() => {
+    if (!heroRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting && !showDetails) setShowDetails(true); },
+      { threshold: 0.3 }
+    );
+    observer.observe(heroRef.current);
+    return () => observer.disconnect();
+  }, [showDetails]);
+
   const loadDetail = async () => {
     setLoading(true);
     try {
-      const all = await getMessPartners({ approved: true, active: true });
-      const found = all.find((m: any) => m.id === id);
+      const found = isUUID(id!)
+        ? await getMessPartnerById(id!)
+        : await getMessPartnerBySerialNumber(id!);
       if (!found) { navigate('/mess'); return; }
       setMess(found);
 
@@ -86,255 +146,465 @@ export default function MessDetail() {
     setLoading(false);
   };
 
+  // Derived: matching packages for selected meal plan
+  const matchingPackages = useMemo(() => {
+    if (!selectedMealPlan) return [];
+    const plan = MEAL_PLAN_OPTIONS.find(p => p.id === selectedMealPlan);
+    if (!plan) return [];
+    return messPackages.filter((pkg: any) => {
+      const pkgMeals = (pkg.meal_types as string[]) || [];
+      return plan.meals.length === pkgMeals.length && plan.meals.every(m => pkgMeals.includes(m));
+    });
+  }, [selectedMealPlan, messPackages]);
+
+  // Available duration types from matching packages
+  const availableDurationTypes = useMemo(() => {
+    const types = new Set(matchingPackages.map((p: any) => p.duration_type));
+    return ['daily', 'weekly', 'monthly'].filter(t => types.has(t)) as ('daily' | 'weekly' | 'monthly')[];
+  }, [matchingPackages]);
+
+  // Auto-set duration type when meal plan changes
+  useEffect(() => {
+    if (availableDurationTypes.length > 0 && !availableDurationTypes.includes(durationType)) {
+      setDurationType(availableDurationTypes[0]);
+    }
+    setDurationCount(1);
+  }, [availableDurationTypes]);
+
+  // Selected package based on meal plan + duration type
+  const selectedPackage = useMemo(() => {
+    return matchingPackages.find((p: any) => p.duration_type === durationType) || null;
+  }, [matchingPackages, durationType]);
+
+  const endDate = useMemo(() => {
+    return calculateBookingEndDate(checkInDate, durationType, durationCount);
+  }, [checkInDate, durationType, durationCount]);
+
+  const totalPrice = selectedPackage ? selectedPackage.price * durationCount : 0;
+
+  // Available meal plans (only those that have packages)
+  const availableMealPlans = useMemo(() => {
+    return MEAL_PLAN_OPTIONS.filter(plan => {
+      return messPackages.some((pkg: any) => {
+        const pkgMeals = (pkg.meal_types as string[]) || [];
+        return plan.meals.length === pkgMeals.length && plan.meals.every(m => pkgMeals.includes(m));
+      });
+    });
+  }, [messPackages]);
+
   const handleSubscribe = async () => {
     if (!user || !selectedPackage || !mess) return;
+    if (!isAuthenticated) {
+      navigate('/student/login', { state: { from: location.pathname } });
+      return;
+    }
     setSubscribing(true);
     try {
-      const start = new Date(startDate);
-      const end = calculateBookingEndDate(start, selectedPackage.duration_type, selectedPackage.duration_count);
       const sub = await createMessSubscription({
         user_id: user.id, mess_id: mess.id, package_id: selectedPackage.id,
-        start_date: format(start, 'yyyy-MM-dd'), end_date: format(end, 'yyyy-MM-dd'),
-        price_paid: selectedPackage.price, payment_status: 'completed', payment_method: 'cash', status: 'active',
+        start_date: format(checkInDate, 'yyyy-MM-dd'), end_date: format(endDate, 'yyyy-MM-dd'),
+        price_paid: totalPrice, payment_status: 'completed', payment_method: 'cash', status: 'active',
       });
       await createMessReceipt({
         subscription_id: (sub as any).id, user_id: user.id, mess_id: mess.id,
-        amount: selectedPackage.price, payment_method: 'cash', transaction_id: `MESS-${Date.now()}`,
+        amount: totalPrice, payment_method: 'cash', transaction_id: `MESS-${Date.now()}`,
       });
-      toast({ title: 'Subscribed successfully!', description: `${selectedPackage.name} from ${startDate}` });
-      setShowSubscribe(false);
-      setSelectedPackage(null);
+      toast({ title: 'Subscribed successfully!', description: `${selectedPackage.name} from ${format(checkInDate, 'dd MMM yyyy')}` });
+      navigate('/student/bookings');
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
     }
     setSubscribing(false);
   };
 
-  const handleSubmitReview = async () => {
-    if (!reviewComment.trim() || !reviewSubId) return;
-    setSubmittingReview(true);
-    try {
-      await reviewsService.createReview({
-        booking_id: reviewSubId,
-        mess_id: mess.id,
-        rating: reviewRating,
-        title: reviewTitle || undefined,
-        comment: reviewComment,
-      });
-      toast({ title: 'Review submitted!', description: 'It will be visible after approval.' });
-      setShowReviewForm(false);
-      setReviewComment(''); setReviewTitle(''); setReviewRating(5);
-    } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
-    }
-    setSubmittingReview(false);
-  };
+  const handleGoBack = () => navigate(-1);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
-
+  if (loading) return <MessDetailSkeleton />;
   if (!mess) return null;
 
-  const mainImage = mess.logo_image || (mess.images && mess.images[0]) || '/placeholder.svg';
+  const messImages = mess.images?.length ? mess.images : (mess.logo_image ? [mess.logo_image] : []);
+  const startingPrice = mess.starting_price || (messPackages.length > 0 ? Math.min(...messPackages.map((p: any) => p.price)) : null);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-3xl mx-auto px-3 py-4 space-y-4">
-        {/* Back + Header */}
-        <button onClick={() => navigate('/mess')} className="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="h-4 w-4" /> Back to Mess
-        </button>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-background pb-24">
+        <div className="max-w-3xl mx-auto">
+          {/* ═══ Collapsible Hero + Details ═══ */}
+          <div
+            ref={heroRef}
+            className="transition-all duration-500 ease-in-out overflow-hidden"
+            style={{ maxHeight: showDetails ? '2000px' : '0px', opacity: showDetails ? 1 : 0 }}
+          >
+            {/* Hero Image Slider */}
+            <div className="relative">
+              <div className="w-full overflow-hidden bg-muted">
+                <CabinImageSlider images={messImages} autoPlay hideThumbnails />
+              </div>
+              <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleGoBack}
+                className="absolute top-3 left-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 border border-white/10"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              {mess.food_type && (
+                <div className="absolute top-3 right-3">
+                  <Badge className="bg-primary text-primary-foreground border-0 text-xs shadow-lg">
+                    {mess.food_type === 'veg' ? 'VEG' : mess.food_type === 'non_veg' ? 'NON-VEG' : 'VEG & NON-VEG'}
+                  </Badge>
+                </div>
+              )}
+            </div>
 
-        {/* Hero image */}
-        <div className="aspect-video w-full rounded-2xl overflow-hidden bg-muted">
-          <img src={getImageUrl(mainImage)} alt={mess.name} className="w-full h-full object-cover" />
-        </div>
+            {/* Name, Rating, Share & Location */}
+            <div className="px-3 pt-2 pb-1">
+              <div className="flex items-center justify-between">
+                <h1 className="text-lg font-bold text-foreground leading-tight">{mess.name}</h1>
+                <ShareButton
+                  {...generateMessShareText({
+                    id: mess.id,
+                    name: mess.name,
+                    food_type: mess.food_type,
+                    location: mess.location,
+                    serial_number: mess.serial_number,
+                  }, startingPrice, user?.id)}
+                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10"
+                />
+              </div>
+              {mess.average_rating > 0 && (
+                <div className="flex items-center gap-1 mt-1">
+                  <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                  <span className="text-sm font-medium text-foreground">{Number(mess.average_rating).toFixed(1)}</span>
+                  {mess.review_count > 0 && (
+                    <span className="text-xs text-muted-foreground">({mess.review_count} reviews)</span>
+                  )}
+                </div>
+              )}
+              {mess.location && (
+                <div className="flex items-start gap-1.5 mt-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <span className="text-xs text-muted-foreground leading-relaxed">{mess.location}</span>
+                </div>
+              )}
+            </div>
 
-        {/* Info */}
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-lg font-bold text-foreground">{mess.name}</h1>
-            <span className="text-[10px] bg-accent text-accent-foreground px-1.5 py-0.5 rounded-md">
-              {FOOD_LABELS[mess.food_type] || mess.food_type}
-            </span>
+            {/* Info Chips */}
+            <div className="px-3 pt-0.5 pb-0.5">
+              <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                {startingPrice && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-emerald-500/20">
+                    <IndianRupee className="h-3.5 w-3.5" />
+                    From {formatCurrency(startingPrice)}
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-500/10 text-orange-700 dark:text-orange-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-orange-500/20">
+                  <UtensilsCrossed className="h-3.5 w-3.5" />
+                  {FOOD_LABELS[mess.food_type] || mess.food_type}
+                </div>
+                {mess.capacity && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-blue-500/20">
+                    <Users className="h-3.5 w-3.5" />
+                    {mess.capacity} capacity
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Details & Timings Card */}
+            <div className="px-3 pt-1 pb-0.5">
+              <div className="bg-muted/30 rounded-xl p-2.5 border border-border/50">
+                <h3 className="text-sm font-semibold text-foreground mb-2">Details</h3>
+                {mess.description && (
+                  <p className="text-xs text-muted-foreground leading-relaxed">{mess.description}</p>
+                )}
+                {messTimings.length > 0 && (
+                  <>
+                    {mess.description && <Separator className="my-2.5 opacity-50" />}
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-foreground">Meal Timings</p>
+                      {messTimings.map(t => (
+                        <div key={t.id} className="flex items-center gap-2">
+                          <Clock className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs text-foreground font-medium">{MEAL_LABELS[t.meal_type]}</span>
+                          <span className="text-xs text-muted-foreground">{t.start_time} – {t.end_time}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {messMenu.length > 0 && (
+                  <div className="mt-2">
+                    <button
+                      onClick={() => setShowMenuDialog(true)}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/10 text-secondary border border-secondary/20 hover:bg-secondary/20 transition-colors cursor-pointer"
+                    >
+                      <UtensilsCrossed className="h-3.5 w-3.5" />
+                      View Weekly Menu
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-          {mess.location && (
-            <div className="flex items-center gap-1 mt-1">
-              <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-[12px] text-muted-foreground">{mess.location}</span>
+
+          {/* ═══ Sticky header when hero collapsed ═══ */}
+          {!showDetails && (
+            <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border px-3 py-2 flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={handleGoBack} className="h-8 w-8 rounded-full">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-semibold text-foreground truncate">{mess.name}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto text-xs text-secondary"
+                onClick={() => { setShowDetails(true); heroRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
+              >
+                View Details
+              </Button>
             </div>
           )}
-          {mess.description && <p className="text-[12px] text-muted-foreground mt-2">{mess.description}</p>}
-        </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="menu">
-          <TabsList className="grid grid-cols-4">
-            <TabsTrigger value="menu">Menu</TabsTrigger>
-            <TabsTrigger value="packages">Packages</TabsTrigger>
-            <TabsTrigger value="timings">Timings</TabsTrigger>
-            <TabsTrigger value="reviews">Reviews</TabsTrigger>
-          </TabsList>
+          {/* ═══ Step 1: Select Meal Plan ═══ */}
+          <Separator className="my-0" />
+          <div className="px-3 pt-2">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="h-6 w-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-bold">1</div>
+              <Label className="text-sm font-semibold text-foreground">Select Meal Plan</Label>
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto pb-2 no-scrollbar">
+              {availableMealPlans.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">No packages available for this mess.</p>
+              ) : (
+                availableMealPlans.map(plan => (
+                  <button
+                    key={plan.id}
+                    onClick={() => setSelectedMealPlan(plan.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
+                      selectedMealPlan === plan.id
+                        ? 'bg-secondary text-secondary-foreground border-secondary'
+                        : 'bg-muted/50 text-muted-foreground border-border hover:border-secondary/50'
+                    }`}
+                  >
+                    {plan.label}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
 
-          <TabsContent value="menu" className="mt-3">
-            {messMenu.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Menu not yet uploaded.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr><th className="text-left p-2">Day</th><th className="p-2">Breakfast</th><th className="p-2">Lunch</th><th className="p-2">Dinner</th></tr>
-                  </thead>
-                  <tbody>
-                    {DAYS.map(day => (
-                      <tr key={day} className="border-t">
-                        <td className="p-2 capitalize font-medium">{day}</td>
-                        {['breakfast', 'lunch', 'dinner'].map(meal => (
-                          <td key={meal} className="p-2 text-xs">
-                            {messMenu.find(m => m.day_of_week === day && m.meal_type === meal)?.menu_items || '—'}
-                          </td>
-                        ))}
-                      </tr>
+          {/* ═══ Step 2: Select Duration ═══ */}
+          {selectedMealPlan && availableDurationTypes.length > 0 && (
+            <>
+              <Separator className="my-0" />
+              <div className="px-3 pt-2">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="h-6 w-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-bold">2</div>
+                  <Label className="text-sm font-semibold text-foreground">Select Duration</Label>
+                </div>
+
+                {/* Duration type toggle */}
+                <div>
+                  <Label className="block mb-1 text-xs font-medium text-muted-foreground">Duration Type</Label>
+                  <div className="flex gap-1.5 bg-muted/50 rounded-xl p-1">
+                    {availableDurationTypes.map(type => (
+                      <button
+                        key={type}
+                        onClick={() => { setDurationType(type); setDurationCount(1); }}
+                        className={cn(
+                          'flex-1 py-2 rounded-lg text-xs font-semibold transition-all',
+                          durationType === type
+                            ? 'bg-secondary text-secondary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        {type === 'daily' ? 'Daily' : type === 'weekly' ? 'Weekly' : 'Monthly'}
+                      </button>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                </div>
+
+                {/* Duration count + Start date */}
+                <div className="flex items-end gap-2 bg-muted/20 rounded-xl p-2.5 border border-border/50 mt-2">
+                  <div className="w-28">
+                    <Label className="block mb-1 text-xs text-muted-foreground">
+                      {durationType === 'daily' ? 'Days' : durationType === 'weekly' ? 'Weeks' : 'Months'}
+                    </Label>
+                    <Select value={String(durationCount)} onValueChange={(val) => setDurationCount(parseInt(val))}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent className="max-h-80">
+                        {Array.from({ length: durationType === 'daily' ? 30 : 12 }, (_, i) => i + 1).map(v => (
+                          <SelectItem key={v} value={String(v)}>
+                            {v} {durationType === 'daily' ? (v === 1 ? 'Day' : 'Days') : durationType === 'weekly' ? (v === 1 ? 'Week' : 'Weeks') : (v === 1 ? 'Month' : 'Months')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex-1">
+                    <Label className="block mb-1 text-xs text-muted-foreground">Start Date</Label>
+                    <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn('w-full justify-start text-left font-normal h-9', !checkInDate && 'text-muted-foreground')}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {format(checkInDate, 'PPP')}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={checkInDate}
+                          onSelect={(date) => { if (date) { setCheckInDate(date); setCalendarOpen(false); } }}
+                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                          initialFocus
+                          className={cn('p-3 pointer-events-auto')}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                {/* End date badge */}
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="inline-flex items-center gap-1 text-xs font-medium bg-secondary/10 text-secondary rounded-full px-3 py-1">
+                    <CalendarIcon className="h-3 w-3" />
+                    Ends: {format(endDate, 'dd MMM yyyy')}
+                  </span>
+                </div>
               </div>
-            )}
-          </TabsContent>
+            </>
+          )}
 
-          <TabsContent value="packages" className="mt-3 space-y-3">
-            {messPackages.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No packages available.</p>
-            ) : (
-              messPackages.map(p => (
-                <Card key={p.id}>
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {(p.meal_types as string[])?.map(m => MEAL_LABELS[m]).join(', ')} · {p.duration_count} {p.duration_type}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-lg">{formatCurrency(p.price)}</span>
-                      {isAuthenticated && (
-                        <Button size="sm" onClick={() => { setSelectedPackage(p); setShowSubscribe(true); }}>Subscribe</Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </TabsContent>
-
-          <TabsContent value="timings" className="mt-3 space-y-2">
-            {messTimings.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Timings not set yet.</p>
-            ) : (
-              messTimings.map(t => (
-                <div key={t.id} className="flex items-center gap-3 p-2 border rounded">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <Badge variant="outline">{MEAL_LABELS[t.meal_type]}</Badge>
-                  <span className="text-sm">{t.start_time} – {t.end_time}</span>
+          {/* ═══ Step 3: Review & Pay ═══ */}
+          {selectedPackage && (
+            <>
+              <Separator className="my-0" />
+              <div className="px-3 pt-2 pb-6">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="h-6 w-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-bold">3</div>
+                  <Label className="text-sm font-semibold text-foreground">Review & Pay</Label>
                 </div>
-              ))
-            )}
-          </TabsContent>
 
-          <TabsContent value="reviews" className="mt-3 space-y-3">
-            {isAuthenticated && userSubs.length > 0 && !showReviewForm && (
-              <Button variant="outline" size="sm" onClick={() => { setShowReviewForm(true); setReviewSubId(userSubs[0].id); }}>
-                <Star className="h-4 w-4 mr-1" /> Write a Review
-              </Button>
-            )}
-
-            {showReviewForm && (
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <p className="text-sm font-semibold">Write a Review</p>
-                  <div>
-                    <Label className="text-xs">Rating</Label>
-                    <div className="flex gap-1 mt-1">
-                      {[1, 2, 3, 4, 5].map(n => (
-                        <button key={n} onClick={() => setReviewRating(n)} className="p-0.5">
-                          <Star className={`h-5 w-5 ${n <= reviewRating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
-                        </button>
-                      ))}
+                <div className="bg-muted/30 rounded-xl border border-border/50 divide-y divide-border/50">
+                  {/* Booking Summary */}
+                  <div className="p-3 space-y-1.5 text-xs">
+                    <h4 className="text-sm font-semibold text-foreground mb-2">Booking Summary</h4>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Mess</span><span className="font-medium text-foreground">{mess.name}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Package</span><span className="font-medium text-foreground">{selectedPackage.name}</span></div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Meals</span>
+                      <span className="font-medium text-foreground">{(selectedPackage.meal_types as string[])?.map(m => MEAL_LABELS[m]).join(', ')}</span>
+                    </div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Start Date</span><span className="font-medium text-foreground">{format(checkInDate, 'dd MMM yyyy')}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">End Date</span><span className="font-medium text-foreground">{format(endDate, 'dd MMM yyyy')}</span></div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Duration</span>
+                      <span className="font-medium text-foreground">
+                        {durationCount} {durationType === 'daily' ? (durationCount === 1 ? 'day' : 'days') : durationType === 'weekly' ? (durationCount === 1 ? 'week' : 'weeks') : (durationCount === 1 ? 'month' : 'months')}
+                      </span>
                     </div>
                   </div>
-                  <div>
-                    <Label className="text-xs">Title (optional)</Label>
-                    <Input value={reviewTitle} onChange={e => setReviewTitle(e.target.value)} placeholder="Brief title" />
+
+                  {/* Price Breakdown */}
+                  <div className="p-3 space-y-1.5 text-xs">
+                    <h4 className="text-sm font-semibold text-foreground mb-2">Price Breakdown</h4>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Package Price</span>
+                      <span className="font-medium text-foreground">{formatCurrency(selectedPackage.price)} × {durationCount}</span>
+                    </div>
+                    <Separator className="my-1.5 opacity-50" />
+                    <div className="flex justify-between text-sm">
+                      <span className="font-semibold text-foreground">Total Amount</span>
+                      <span className="font-bold text-secondary">{formatCurrency(totalPrice)}</span>
+                    </div>
                   </div>
-                  <div>
-                    <Label className="text-xs">Comment</Label>
-                    <Textarea value={reviewComment} onChange={e => setReviewComment(e.target.value)} rows={3} placeholder="Share your experience..." />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={handleSubmitReview} disabled={submittingReview || !reviewComment.trim()} size="sm">
-                      {submittingReview ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null} Submit
+
+                  {/* Terms & Pay */}
+                  <div className="p-3 space-y-3">
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        id="terms"
+                        checked={agreedToTerms}
+                        onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                      />
+                      <label htmlFor="terms" className="text-xs text-muted-foreground leading-tight cursor-pointer">
+                        I agree to the terms & conditions and understand the subscription policy.
+                      </label>
+                    </div>
+
+                    <Button
+                      className="w-full"
+                      onClick={handleSubscribe}
+                      disabled={!agreedToTerms || subscribing}
+                    >
+                      {subscribing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Pay {formatCurrency(totalPrice)}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setShowReviewForm(false)}>Cancel</Button>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {messReviews.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No reviews yet.</p>
-            ) : (
-              messReviews.map((r: any) => (
-                <div key={r.id} className="p-3 border rounded space-y-1">
-                  <div className="flex items-center gap-2">
-                    <div className="flex">
-                      {[1, 2, 3, 4, 5].map(n => (
-                        <Star key={n} className={`h-3.5 w-3.5 ${n <= r.rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
-                      ))}
-                    </div>
-                    <span className="text-xs text-muted-foreground">{r.profiles?.name || 'Student'}</span>
-                  </div>
-                  {r.title && <p className="text-sm font-medium">{r.title}</p>}
-                  <p className="text-sm text-muted-foreground">{r.comment}</p>
                 </div>
-              ))
-            )}
-          </TabsContent>
-        </Tabs>
+              </div>
+            </>
+          )}
+
+          {/* ═══ Reviews Section ═══ */}
+          {messReviews.length > 0 && (
+            <>
+              <Separator className="my-0" />
+              <div className="px-3 pt-2 pb-4">
+                <h3 className="text-sm font-semibold text-foreground mb-2">Reviews</h3>
+                <div className="space-y-2">
+                  {messReviews.map((r: any) => (
+                    <div key={r.id} className="p-3 border border-border rounded-xl space-y-1">
+                      <div className="flex items-center gap-2">
+                        <div className="flex">
+                          {[1, 2, 3, 4, 5].map(n => (
+                            <Star key={n} className={`h-3.5 w-3.5 ${n <= r.rating ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground'}`} />
+                          ))}
+                        </div>
+                        <span className="text-xs text-muted-foreground">{r.profiles?.name || 'Student'}</span>
+                      </div>
+                      {r.title && <p className="text-sm font-medium text-foreground">{r.title}</p>}
+                      <p className="text-xs text-muted-foreground">{r.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Subscribe Dialog */}
-      <Dialog open={showSubscribe} onOpenChange={setShowSubscribe}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Subscribe to {selectedPackage?.name}</DialogTitle></DialogHeader>
-          {selectedPackage && (
-            <div className="space-y-4">
-              <div className="p-3 bg-muted rounded">
-                <p className="font-medium">{selectedPackage.name}</p>
-                <p className="text-sm text-muted-foreground">{(selectedPackage.meal_types as string[])?.map((m: string) => MEAL_LABELS[m]).join(', ')}</p>
-                <p className="text-lg font-bold mt-1">{formatCurrency(selectedPackage.price)}</p>
-              </div>
-              <div>
-                <Label>Start Date</Label>
-                <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} min={format(new Date(), 'yyyy-MM-dd')} />
-              </div>
-              {startDate && (
-                <p className="text-sm text-muted-foreground">
-                  End Date: {format(calculateBookingEndDate(new Date(startDate), selectedPackage.duration_type, selectedPackage.duration_count), 'dd MMM yyyy')}
-                </p>
-              )}
-              <Button onClick={handleSubscribe} disabled={subscribing} className="w-full">
-                {subscribing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Confirm & Pay {formatCurrency(selectedPackage.price)}
-              </Button>
-            </div>
-          )}
+      {/* Weekly Menu Dialog */}
+      <Dialog open={showMenuDialog} onOpenChange={setShowMenuDialog}>
+        <DialogContent className="max-w-lg mx-auto">
+          <DialogHeader><DialogTitle>Weekly Menu</DialogTitle></DialogHeader>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr><th className="text-left p-2">Day</th><th className="p-2">Breakfast</th><th className="p-2">Lunch</th><th className="p-2">Dinner</th></tr>
+              </thead>
+              <tbody>
+                {DAYS.map(day => (
+                  <tr key={day} className="border-t">
+                    <td className="p-2 capitalize font-medium">{day}</td>
+                    {['breakfast', 'lunch', 'dinner'].map(meal => (
+                      <td key={meal} className="p-2 text-xs">
+                        {messMenu.find(m => m.day_of_week === day && m.meal_type === meal)?.menu_items || '—'}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </ErrorBoundary>
   );
 }

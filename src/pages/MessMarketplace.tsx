@@ -112,7 +112,7 @@ export default function MessMarketplace() {
                   return (
                     <div
                       key={m.id}
-                      onClick={() => navigate(`/mess/${m.id}`)}
+                      onClick={() => navigate(`/mess/${m.serial_number || m.id}`)}
                       className="flex gap-3 p-3 bg-card rounded-2xl border border-border hover:border-primary/30 hover:shadow-sm transition-all active:scale-[0.99] cursor-pointer"
                     >
                       {/* Thumbnail */}
@@ -151,7 +151,12 @@ export default function MessMarketplace() {
                               {FOOD_LABELS[m.food_type] || m.food_type}
                             </span>
                           </div>
-                          <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-lg flex-shrink-0">View</span>
+                          <div className="flex items-center gap-1.5">
+                            {m.starting_price ? (
+                              <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">From ₹{m.starting_price}</span>
+                            ) : null}
+                            <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-lg flex-shrink-0">View</span>
+                          </div>
                         </div>
                       </div>
                     </div>
