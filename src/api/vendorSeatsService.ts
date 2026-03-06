@@ -284,7 +284,7 @@ export const vendorSeatsService = {
         query = query.in('cabin_id', partnerCabinIds);
       }
 
-      const { data: seatsData, error } = await query;
+      const { data: seatsData, error } = await query.limit(10000);
       if (error) throw error;
 
       const seatIds = (seatsData || []).map(s => s.id);
@@ -297,7 +297,7 @@ export const vendorSeatsService = {
         const cabinIds = [...new Set((seatsData || []).map(s => s.cabin_id).filter(Boolean))];
 
         // Batch seat_block_history queries in chunks of 50 to avoid URL limits
-        const BATCH_SIZE = 50;
+        const BATCH_SIZE = 200;
         const seatIdBatches: string[][] = [];
         for (let i = 0; i < seatIds.length; i += BATCH_SIZE) {
           seatIdBatches.push(seatIds.slice(i, i + BATCH_SIZE));
@@ -310,7 +310,8 @@ export const vendorSeatsService = {
             .in('cabin_id', cabinIds)
             .in('payment_status', ['completed', 'advance_paid'])
             .gte('end_date', date)
-            .order('start_date', { ascending: true }),
+            .order('start_date', { ascending: true })
+            .limit(10000),
           ...seatIdBatches.map(batch =>
             supabase
               .from('seat_block_history')
@@ -345,15 +346,25 @@ export const vendorSeatsService = {
         .map(b => b.id);
 
       if (advancePaidIds.length > 0) {
-        const { data: duesData } = await supabase
-          .from('dues')
-          .select('booking_id, proportional_end_date')
-          .in('booking_id', advancePaidIds);
-        (duesData || []).forEach((d: any) => {
-          if (d.booking_id && d.proportional_end_date) {
-            duesMap[d.booking_id] = d.proportional_end_date;
-          }
-        });
+        // Batch dues query to avoid URL length limits with many booking IDs
+        const DUES_BATCH = 200;
+        const duesBatches: string[][] = [];
+        for (let i = 0; i < advancePaidIds.length; i += DUES_BATCH) {
+          duesBatches.push(advancePaidIds.slice(i, i + DUES_BATCH));
+        }
+        const duesResults = await Promise.all(
+          duesBatches.map(batch =>
+            supabase.from('dues').select('booking_id, proportional_end_date').in('booking_id', batch)
+          )
+        );
+        for (const res of duesResults) {
+          if (res.error) console.error('Error fetching dues batch:', res.error);
+          (res.data || []).forEach((d: any) => {
+            if (d.booking_id && d.proportional_end_date) {
+              duesMap[d.booking_id] = d.proportional_end_date;
+            }
+          });
+        }
       }
 
       // Fetch slot names for bookings that have slot_id
