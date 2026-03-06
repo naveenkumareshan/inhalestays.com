@@ -1,44 +1,34 @@
 
 
-# Fix: Seats Disappearing After Bookings
+# Analysis: Can Current Implementation Handle 2000+ Seats?
 
-## Root Cause
+## Answer: No — There Are Two Critical Limits Still Present
 
-The `getSeatsForDate` function in `vendorSeatsService.ts` uses `.in('seat_id', seatIds)` for the bookings and seat_block_history queries. The ISSM partner has **401 seats** in "Toppers reading room". With 401 UUIDs in the `.in()` clause, the resulting GET URL exceeds PostgREST's ~8KB URL limit, causing a network-level failure. Since the error occurs inside `Promise.all`, the entire function throws and returns `{ success: false }`. On the initial load, `seats` stays at `[]` (initial state). After a few successful operations or navigations, the issue compounds because every `fetchSeats()` call fails silently.
+### Issue 1: Supabase 1000-Row Default Limit (CRITICAL)
+The seats query on line 276 does `supabase.from('seats').select(...)` with **no explicit row limit override**. Supabase/PostgREST returns a maximum of **1000 rows by default**. With 2000 seats, you'd silently lose half your seats — they simply won't appear.
 
-Additionally, `getVendorCabins` makes a network call via `supabase.auth.getUser()` which can fail during rapid operations (token refresh, rate limiting), causing cabins to fail to load and `fetchSeats` to early-return due to `cabins.length === 0`.
+The same applies to the bookings query (line 307) — if a partner has many active bookings across cabins, results get truncated at 1000.
 
-## Fix
+### Issue 2: 40 Parallel Requests for seat_block_history
+With 2000 seats batched at 50 per request, that's **40 simultaneous HTTP requests** in `Promise.all`. This can trigger rate limiting or connection pool exhaustion on Supabase, causing random failures.
 
-### 1. Replace `.in('seat_id', seatIds)` with `.in('cabin_id', cabinIds)` for bookings (`vendorSeatsService.ts`)
+### Issue 3: Dues query also uses `.in()` with potentially many IDs
+The `advancePaidIds` array (line 347) could also grow large and hit URL limits.
 
-The `bookings` table has a `cabin_id` column. Instead of filtering by 401 seat IDs, filter by 1-2 cabin IDs. This keeps the URL small regardless of seat count.
+## Fix Plan
 
-```typescript
-// Before: .in('seat_id', seatIds) — 401 UUIDs = 15KB URL → FAIL
-// After:  .in('cabin_id', cabinIds) — 1-2 UUIDs = tiny URL
-```
+### 1. Add `.limit(10000)` to the seats query (`vendorSeatsService.ts`)
+Override the default 1000-row limit so all seats are returned. Apply the same to the bookings query.
 
-Extract `cabinIds` from `seatsData` (unique `cabin_id` values) and use that for the bookings query.
+### 2. Increase batch size from 50 to 200 for seat_block_history
+Each UUID is ~36 chars. 200 UUIDs ≈ 7.2KB in the URL — safely under the 8KB limit. This reduces 2000 seats from 40 requests down to 10.
 
-### 2. Batch `.in('seat_id', ...)` for seat_block_history (`vendorSeatsService.ts`)
+### 3. Batch the dues query too
+The `.in('booking_id', advancePaidIds)` can also exceed URL limits with many advance-paid bookings. Apply the same batching pattern.
 
-`seat_block_history` has no `cabin_id` column, so batch the seat IDs into chunks of 50, make parallel queries, and merge results.
-
-### 3. Replace `getUser()` with `getSession()` in `getVendorCabins` (`vendorSeatsService.ts`)
-
-`supabase.auth.getUser()` makes a network call that can fail. `supabase.auth.getSession()` reads from local storage — instant and reliable. Use `session.user` instead.
-
-### 4. Refresh button also re-fetches cabins (`VendorSeats.tsx`)
-
-Currently the refresh button only calls `fetchSeats()`, which early-returns if `cabins.length === 0`. If cabins failed to load, refresh never recovers. Fix: make the refresh button also re-fetch cabins if they're empty.
-
-### 5. Add error handling for bookings/blocks sub-queries (`vendorSeatsService.ts`)
-
-Currently `bookingsRes.error` and `blocksRes.error` are never checked. If they fail, `data` is null and silently becomes `[]`. Add explicit error logging so these failures are visible during debugging.
+### 4. Add `.limit(10000)` to bookings query
+Ensure all active bookings are returned, not just the first 1000.
 
 ## Files Changed
-
-- **`src/api/vendorSeatsService.ts`** — Use `cabin_id` for bookings filter; batch seat_block_history; replace `getUser()` with `getSession()`; add sub-query error handling
-- **`src/pages/vendor/VendorSeats.tsx`** — Refresh button re-fetches cabins when empty
+- **`src/api/vendorSeatsService.ts`** — Add row limits, increase batch size, batch dues query
 
