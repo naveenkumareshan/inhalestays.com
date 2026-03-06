@@ -205,8 +205,9 @@ function mapBookingToDetail(b: any, slotNameMap?: Record<string, string>, seatCa
 export const vendorSeatsService = {
   getVendorCabins: async () => {
     try {
-      // Filter cabins by ownership for non-admin users
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      // Use getSession (local) instead of getUser (network) for reliability
+      const { data: { session } } = await supabase.auth.getSession();
+      const authUser = session?.user;
       if (!authUser) {
         console.warn('getVendorCabins: No authenticated user yet');
         return { success: false, data: { data: [] } };
@@ -291,26 +292,50 @@ export const vendorSeatsService = {
       let dateBlocks: any[] = [];
 
       if (seatIds.length > 0) {
-        const [bookingsRes, blocksRes] = await Promise.all([
+        // Use cabin_id instead of seat_id for bookings query to avoid URL length limits
+        // (401 seat UUIDs = ~15KB URL which exceeds PostgREST's ~8KB limit)
+        const cabinIds = [...new Set((seatsData || []).map(s => s.cabin_id).filter(Boolean))];
+
+        // Batch seat_block_history queries in chunks of 50 to avoid URL limits
+        const BATCH_SIZE = 50;
+        const seatIdBatches: string[][] = [];
+        for (let i = 0; i < seatIds.length; i += BATCH_SIZE) {
+          seatIdBatches.push(seatIds.slice(i, i + BATCH_SIZE));
+        }
+
+        const [bookingsRes, ...blocksResults] = await Promise.all([
           supabase
             .from('bookings')
             .select('*, profiles!bookings_user_id_fkey(id, name, email, phone, profile_picture, serial_number, course_studying, college_studied, address, city, state, date_of_birth, gender)')
-            .in('seat_id', seatIds)
+            .in('cabin_id', cabinIds)
             .in('payment_status', ['completed', 'advance_paid'])
             .gte('end_date', date)
             .order('start_date', { ascending: true }),
-          supabase
-            .from('seat_block_history')
-            .select('*')
-            .in('seat_id', seatIds)
-            .eq('action', 'blocked')
-            .not('block_from', 'is', null)
-            .not('block_to', 'is', null)
-            .gte('block_to', date),
+          ...seatIdBatches.map(batch =>
+            supabase
+              .from('seat_block_history')
+              .select('*')
+              .in('seat_id', batch)
+              .eq('action', 'blocked')
+              .not('block_from', 'is', null)
+              .not('block_to', 'is', null)
+              .gte('block_to', date)
+          ),
         ]);
 
+        if (bookingsRes.error) {
+          console.error('Error fetching bookings in getSeatsForDate:', bookingsRes.error);
+        }
         allBookings = bookingsRes.data || [];
-        dateBlocks = blocksRes.data || [];
+
+        // Merge all batched block results
+        dateBlocks = [];
+        for (const blocksRes of blocksResults) {
+          if (blocksRes.error) {
+            console.error('Error fetching seat_block_history batch:', blocksRes.error);
+          }
+          dateBlocks.push(...(blocksRes.data || []));
+        }
       }
 
       // Build dues map for advance_paid bookings (booking_id -> proportional_end_date)

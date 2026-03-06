@@ -835,7 +835,16 @@ const VendorSeats: React.FC = () => {
           </Button>
         </div>
 
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={fetchSeats} disabled={refreshing}>
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={async () => {
+          // If cabins failed to load, re-fetch them first so fetchSeats doesn't early-return
+          if (cabins.length === 0) {
+            const res = await vendorSeatsService.getVendorCabins();
+            if (res.success && res.data) {
+              setCabins(res.data.data as any);
+            }
+          }
+          fetchSeats();
+        }} disabled={refreshing}>
           <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
         </Button>
       </div>
