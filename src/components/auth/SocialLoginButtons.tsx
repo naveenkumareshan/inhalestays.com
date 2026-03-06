@@ -25,7 +25,7 @@ export function SocialLoginButtons({ onLoginSuccess, onLoginError }: SocialLogin
         const { error } = await supabase.auth.signInWithOAuth({
           provider,
           options: {
-            redirectTo: 'https://inhalestays-com.lovable.app/student-login',
+            redirectTo: 'https://inhalestays-com.lovable.app/student/login',
           },
         });
 
@@ -41,7 +41,7 @@ export function SocialLoginButtons({ onLoginSuccess, onLoginError }: SocialLogin
       }
 
       const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: 'https://inhalestays-com.lovable.app',
+        redirect_uri: window.location.origin,
       });
 
       if (result.redirected) return;
