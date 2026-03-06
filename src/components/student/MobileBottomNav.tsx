@@ -63,7 +63,7 @@ export const MobileBottomNav: React.FC = () => {
               key={tab.label}
               to={href}
               className={cn(
-                'flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[56px] relative transition-all duration-200',
+                'flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[56px] relative transition-all duration-200 overflow-hidden',
                 active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -72,11 +72,11 @@ export const MobileBottomNav: React.FC = () => {
                 <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-primary" />
               )}
               <div className={cn(
-                'flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-xl transition-all duration-200',
+                'w-full flex flex-col items-center gap-0.5 px-0.5 py-1 rounded-xl transition-all duration-200 overflow-hidden',
                 active && 'bg-primary/10'
               )}>
                 <tab.icon
-                  className={cn('w-5 h-5 transition-transform', active && 'scale-[1.1]')}
+                  className="w-5 h-5"
                   strokeWidth={active ? 2.5 : 1.75}
                 />
                 <span className={cn('text-[9px] leading-tight whitespace-nowrap', active ? 'font-semibold' : 'font-medium')}>
