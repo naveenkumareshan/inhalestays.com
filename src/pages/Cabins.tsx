@@ -1,12 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { CabinsGrid } from '../components/cabins/CabinsGrid';
 import { cabinsService } from '../api/cabinsService';
 import { reviewsService } from '../api/reviewsService';
 import { toast } from '@/hooks/use-toast';
 import { Cabin as FrontendCabin } from '../data/cabinsData';
 import ErrorBoundary from '../components/ErrorBoundary';
-import { Loader2, BookOpen, Search } from 'lucide-react';
+import { Loader2, BookOpen, Search, X } from 'lucide-react';
 
 // Define backend Cabin type (Supabase schema)
 interface BackendCabin {
@@ -42,13 +42,25 @@ const Cabins = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debounceRef = useRef<NodeJS.Timeout>();
+
+  // Debounce search input
+  useEffect(() => {
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 400);
+    return () => clearTimeout(debounceRef.current);
+  }, [searchQuery]);
   
   useEffect(() => {
     const fetchCabins = async () => {
       try {
         setLoading(true);
         setError(null);
-        const filters = filter !== 'all' ? { category: filter } : {};
+        const filters: any = {};
+        if (filter !== 'all') filters.category = filter;
+        if (debouncedSearch.trim()) filters.search = debouncedSearch.trim();
         const response = await cabinsService.getAllCabins(filters);
         
         if (response.success) {
@@ -105,7 +117,7 @@ const Cabins = () => {
     };
     
     fetchCabins();
-  }, [filter]);
+  }, [filter, debouncedSearch]);
     
   return (
     <div className="min-h-screen bg-background">
@@ -121,8 +133,13 @@ const Cabins = () => {
               placeholder="Search rooms..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-8 pl-8 pr-3 rounded-xl border border-border bg-card text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="w-full h-8 pl-8 pr-8 rounded-xl border border-border bg-card text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+              </button>
+            )}
           </div>
 
           {/* Category filter pills */}
@@ -167,13 +184,7 @@ const Cabins = () => {
               <p className="text-[12px] text-muted-foreground">Check back later for new listings.</p>
             </div>
           ) : (
-            <CabinsGrid cabins={cabins.filter(c => {
-              const q = searchQuery.toLowerCase().trim();
-              if (!q) return true;
-              return (c as any).name?.toLowerCase().includes(q) ||
-                (c as any).area?.toLowerCase().includes(q) ||
-                (c as any).city?.toLowerCase().includes(q);
-            })} />
+            <CabinsGrid cabins={cabins} />
           )}
         </ErrorBoundary>
       </div>
