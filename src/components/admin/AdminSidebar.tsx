@@ -47,7 +47,8 @@ import {
   ClipboardCheck,
   Megaphone,
   Crown,
-  Shirt
+  Shirt,
+  Activity
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight } from 'lucide-react';
@@ -146,6 +147,13 @@ export function AdminSidebar() {
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_receipts']
       });
+      readingRoomSubItems.push({
+        title: 'Activity Log',
+        url: `${routePrefix}/booking-activity-log`,
+        icon: Activity,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_bookings']
+      });
     }
     
     if (user?.role === 'admin' || user?.role === 'vendor' || hasPermission('view_key_deposits')) {
@@ -240,6 +248,13 @@ export function AdminSidebar() {
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_reviews']
       }] : []) as MenuItem[],
+      {
+        title: 'Activity Log',
+        url: `${routePrefix}/booking-activity-log`,
+        icon: Activity,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_hostel_bookings']
+      },
     ];
 
     // Approvals moved to Partners section

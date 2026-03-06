@@ -129,6 +129,25 @@ export const BookingUpdateDatesDialog = ({
           .eq('booking_id', bookingId);
       }
 
+      // Log activity
+      try {
+        const { logBookingActivity } = await import('@/api/bookingActivityLogService');
+        await logBookingActivity({
+          bookingId,
+          bookingType,
+          activityType: 'date_changed',
+          serialNumber: booking.serialNumber || booking.serial_number,
+          details: {
+            old_start_date: booking.startDate || booking.start_date,
+            new_start_date: newStart,
+            old_end_date: booking.endDate || booking.end_date,
+            new_end_date: newEnd,
+          },
+        });
+      } catch (e) {
+        console.error('Activity log failed:', e);
+      }
+
       toast({
         title: "Booking updated successfully",
         description: `Dates updated to ${format(startDate, 'PPP')} – ${format(endDate, 'PPP')}`,

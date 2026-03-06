@@ -985,13 +985,16 @@ export const vendorSeatsService = {
     }
   },
 
-  releaseSeat: async (bookingId: string) => {
+  releaseSeat: async (bookingId: string, serialNumber?: string) => {
     try {
       const { error } = await supabase.from('bookings').update({
         payment_status: 'terminated',
         end_date: new Date().toISOString().split('T')[0],
       }).eq('id', bookingId);
       if (error) throw error;
+      // Log activity
+      const { logBookingActivity } = await import('@/api/bookingActivityLogService');
+      await logBookingActivity({ bookingId, bookingType: 'cabin', activityType: 'released', serialNumber });
       return { success: true };
     } catch (error) {
       console.error('Error releasing seat:', error);
@@ -999,7 +1002,7 @@ export const vendorSeatsService = {
     }
   },
 
-  cancelBooking: async (bookingId: string) => {
+  cancelBooking: async (bookingId: string, serialNumber?: string) => {
     try {
       const { error } = await supabase.from('bookings').update({
         payment_status: 'cancelled',
@@ -1009,6 +1012,9 @@ export const vendorSeatsService = {
       await supabase.from('dues').update({
         status: 'cancelled',
       }).eq('booking_id', bookingId).eq('status', 'pending');
+      // Log activity
+      const { logBookingActivity } = await import('@/api/bookingActivityLogService');
+      await logBookingActivity({ bookingId, bookingType: 'cabin', activityType: 'cancelled', serialNumber });
       return { success: true };
     } catch (error) {
       console.error('Error cancelling booking:', error);
@@ -1016,7 +1022,7 @@ export const vendorSeatsService = {
     }
   },
 
-  transferBooking: async (bookingId: string, newSeatId: string, newCabinId: string, newSeatNumber: number) => {
+  transferBooking: async (bookingId: string, newSeatId: string, newCabinId: string, newSeatNumber: number, oldSeatNumber?: number, serialNumber?: string) => {
     try {
       // Fetch booking dates first
       const { data: booking, error: bkErr } = await supabase
@@ -1051,6 +1057,13 @@ export const vendorSeatsService = {
         .from('dues')
         .update({ seat_id: newSeatId, cabin_id: newCabinId } as any)
         .eq('booking_id', bookingId);
+
+      // Log activity
+      const { logBookingActivity } = await import('@/api/bookingActivityLogService');
+      await logBookingActivity({
+        bookingId, bookingType: 'cabin', activityType: 'transferred', serialNumber,
+        details: { old_seat_number: oldSeatNumber, new_seat_number: newSeatNumber },
+      });
 
       return { success: true };
     } catch (error) {

@@ -9,16 +9,12 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Eye, Search, Filter, BookOpen, BarChart3 } from 'lucide-react';
-import { HostelBookingCalendarDashboard } from '@/components/admin/HostelBookingCalendarDashboard';
-import { format } from 'date-fns';
+import { Eye, Search, Filter, BookOpen } from 'lucide-react';
 
 const PAGE_SIZE = 10;
 
@@ -153,15 +149,7 @@ export default function AdminHostelBookings() {
         <p className="text-muted-foreground text-xs mt-0.5">View and manage all hostel reservations.</p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="inline-flex h-9 mb-4">
-          <TabsTrigger value="bookings">All Bookings</TabsTrigger>
-          <TabsTrigger value="calendar" className="flex items-center gap-1">
-            <BarChart3 className="h-3.5 w-3.5" /> Calendar & Occupancy
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="bookings" className="mt-0">
+      <div>
           <Card className="shadow-sm">
             <CardHeader className="py-3 border-b">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -262,12 +250,7 @@ export default function AdminHostelBookings() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="calendar" className="mt-0">
-          <HostelBookingCalendarDashboard />
-        </TabsContent>
-      </Tabs>
+      </div>
     </div>
   );
 }

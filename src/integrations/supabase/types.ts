@@ -193,6 +193,39 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_activity_log: {
+        Row: {
+          activity_type: string
+          booking_id: string
+          booking_type: string
+          created_at: string
+          details: Json | null
+          id: string
+          performed_by: string | null
+          serial_number: string | null
+        }
+        Insert: {
+          activity_type: string
+          booking_id: string
+          booking_type?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          performed_by?: string | null
+          serial_number?: string | null
+        }
+        Update: {
+          activity_type?: string
+          booking_id?: string
+          booking_type?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          performed_by?: string | null
+          serial_number?: string | null
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           booking_duration: string | null

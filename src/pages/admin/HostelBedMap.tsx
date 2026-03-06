@@ -524,6 +524,22 @@ const HostelBedMap: React.FC = () => {
       .update({ bed_id: transferTargetBedId, room_id: targetBed.room_id })
       .eq('id', transferBookingId);
     if (!error) {
+      // Log activity
+      try {
+        const { logBookingActivity } = await import('@/api/bookingActivityLogService');
+        await logBookingActivity({
+          bookingId: transferBookingId,
+          bookingType: 'hostel',
+          activityType: 'transferred',
+          serialNumber: transferBooking?.serialNumber,
+          details: {
+            old_bed_number: selectedBed?.bed_number,
+            new_bed_number: targetBed.bed_number,
+            old_room: selectedBed?.roomNumber,
+            new_room: targetBed.roomNumber,
+          },
+        });
+      } catch (e) { console.error('Activity log failed:', e); }
       toast({ title: 'Bed transferred successfully' });
       setTransferDialogOpen(false);
       setSheetOpen(false);
@@ -639,6 +655,12 @@ const HostelBedMap: React.FC = () => {
         .update({ status: 'cancelled' })
         .eq('booking_id', actionBookingId)
         .eq('status', 'pending');
+      // Log activity
+      try {
+        const { logBookingActivity } = await import('@/api/bookingActivityLogService');
+        const bk = selectedBed?.allBookings.find((b: any) => b.bookingId === actionBookingId);
+        await logBookingActivity({ bookingId: actionBookingId, bookingType: 'hostel', activityType: 'released', serialNumber: bk?.serialNumber });
+      } catch (e) { console.error('Activity log failed:', e); }
       toast({ title: 'Bed released successfully' });
       setReleaseDialogOpen(false);
       setSheetOpen(false);
@@ -663,6 +685,12 @@ const HostelBedMap: React.FC = () => {
         .update({ status: 'cancelled' })
         .eq('booking_id', actionBookingId)
         .eq('status', 'pending');
+      // Log activity
+      try {
+        const { logBookingActivity } = await import('@/api/bookingActivityLogService');
+        const bk = selectedBed?.allBookings.find((b: any) => b.bookingId === actionBookingId);
+        await logBookingActivity({ bookingId: actionBookingId, bookingType: 'hostel', activityType: 'cancelled', serialNumber: bk?.serialNumber });
+      } catch (e) { console.error('Activity log failed:', e); }
       toast({ title: 'Booking cancelled successfully' });
       setCancelDialogOpen(false);
       setSheetOpen(false);
