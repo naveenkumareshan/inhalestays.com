@@ -46,23 +46,16 @@ export const VendorStatsCards: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i} className="shadow-none border">
-            <div className="p-3">
-              <div className="animate-pulse">
-                <div className="h-3 bg-muted rounded w-3/4 mb-2"></div>
-                <div className="h-5 bg-muted rounded w-1/2"></div>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+      <Card className="shadow-none border mb-4">
+        <div className="flex items-center gap-4 px-4 py-2.5">
+          <div className="h-4 bg-muted rounded w-full animate-pulse"></div>
+        </div>
+      </Card>
     );
   }
 
   const cards = [
-    { label: 'Total Partners', value: stats.totalVendors, icon: Users, color: 'text-muted-foreground' },
+    { label: 'Partners', value: stats.totalVendors, icon: Users, color: 'text-foreground' },
     { label: 'Pending', value: stats.pendingApprovals, icon: Clock1, color: 'text-blue-600' },
     { label: 'Approved', value: stats.approvedVendors, icon: Check, color: 'text-green-600' },
     { label: 'Rejected', value: stats.rejectedVendors, icon: X, color: 'text-red-600' },
@@ -71,18 +64,16 @@ export const VendorStatsCards: React.FC = () => {
   ];
 
   return (
-    <div className="grid grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-      {cards.map((card) => (
-        <Card key={card.label} className="shadow-none border">
-          <div className="p-3">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-muted-foreground">{card.label}</span>
-              <card.icon className={`h-3.5 w-3.5 ${card.color}`} />
-            </div>
-            <div className={`text-xl font-bold ${card.color === 'text-muted-foreground' ? '' : card.color}`}>{card.value}</div>
+    <Card className="shadow-none border mb-4">
+      <div className="flex items-center flex-wrap divide-x divide-border">
+        {cards.map((card) => (
+          <div key={card.label} className="flex items-center gap-1.5 px-3 py-2">
+            <card.icon className="h-3 w-3 text-muted-foreground shrink-0" />
+            <span className={`text-sm font-bold ${card.color}`}>{card.value}</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{card.label}</span>
           </div>
-        </Card>
-      ))}
-    </div>
+        ))}
+      </div>
+    </Card>
   );
 };
