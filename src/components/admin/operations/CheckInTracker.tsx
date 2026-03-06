@@ -16,11 +16,22 @@ import ReportedTodaySection from './ReportedTodaySection';
 import CheckInViewDetailsDialog from './CheckInViewDetailsDialog';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { CollectDrawer, ReceiptsDialog, fmtAmt } from './CheckInFinancials';
+import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
 
 type Module = 'reading_room' | 'hostel';
 
 const CheckInTracker = () => {
-  const [module, setModule] = useState<Module>('reading_room');
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { hasReadingRooms, hasHostels, loading: propLoading } = usePartnerPropertyTypes();
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const showRR = isAdmin || hasReadingRooms;
+  const showHostel = isAdmin || hasHostels;
+  const showToggle = showRR && showHostel;
+
+  const [module, setModule] = useState<Module>(showRR ? 'reading_room' : 'hostel');
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -37,10 +48,6 @@ const CheckInTracker = () => {
   const [collectOpen, setCollectOpen] = useState(false);
   const [receiptsBooking, setReceiptsBooking] = useState<any>(null);
   const [receiptsOpen, setReceiptsOpen] = useState(false);
-
-  const { toast } = useToast();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
 
   const today = format(new Date(), 'yyyy-MM-dd');
   const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
@@ -202,24 +209,26 @@ const CheckInTracker = () => {
     <div className="space-y-4">
       {/* Module toggle + search */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex gap-1 bg-muted rounded-lg p-0.5">
-          <Button
-            variant={module === 'reading_room' ? 'default' : 'ghost'}
-            size="sm"
-            className="text-xs h-7"
-            onClick={() => setModule('reading_room')}
-          >
-            Reading Room
-          </Button>
-          <Button
-            variant={module === 'hostel' ? 'default' : 'ghost'}
-            size="sm"
-            className="text-xs h-7"
-            onClick={() => setModule('hostel')}
-          >
-            Hostel
-          </Button>
-        </div>
+        {showToggle && (
+          <div className="flex gap-1 bg-muted rounded-lg p-0.5">
+            <Button
+              variant={module === 'reading_room' ? 'default' : 'ghost'}
+              size="sm"
+              className="text-xs h-7"
+              onClick={() => setModule('reading_room')}
+            >
+              Reading Room
+            </Button>
+            <Button
+              variant={module === 'hostel' ? 'default' : 'ghost'}
+              size="sm"
+              className="text-xs h-7"
+              onClick={() => setModule('hostel')}
+            >
+              Hostel
+            </Button>
+          </div>
+        )}
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
