@@ -1,188 +1,63 @@
 
 
-# Plan: Mess / Food Service Module for InhaleStays
+# Plan: Phase 4 & 5 — QR Attendance, Revenue Dashboard, Reviews & Complaints for Mess
 
-This is a very large feature spanning database tables, partner management, student marketplace, subscription system, attendance tracking, and analytics. To ensure quality and avoid breaking existing functionality, I will implement it in **phases across multiple messages**. This plan covers the full scope; implementation will begin with Phase 1.
+## Phase 4: QR Attendance System
 
----
+### Student Side — QR Code Display
+- In `MessDashboard.tsx`, add a new "My QR" tab showing a QR code encoding `{ subscription_id, user_id }` as a JSON string
+- Use a simple QR generation approach via a public QR API (`https://api.qrserver.com/v1/create-qr-code/`) rendered as an `<img>` — no new dependency needed
+- QR refreshes based on active subscription selection
 
-## Phase 1: Database Schema + Core Data Layer
+### Partner Side — QR Scanner + Manual Attendance
+- In `MessManagement.tsx`, add a dedicated "Attendance" tab (separate from Subscriptions tab) with:
+  - **QR Scan button** using browser camera via `navigator.mediaDevices.getUserMedia` + a lightweight inline barcode reader (we'll use the native `BarcodeDetector` API where available, with manual fallback)
+  - On scan: decode subscription_id, auto-mark attendance for current meal (based on meal timings) via `markAttendance()`
+  - **Manual attendance** grid: date picker + list of active subscribers with meal toggle buttons (existing logic, moved to its own tab)
+  - **Today's dashboard**: show consumed/remaining counts per meal
 
-### New Tables (via migration)
+### API additions in `messService.ts`
+- `getAttendanceSummary(messId, date)` — returns counts per meal_type
 
-**1. `mess_partners`** — Mess profile for partners
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | |
-| user_id | uuid FK profiles | Partner who owns the mess |
-| name | text | Mess name |
-| location | text | |
-| description | text | |
-| contact_number | text | |
-| food_type | text | 'veg', 'non_veg', 'both' |
-| opening_days | jsonb | e.g. ['Mon','Tue',...] |
-| capacity | int | nullable |
-| is_active | boolean | default true |
-| is_approved | boolean | default false |
-| serial_number | text | auto-generated IS-MESS-... |
-| created_at / updated_at | timestamptz | |
+## Phase 5: Revenue Dashboard + Reviews + Complaints
 
-**2. `mess_meal_timings`** — Meal timing slots
-| Column | Type |
-|--------|------|
-| id | uuid PK |
-| mess_id | uuid FK mess_partners |
-| meal_type | text | 'breakfast', 'lunch', 'dinner' |
-| start_time | time |
-| end_time | time |
+### Revenue Dashboard (Partner Side)
+- Add a "Revenue" tab in `MessManagement.tsx` with:
+  - Today / This Week / This Month revenue cards (computed from `mess_receipts`)
+  - Active vs Expired subscription counts
+  - Simple bar chart using existing Recharts setup
 
-**3. `mess_packages`** — Subscription packages
-| Column | Type |
-|--------|------|
-| id | uuid PK |
-| mess_id | uuid FK mess_partners |
-| name | text |
-| meal_types | jsonb | e.g. ['breakfast','lunch','dinner'] |
-| duration_type | text | 'daily','weekly','monthly' |
-| duration_count | int | default 1 |
-| price | numeric |
-| is_active | boolean |
-| created_at | timestamptz |
+### API additions in `messService.ts`
+- `getMessRevenueSummary(messId)` — aggregates receipts by period
+- `getMessSubscriptionStats(messId)` — counts by status
 
-**4. `mess_weekly_menu`** — Weekly menu items
-| Column | Type |
-|--------|------|
-| id | uuid PK |
-| mess_id | uuid FK mess_partners |
-| day_of_week | text | 'monday'...'sunday' |
-| meal_type | text | 'breakfast','lunch','dinner' |
-| menu_items | text | Comma-separated or free text |
+### Reviews Integration
+- The existing `reviews` table has `cabin_id` as a required FK. For mess reviews, we need a new `mess_reviews` table (or add optional `mess_id` column to reviews)
+- **Approach**: Add `mess_id` (nullable uuid FK) column to `reviews` table + make `cabin_id` nullable + update RLS
+- Update `reviewsService.ts` to support mess reviews
+- Add review form in `MessMarketplace.tsx` (after subscription) and display reviews on mess detail cards
 
-**5. `mess_subscriptions`** — Student subscriptions
-| Column | Type |
-|--------|------|
-| id | uuid PK |
-| user_id | uuid FK profiles |
-| mess_id | uuid FK mess_partners |
-| package_id | uuid FK mess_packages |
-| start_date | date |
-| end_date | date |
-| price_paid | numeric |
-| payment_status | text | 'pending','completed','failed' |
-| status | text | 'active','expired','cancelled','paused' |
-| pause_start | date nullable |
-| pause_end | date nullable |
-| serial_number | text |
-| created_at / updated_at | timestamptz |
+### Complaints Integration
+- The existing `complaints` table already has a `module` column (values: 'reading_room', 'hostel')
+- Add `mess_id` (nullable uuid FK) column to `complaints` table
+- Update `ComplaintsPage.tsx` to also fetch mess subscriptions as booking options with `_type: 'mess'` and set `module: 'mess'` + `mess_id` on insert
+- Admin `ComplaintsManagement.tsx` will automatically show mess complaints (already reads all)
 
-**6. `mess_attendance`** — Meal consumption tracking
-| Column | Type |
-|--------|------|
-| id | uuid PK |
-| subscription_id | uuid FK mess_subscriptions |
-| user_id | uuid FK profiles |
-| mess_id | uuid FK mess_partners |
-| date | date |
-| meal_type | text |
-| status | text | 'consumed','skipped' |
-| marked_by | text | 'qr','manual' |
-| marked_at | timestamptz |
+## Database Migration
+- Add `mess_id uuid references mess_partners(id) on delete set null` to `complaints` table
+- Add `mess_id uuid references mess_partners(id) on delete set null` to `reviews` table
+- Make `cabin_id` nullable in `reviews` table (if not already)
+- Add RLS policies for mess reviews
 
-**7. `mess_receipts`** — Payment receipts
-| Column | Type |
-|--------|------|
-| id | uuid PK |
-| subscription_id | uuid FK mess_subscriptions |
-| user_id | uuid FK profiles |
-| mess_id | uuid FK mess_partners |
-| amount | numeric |
-| payment_method | text |
-| transaction_id | text |
-| serial_number | text |
-| created_at | timestamptz |
+## Files to Create/Modify
 
-### RLS Policies
-- Students can read mess_partners (approved+active), read their own subscriptions/attendance/receipts
-- Partners can CRUD their own mess data via `is_partner_or_employee_of(user_id)` pattern
-- Admins have full access via `has_role(auth.uid(), 'admin')`
-
-### Serial number triggers
-- IS-MESS for mess_partners, IS-MSUB for subscriptions, IS-MRCPT for receipts
-
----
-
-## Phase 2: Partner-Side Mess Management
-
-### Files to create/modify:
-- **`src/pages/admin/MessManagement.tsx`** — Full mess management page for partners (create/edit mess profile, packages, timings, weekly menu)
-- **`src/api/messService.ts`** — API service layer for all mess CRUD operations
-- **`src/components/admin/AdminSidebar.tsx`** — Add "Mess / Food" section with sub-items (Mess Profile, Packages, Menu, Subscriptions, Attendance)
-- **`src/hooks/usePartnerPropertyTypes.ts`** — Add `hasMess` check against `mess_partners` table
-
-### Partner capabilities:
-- Create/edit mess profile
-- CRUD meal packages
-- Set meal timings
-- Upload weekly menu (day × meal grid)
-- View subscriber list
-- Manual attendance marking
-- Revenue dashboard (today/weekly/monthly stats)
-
----
-
-## Phase 3: Student Marketplace + Subscription Flow
-
-### Files to create:
-- **`src/pages/MessMarketplace.tsx`** — Browse mess partners, view menus/packages/prices
-- **`src/pages/MessSubscription.tsx`** — Purchase flow (select package → start date → review → pay)
-- **`src/pages/students/MessDashboard.tsx`** — Student's mess view (active subscription, meal history, pause/leave, QR code)
-
-### Navigation changes:
-- **`src/components/student/MobileBottomNav.tsx`** — Add "Mess" tab (UtensilsCrossed icon) between Hostels and Profile
-- **`src/components/Navigation.tsx`** — Add "Food / Mess" nav link
-- **`src/App.tsx`** — Add routes: `/mess`, `/mess/:messId`, `/mess/subscribe/:packageId`, `/student/mess`
-
----
-
-## Phase 4: Attendance System + QR
-
-- QR code generation per student (subscription ID encoded)
-- Partner scan page to mark attendance
-- Manual attendance marking interface
-- Student meal history view with date-wise consumed/skipped status
-
----
-
-## Phase 5: Pause/Leave + Revenue Dashboard + Reviews/Complaints
-
-- Pause subscription flow (date range picker, auto-extend end date)
-- Revenue analytics for mess partners (today/weekly/monthly, active/expired counts)
-- Integrate with existing complaints system (add 'Mess' module type)
-- Integrate with existing reviews system (mess_subscriptions as reviewable)
-
----
-
-## Implementation Order
-
-I will start with **Phase 1 (database) + Phase 2 (partner management) + Phase 3 (student side + navigation)** in this message, as they form the MVP. Phases 4-5 will follow.
-
-### Files to be created:
-| File | Purpose |
-|------|---------|
-| `src/api/messService.ts` | API service for all mess CRUD |
-| `src/pages/admin/MessManagement.tsx` | Partner mess management (profile, packages, timings, menu) |
-| `src/pages/MessMarketplace.tsx` | Student browse mess partners |
-| `src/pages/students/MessDashboard.tsx` | Student mess subscription view + meal history |
-
-### Files to be modified:
 | File | Change |
 |------|--------|
-| `src/components/student/MobileBottomNav.tsx` | Add Mess tab |
-| `src/components/Navigation.tsx` | Add Food/Mess nav link |
-| `src/components/admin/AdminSidebar.tsx` | Add Mess section |
-| `src/hooks/usePartnerPropertyTypes.ts` | Add `hasMess` |
-| `src/App.tsx` | Add mess routes |
-
-### Database migration:
-- 7 new tables with RLS policies, serial triggers, and foreign keys
+| `src/pages/students/MessDashboard.tsx` | Add QR code tab |
+| `src/pages/admin/MessManagement.tsx` | Separate Attendance tab with QR scan + Revenue tab |
+| `src/api/messService.ts` | Add revenue summary + attendance summary APIs |
+| `src/components/profile/ComplaintsPage.tsx` | Add mess subscriptions as complaint source |
+| `src/api/reviewsService.ts` | Support mess_id for mess reviews |
+| `src/pages/MessMarketplace.tsx` | Show reviews on mess cards + review form |
+| Migration | Add mess_id to complaints + reviews tables |
 
