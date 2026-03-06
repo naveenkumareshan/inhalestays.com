@@ -2148,6 +2148,7 @@ const VendorSeats: React.FC = () => {
           bookingType="cabin"
           currentEndDate={new Date(dateEditBooking.endDate)}
           onExtensionComplete={() => { fetchSeats(); setSheetOpen(false); }}
+          seatId={dateEditBooking.seatId}
         />
       )}
     </div>

@@ -2030,6 +2030,7 @@ const HostelBedMap: React.FC = () => {
           bookingType="hostel"
           currentEndDate={new Date(dateEditBooking.endDate)}
           onExtensionComplete={() => { fetchBeds(); setSheetOpen(false); }}
+          bedId={dateEditBooking.bedId}
         />
       )}
     </div>

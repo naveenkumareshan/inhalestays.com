@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Dialog,
@@ -27,6 +26,8 @@ interface BookingExtensionDialogProps {
   bookingType: 'cabin' | 'hostel';
   currentEndDate: Date;
   onExtensionComplete: () => void;
+  seatId?: string;
+  bedId?: string;
 }
 
 export const BookingUpdateDatesDialog = ({
@@ -36,9 +37,10 @@ export const BookingUpdateDatesDialog = ({
   booking,
   bookingType,
   currentEndDate,
-  onExtensionComplete
+  onExtensionComplete,
+  seatId,
+  bedId,
 }: BookingExtensionDialogProps) => {
-  const [remarks, setRemarks] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -46,13 +48,58 @@ export const BookingUpdateDatesDialog = ({
   const [endDate, setEndDate] = useState<Date>(new Date(booking.endDate));
 
   const handleUpdateBooking = async () => {
+    // Validate end >= start
+    if (endDate < startDate) {
+      toast({ title: "Invalid dates", description: "End date must be on or after start date.", variant: "destructive" });
+      return;
+    }
+
     try {
       setIsLoading(true);
 
+      const newStart = format(startDate, 'yyyy-MM-dd');
+      const newEnd = format(endDate, 'yyyy-MM-dd');
+
+      // ── Overlap validation ──
+      if (bookingType === 'cabin' && (seatId || booking.seatId)) {
+        const resourceId = seatId || booking.seatId;
+        const { data: conflicts } = await supabase
+          .from('bookings')
+          .select('id')
+          .eq('seat_id', resourceId)
+          .neq('id', bookingId)
+          .in('payment_status', ['completed', 'advance_paid'])
+          .lte('start_date', newEnd)
+          .gte('end_date', newStart);
+
+        if (conflicts && conflicts.length > 0) {
+          toast({ title: "Date conflict", description: "Another booking exists on this seat for the selected dates.", variant: "destructive" });
+          setIsLoading(false);
+          return;
+        }
+      } else if (bookingType === 'hostel' && (bedId || booking.bedId)) {
+        const resourceId = bedId || booking.bedId;
+        const { data: conflicts } = await supabase
+          .from('hostel_bookings')
+          .select('id')
+          .eq('bed_id', resourceId)
+          .neq('id', bookingId)
+          .in('status', ['confirmed', 'pending'])
+          .lte('start_date', newEnd)
+          .gte('end_date', newStart);
+
+        if (conflicts && conflicts.length > 0) {
+          toast({ title: "Date conflict", description: "Another booking exists on this bed for the selected dates.", variant: "destructive" });
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // ── Update booking dates ──
       const table = bookingType === 'cabin' ? 'bookings' : 'hostel_bookings';
       const updateData: any = {
-        start_date: format(startDate, 'yyyy-MM-dd'),
-        end_date: format(endDate, 'yyyy-MM-dd'),
+        start_date: newStart,
+        end_date: newEnd,
       };
 
       const { error } = await supabase
@@ -61,6 +108,19 @@ export const BookingUpdateDatesDialog = ({
         .eq('id', bookingId);
 
       if (error) throw error;
+
+      // ── Sync dues proportional_end_date ──
+      if (bookingType === 'cabin') {
+        await supabase
+          .from('dues')
+          .update({ proportional_end_date: newEnd })
+          .eq('booking_id', bookingId);
+      } else {
+        await supabase
+          .from('hostel_dues')
+          .update({ proportional_end_date: newEnd })
+          .eq('booking_id', bookingId);
+      }
 
       toast({
         title: "Booking updated successfully",
@@ -139,21 +199,12 @@ export const BookingUpdateDatesDialog = ({
                     mode="single"
                     selected={endDate}
                     onSelect={(date) => date && setEndDate(date)}
+                    disabled={(date) => date < startDate}
                     initialFocus
                   />
                 </PopoverContent>
               </Popover>
             </div>
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="remarks">Remarks (Optional)</Label>
-            <Textarea
-              id="remarks"
-              placeholder="Add any remarks about this update..."
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-            />
           </div>
         </div>
 
