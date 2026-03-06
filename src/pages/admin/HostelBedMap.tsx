@@ -21,8 +21,11 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   LayoutGrid, List, CalendarIcon, Search, Ban, Lock, Unlock,
-  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Download, ArrowLeft, ArrowRightLeft, RotateCcw, Wallet, Bed,
+  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Download, ArrowLeft, ArrowRightLeft, RotateCcw, Wallet, Bed, LogOut, XCircle, Pencil,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,6 +33,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesDialog';
 
 type ViewMode = 'grid' | 'table';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked';
@@ -164,6 +168,17 @@ const HostelBedMap: React.FC = () => {
   const [dueCollectTxnId, setDueCollectTxnId] = useState('');
   const [collectingDue, setCollectingDue] = useState(false);
   const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
+
+  // Release/Cancel booking state
+  const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [actionBookingId, setActionBookingId] = useState<string>('');
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Date edit state
+  const [dateEditOpen, setDateEditOpen] = useState(false);
+  const [dateEditBooking, setDateEditBooking] = useState<any>(null);
+
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -589,7 +604,55 @@ const HostelBedMap: React.FC = () => {
     setUpdating(false);
   };
 
-  // Student search with partner isolation
+  // Release bed handler
+  const handleReleaseBed = async () => {
+    if (!actionBookingId) return;
+    setActionLoading(true);
+    const { error } = await supabase
+      .from('hostel_bookings')
+      .update({ status: 'terminated', end_date: format(new Date(), 'yyyy-MM-dd') })
+      .eq('id', actionBookingId);
+    if (!error) {
+      // Cancel pending dues
+      await supabase
+        .from('hostel_dues')
+        .update({ status: 'cancelled' })
+        .eq('booking_id', actionBookingId)
+        .eq('status', 'pending');
+      toast({ title: 'Bed released successfully' });
+      setReleaseDialogOpen(false);
+      setSheetOpen(false);
+      fetchBeds();
+    } else {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+    setActionLoading(false);
+  };
+
+  // Cancel booking handler
+  const handleCancelHostelBooking = async () => {
+    if (!actionBookingId) return;
+    setActionLoading(true);
+    const { error } = await supabase
+      .from('hostel_bookings')
+      .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+      .eq('id', actionBookingId);
+    if (!error) {
+      await supabase
+        .from('hostel_dues')
+        .update({ status: 'cancelled' })
+        .eq('booking_id', actionBookingId)
+        .eq('status', 'pending');
+      toast({ title: 'Booking cancelled successfully' });
+      setCancelDialogOpen(false);
+      setSheetOpen(false);
+      fetchBeds();
+    } else {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+    setActionLoading(false);
+  };
+
   useEffect(() => {
     if (studentQuery.length < 2) { setStudentResults([]); return; }
     const timer = setTimeout(async () => {
@@ -1295,10 +1358,6 @@ const HostelBedMap: React.FC = () => {
                     >
                       <CalendarIcon className="h-3 w-3" /> Book Future
                     </Button>
-                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1"
-                      onClick={() => { const active = currentBookings[0]; if (active) openTransferDialog(active.bookingId); }}>
-                      <ArrowRightLeft className="h-3 w-3" /> Transfer Bed
-                    </Button>
                     <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => openBlockDialog(selectedBed)}>
                       <Lock className="h-3 w-3" /> Block
                     </Button>
@@ -1734,19 +1793,37 @@ const HostelBedMap: React.FC = () => {
                             </>
                           )}
 
-                          {/* Receipts button */}
-                          <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
-                            onClick={async () => {
-                              setReceiptDialogLoading(true); setReceiptDialogOpen(true);
-                              const { data } = await supabase.from('hostel_receipts').select('*').eq('booking_id', b.bookingId).order('created_at', { ascending: true });
-                              setReceiptDialogData(data || []);
-                              const methods = (data || []).map((r: any) => r.payment_method);
-                              const labels = await resolvePaymentMethodLabels(methods);
-                              setCustomLabels(prev => ({ ...prev, ...labels }));
-                              setReceiptDialogLoading(false);
-                            }}>
-                            <IndianRupee className="h-2.5 w-2.5" /> Receipts
-                          </Button>
+                          {/* Action buttons row */}
+                          <div className="flex gap-1.5 mt-1 flex-wrap">
+                            <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
+                              onClick={async () => {
+                                setReceiptDialogLoading(true); setReceiptDialogOpen(true);
+                                const { data } = await supabase.from('hostel_receipts').select('*').eq('booking_id', b.bookingId).order('created_at', { ascending: true });
+                                setReceiptDialogData(data || []);
+                                const methods = (data || []).map((r: any) => r.payment_method);
+                                const labels = await resolvePaymentMethodLabels(methods);
+                                setCustomLabels(prev => ({ ...prev, ...labels }));
+                                setReceiptDialogLoading(false);
+                              }}>
+                              <IndianRupee className="h-2.5 w-2.5" /> Receipts
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
+                              onClick={() => openTransferDialog(b.bookingId)}>
+                              <ArrowRightLeft className="h-2.5 w-2.5" /> Transfer
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
+                              onClick={() => { setDateEditBooking({ ...b, id: b.bookingId }); setDateEditOpen(true); }}>
+                              <Pencil className="h-2.5 w-2.5" /> Edit Dates
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-amber-600"
+                              onClick={() => { setActionBookingId(b.bookingId); setReleaseDialogOpen(true); }}>
+                              <LogOut className="h-2.5 w-2.5" /> Release
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-destructive"
+                              onClick={() => { setActionBookingId(b.bookingId); setCancelDialogOpen(true); }}>
+                              <XCircle className="h-2.5 w-2.5" /> Cancel
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
@@ -1777,18 +1854,37 @@ const HostelBedMap: React.FC = () => {
                           <span className="text-red-500">Due: ₹{b.paymentStatus === 'completed' ? 0 : b.remainingAmount}</span>
                         </div>
                         {b.serialNumber && <div className="font-medium text-primary">#{b.serialNumber}</div>}
-                        <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
-                          onClick={async () => {
-                            setReceiptDialogLoading(true); setReceiptDialogOpen(true);
-                            const { data } = await supabase.from('hostel_receipts').select('*').eq('booking_id', b.bookingId).order('created_at', { ascending: true });
-                            setReceiptDialogData(data || []);
-                            const methods = (data || []).map((r: any) => r.payment_method);
-                            const labels = await resolvePaymentMethodLabels(methods);
-                            setCustomLabels(prev => ({ ...prev, ...labels }));
-                            setReceiptDialogLoading(false);
-                          }}>
-                          <IndianRupee className="h-2.5 w-2.5" /> Receipts
-                        </Button>
+                        {/* Action buttons row */}
+                        <div className="flex gap-1.5 mt-1 flex-wrap">
+                          <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
+                            onClick={async () => {
+                              setReceiptDialogLoading(true); setReceiptDialogOpen(true);
+                              const { data } = await supabase.from('hostel_receipts').select('*').eq('booking_id', b.bookingId).order('created_at', { ascending: true });
+                              setReceiptDialogData(data || []);
+                              const methods = (data || []).map((r: any) => r.payment_method);
+                              const labels = await resolvePaymentMethodLabels(methods);
+                              setCustomLabels(prev => ({ ...prev, ...labels }));
+                              setReceiptDialogLoading(false);
+                            }}>
+                            <IndianRupee className="h-2.5 w-2.5" /> Receipts
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
+                            onClick={() => openTransferDialog(b.bookingId)}>
+                            <ArrowRightLeft className="h-2.5 w-2.5" /> Transfer
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
+                            onClick={() => { setDateEditBooking({ ...b, id: b.bookingId }); setDateEditOpen(true); }}>
+                            <Pencil className="h-2.5 w-2.5" /> Edit Dates
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-amber-600"
+                            onClick={() => { setActionBookingId(b.bookingId); setReleaseDialogOpen(true); }}>
+                            <LogOut className="h-2.5 w-2.5" /> Release
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-destructive"
+                            onClick={() => { setActionBookingId(b.bookingId); setCancelDialogOpen(true); }}>
+                            <XCircle className="h-2.5 w-2.5" /> Cancel
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1867,6 +1963,55 @@ const HostelBedMap: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ──── Release Bed Confirmation ──── */}
+      <AlertDialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Release Bed</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will terminate the booking and free the bed immediately. The student will no longer have access. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReleaseBed} disabled={actionLoading} className="bg-amber-600 hover:bg-amber-700">
+              {actionLoading ? 'Releasing...' : 'Release Bed'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ──── Cancel Booking Confirmation ──── */}
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Booking</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will cancel the booking, free the bed, and cancel any pending dues. Transaction history will be preserved. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelHostelBooking} disabled={actionLoading} className="bg-destructive hover:bg-destructive/90">
+              {actionLoading ? 'Cancelling...' : 'Cancel Booking'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ──── Date Edit Dialog ──── */}
+      {dateEditBooking && (
+        <BookingUpdateDatesDialog
+          open={dateEditOpen}
+          onOpenChange={setDateEditOpen}
+          bookingId={dateEditBooking.id || dateEditBooking.bookingId}
+          booking={dateEditBooking}
+          bookingType="hostel"
+          currentEndDate={new Date(dateEditBooking.endDate)}
+          onExtensionComplete={() => { fetchBeds(); setSheetOpen(false); }}
+        />
+      )}
     </div>
   );
 };
