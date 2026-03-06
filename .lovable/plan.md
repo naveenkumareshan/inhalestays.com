@@ -1,43 +1,50 @@
 
 
-# Plan: SaaS-Style Dashboard Density Refinement
+# Plan: Redesign Partner Management — Property-Centric View
 
-## Problem
-The admin dashboard text sizes are too large — headings, card titles, table text, and chart labels need to be tighter and more compact to feel like a modern SaaS analytics dashboard.
+## Current State
+The "All Partners" page (`VendorApproval.tsx`) shows a flat table of partners with basic info (business name, contact, status). Properties are only visible after clicking "View" and navigating to the "Properties" tab inside a dialog. This makes it hard to get a complete picture at a glance.
+
+## Redesigned Approach
+Replace the flat table with an **expandable card/accordion layout** where each partner row can be expanded inline to reveal all their properties (Reading Rooms + Hostels) with key metrics — no dialog needed for the overview.
 
 ## Changes
 
-### 1. `src/pages/AdminDashboard.tsx`
-- Reduce header padding from `p-4` to `p-3`
-- Title `text-lg` → `text-sm font-semibold`
-- Greeting text already `text-xs` — keep as-is
-- Tab triggers: `text-sm` → `text-xs`
-- Tab content padding: `p-4` → `p-3`
+### `src/components/admin/VendorApproval.tsx` — Full Redesign
 
-### 2. `src/components/admin/DynamicStatisticsCards.tsx`
-- Stat value `text-xl` → `text-lg`
-- Label `text-xs` → `text-[11px]`
-- Icon container `h-8 w-8` → `h-7 w-7`, icon `h-4 w-4` → `h-3.5 w-3.5`
-- Card inner padding `p-3` → `p-2.5`
+**New Layout:**
+- Each partner renders as a compact card row with:
+  - Business name, contact person, email, phone, status badge, joined date
+  - **Property count pills**: e.g. `2 Reading Rooms · 1 Hostel` inline
+  - Action buttons (approve/reject/suspend, payout settings, view details)
+- **Expandable section** (Collapsible): clicking a partner row expands to show:
+  - A compact table/grid of their properties with columns: Name, Type, Location, Capacity, Active Bookings, Seats/Beds, Status (approved/pending), Active toggle
+  - Quick stats row: Total Revenue, Active Students, Occupancy %
+- Keep the existing filters (status, business type, search) and pagination
+- Keep VendorDetailsDialog for deep-dive editing (basic/business/bank/documents/actions tabs)
 
-### 3. `src/components/admin/DashboardStatistics.tsx`
-- "Top Filling Reading Rooms" title `text-lg` → `text-sm`
-- Table header text: add `text-xs`
-- Table cell text: add `text-xs` where missing
-- Mobile card text already compact — keep
+**Data Fetching:**
+- After fetching partners, batch-fetch all cabins + hostels grouped by `created_by`
+- Also fetch booking counts per property for the inline stats
+- Store as a `Map<partner_user_id, PropertyInfo[]>` for O(1) lookup during render
 
-### 4. `src/components/admin/RevenueChart.tsx`
-- Card title already `text-sm` — keep
-- Chart height `h-[220px]` → `h-[200px]`
+**Stats Cards:**
+- Keep existing `VendorStatsCards` at top
 
-### 5. `src/components/admin/OccupancyChart.tsx`
-- Same as RevenueChart — reduce height to `h-[200px]`
+### No new files needed — this is a rewrite of `VendorApproval.tsx`
 
-### 6. `src/components/admin/DashboardExpiringBookings.tsx`
-- Title `text-lg` → `text-sm`
-- Student name `font-medium` → `text-xs font-medium`
-- Cabin info `text-sm` → `text-xs`
-- Badge text: add `text-[10px]`
+### `src/components/admin/VendorStatsCards.tsx` — Minor tweak
+- Add "Total Properties" stat card showing combined cabin + hostel count
 
-All changes maintain readability while achieving a tighter, high-density SaaS dashboard feel consistent with the admin panel standardization pattern.
+## Key UI Elements
+- Use `Collapsible` from radix for expand/collapse per partner
+- Property rows inside use a mini `Table` with `text-[11px]` density
+- Color-coded property type badges (blue for Reading Room, purple for Hostel)
+- Active/inactive status shown with green/gray dot indicators
+- Occupancy shown as a small progress bar
+
+## Files to Modify
+| File | Change |
+|------|--------|
+| `src/components/admin/VendorApproval.tsx` | Complete redesign with expandable partner cards showing inline properties |
 
