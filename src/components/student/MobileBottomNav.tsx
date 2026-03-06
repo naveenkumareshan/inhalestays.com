@@ -79,7 +79,7 @@ export const MobileBottomNav: React.FC = () => {
                   className={cn('w-6 h-6 transition-transform', active && 'scale-[1.15]')}
                   strokeWidth={active ? 2.5 : 1.75}
                 />
-                <span className={cn('text-[11px] leading-tight', active ? 'font-semibold' : 'font-medium')}>
+                <span className={cn('text-[10px] leading-tight whitespace-nowrap', active ? 'font-semibold' : 'font-medium')}>
                   {tab.label}
                 </span>
               </div>
