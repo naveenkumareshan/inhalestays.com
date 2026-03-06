@@ -1,19 +1,21 @@
 
 
-# Fix: Bottom Nav Tabs Overlapping
+# Fix: Bottom Nav Tabs Still Overlapping
 
-## Issue
-The 5 tabs with `flex-1` equal widths and `px-3` padding cause the active tab's `bg-primary/10` background pill to overlap adjacent tabs, especially "Study Rooms" which has a longer label. The `whitespace-nowrap` prevents wrapping but the content overflows into neighboring tabs.
+## Root Cause
+The active tab's background pill (`bg-primary/10` on the inner `div`) combined with `px-1.5` padding still causes overflow because the `div` isn't constrained to the parent `flex-1` width. The inner div can grow beyond the flex item boundary.
 
 ## Fix
 
 ### `src/components/student/MobileBottomNav.tsx`
-- Reduce inner padding from `px-3` to `px-1.5` so the active background pill stays within bounds
-- Reduce icon size from `w-6 h-6` to `w-5 h-5` to give more breathing room
-- Reduce `min-h` from `64px` to `56px` for a more compact nav
-- Use `text-[9px]` for labels to ensure "Study Rooms" fits without overlapping
+- Add `overflow-hidden` to each `Link` (the `flex-1` container) so children can't visually overflow
+- Add `w-full` and `overflow-hidden` to the inner `div` to constrain the background pill
+- Remove `px-1.5` padding from inner div (replace with `px-0.5`) to keep it tight
+- Remove `scale-[1.1]` on active icon (scaling contributes to overflow)
+
+These changes ensure each tab is strictly contained within its 20% width allocation.
 
 | File | Change |
 |------|--------|
-| `src/components/student/MobileBottomNav.tsx` | Reduce padding, icon size, and font size to prevent overlap |
+| `src/components/student/MobileBottomNav.tsx` | Add overflow-hidden to Link and inner div, reduce padding, remove scale |
 
