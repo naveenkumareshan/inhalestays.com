@@ -1,54 +1,29 @@
 
 
-# Plan: Add Consistent Search Bar to All Three Marketplaces
+## Analysis
 
-## Current State
-- **Cabins (Reading Rooms)**: No search bar — only category filter pills
-- **Hostels**: Has a search bar + filter drawer (different pattern)
-- **Mess**: No search bar — only food-type filter pills
+The search bar on the Reading Rooms page (`/cabins`) works as a **client-side filter** — it filters the already-loaded cabins list by name/area/city as you type. There is no search button or API call triggered by the search input.
 
-## Changes
+The issue is that the page currently has **no cabins loaded from the database**, so typing in the search bar filters an empty list and shows nothing. The search itself is functioning correctly, but with no data to filter, it appears broken.
 
-### Consistent Search Bar Pattern
-Add a compact search input between the title and filter pills in all three pages. Same styling:
-```
-Search icon (left) | placeholder text | h-8 rounded-xl border text-[12px]
-```
+### Two Options
 
-### 1. `src/pages/Cabins.tsx`
-- Add `searchQuery` state
-- Add search input after `<h1>`, before filter pills
-- Filter cabins by name/area/city client-side before passing to `CabinsGrid`
+**Option A (Quick fix):** The search is already working. The "No reading rooms found" message appears because no reading rooms exist in the database yet. No code change needed — just add data.
 
-### 2. `src/pages/Hostels.tsx`
-- Already has `searchQuery` state and filtering logic
-- **Remove** the Sheet drawer, filter button, draft state, and active filter chips
-- **Replace** with inline gender filter pills (matching Cabins pattern)
-- Keep search bar but restyle to match the new compact pattern
+**Option B (Enhancement):** Add a visible search button that triggers an API-based search (like `CabinSearch.tsx` does), so the search input calls `cabinsService.getAllCabins({ search: query })` on Enter/button click, making it behave like a real server-side search.
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Add `searchQuery` state
-- Add search input after `<h1>`, before filter pills
-- Filter messes by name/location client-side
+## Recommended Plan — Option B
 
-### Search Input Template (identical across all three)
-```tsx
-<div className="relative mb-2">
-  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-  <input
-    type="text"
-    placeholder="Search..."
-    value={searchQuery}
-    onChange={(e) => setSearchQuery(e.target.value)}
-    className="w-full h-8 pl-8 pr-3 rounded-xl border border-border bg-card text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-  />
-</div>
-```
+### `src/pages/Cabins.tsx`
+- Add a search icon button or trigger search on Enter key press
+- Call `cabinsService.getAllCabins({ search: searchQuery, category: filter })` when the user submits a search query
+- Include the search query in the `useEffect` dependency array so it re-fetches when search changes (debounced)
+- Show a clear (X) button when search text is present to reset
+
+This matches how `CabinSearch.tsx` already handles API-based search with its `handleQuickSearch` function.
 
 ### Files Modified
 | File | Change |
 |------|--------|
-| `src/pages/Cabins.tsx` | Add search state + search input + client-side name filtering |
-| `src/pages/Hostels.tsx` | Remove Sheet/drawer, replace with inline pills + consistent search bar |
-| `src/pages/MessMarketplace.tsx` | Add search state + search input + client-side name filtering |
+| `src/pages/Cabins.tsx` | Add API-based search on Enter + include search in fetch dependencies |
 
