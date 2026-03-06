@@ -2426,9 +2426,12 @@ export type Database = {
           description: string
           food_type: string
           id: string
+          images: Json | null
           is_active: boolean
           is_approved: boolean
+          is_booking_active: boolean
           location: string
+          logo_image: string | null
           name: string
           opening_days: Json
           serial_number: string | null
@@ -2442,9 +2445,12 @@ export type Database = {
           description?: string
           food_type?: string
           id?: string
+          images?: Json | null
           is_active?: boolean
           is_approved?: boolean
+          is_booking_active?: boolean
           location?: string
+          logo_image?: string | null
           name: string
           opening_days?: Json
           serial_number?: string | null
@@ -2458,9 +2464,12 @@ export type Database = {
           description?: string
           food_type?: string
           id?: string
+          images?: Json | null
           is_active?: boolean
           is_approved?: boolean
+          is_booking_active?: boolean
           location?: string
+          logo_image?: string | null
           name?: string
           opening_days?: Json
           serial_number?: string | null

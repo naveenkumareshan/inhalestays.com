@@ -284,39 +284,27 @@ export function AdminSidebar() {
   if (user?.role === 'admin' || (isPartner && propertyTypes.hasMess)) {
     const messSubItems: MenuItem[] = [
       {
-        title: 'Mess Profile',
-        url: `${routePrefix}/mess?tab=profile`,
+        title: 'Manage Mess',
+        url: `${routePrefix}/mess`,
         icon: UtensilsCrossed,
         roles: ['admin', 'vendor', 'vendor_employee'],
       },
       {
-        title: 'Meal Packages',
-        url: `${routePrefix}/mess?tab=packages`,
-        icon: CreditCard,
-        roles: ['admin', 'vendor', 'vendor_employee'],
-      },
-      {
-        title: 'Timings & Menu',
-        url: `${routePrefix}/mess?tab=menu`,
-        icon: Clock,
-        roles: ['admin', 'vendor', 'vendor_employee'],
-      },
-      {
         title: 'Subscriptions',
-        url: `${routePrefix}/mess?tab=subscriptions`,
+        url: `${routePrefix}/mess-bookings`,
         icon: Users,
         roles: ['admin', 'vendor', 'vendor_employee'],
       },
       {
-        title: 'Attendance',
-        url: `${routePrefix}/mess?tab=attendance`,
-        icon: ClipboardCheck,
+        title: 'Receipts',
+        url: `${routePrefix}/mess-receipts`,
+        icon: CreditCard,
         roles: ['admin', 'vendor', 'vendor_employee'],
       },
       {
-        title: 'Revenue',
-        url: `${routePrefix}/mess?tab=revenue`,
-        icon: Wallet,
+        title: 'Attendance',
+        url: `${routePrefix}/mess-attendance`,
+        icon: ClipboardCheck,
         roles: ['admin', 'vendor', 'vendor_employee'],
       },
       ...(!isPartner ? [{

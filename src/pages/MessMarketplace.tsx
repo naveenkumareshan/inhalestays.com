@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { getImageUrl } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -131,21 +132,36 @@ export default function MessMarketplace() {
       {messes.length === 0 ? (
         <Card><CardContent className="py-8 text-center text-muted-foreground">No mess partners available yet.</CardContent></Card>
       ) : (
-        <div className="grid gap-4">
-          {messes.map(m => (
-            <Card key={m.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => openDetail(m)}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold text-lg">{m.name}</h3>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1"><MapPin className="h-3 w-3" /> {m.location}</p>
-                    {m.description && <p className="text-sm mt-2 line-clamp-2">{m.description}</p>}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {messes.map(m => {
+            const mainImage = m.logo_image || (m.images && m.images[0]) || '/placeholder.svg';
+            return (
+              <Card key={m.id} className="cursor-pointer hover:shadow-md transition-shadow overflow-hidden group" onClick={() => openDetail(m)}>
+                <div className="relative">
+                  <div className="aspect-video w-full overflow-hidden bg-muted">
+                    <img
+                      src={getImageUrl(mainImage)}
+                      alt={m.name}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
+                    />
                   </div>
-                  <Badge variant="outline">{FOOD_LABELS[m.food_type] || m.food_type}</Badge>
+                  <span className={`absolute top-2 right-2 text-xs font-medium px-2 py-0.5 rounded-full ${
+                    m.food_type === 'veg' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                    m.food_type === 'non_veg' ? 'bg-red-50 text-red-700 border border-red-200' :
+                    'bg-amber-50 text-amber-700 border border-amber-200'
+                  }`}>
+                    {FOOD_LABELS[m.food_type] || m.food_type}
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+                <CardContent className="p-4">
+                  <h3 className="font-semibold text-sm">{m.name}</h3>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><MapPin className="h-3 w-3" /> {m.location}</p>
+                  {m.description && <p className="text-xs mt-2 line-clamp-2 text-muted-foreground">{m.description}</p>}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
