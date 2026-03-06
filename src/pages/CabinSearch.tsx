@@ -73,9 +73,22 @@ const CabinSearch = () => {
   const [lastSearchFilters, setLastSearchFilters] = useState<SearchFilters | null>(null);
   const [limit] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState<SearchFilters>(defaultFilters);
   const [activeFilters, setActiveFilters] = useState<SearchFilters>(defaultFilters);
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Auto-search when debounced query changes
+  useEffect(() => {
+    const filters = { ...activeFilters, query: debouncedQuery };
+    handleSearch(filters);
+  }, [debouncedQuery]);
 
   const { mergeListings, trackImpression, trackClick } = useSponsoredListings({
     propertyType: 'reading_room',
@@ -172,21 +185,7 @@ const CabinSearch = () => {
     setDraftFilters(defaultFilters);
   };
 
-  useEffect(() => {
-    const loadInitialCabins = async () => {
-      try {
-        setLoading(true);
-        const response = await cabinsService.getAllCabins({ page: 1, limit });
-        if (response.success) {
-          setSearchResults(response.data || []);
-          setTotalPages(response.totalPages || 1);
-          setHasMore((response.totalPages || 1) > 1);
-        }
-      } catch (error) { console.error('Error loading initial cabins:', error); }
-      finally { setLoading(false); }
-    };
-    loadInitialCabins();
-  }, []);
+  // Initial load handled by debouncedQuery useEffect above
 
   return (
     <div className="min-h-screen bg-background">

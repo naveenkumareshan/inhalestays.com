@@ -34,7 +34,13 @@ const tabs = [
     label: 'Profile',
     icon: User,
     to: '/student/profile',
-    isActive: (pathname: string) => pathname.startsWith('/student'),
+    isActive: (pathname: string) =>
+      pathname === '/student' ||
+      pathname === '/student/profile' ||
+      pathname.startsWith('/student/profile/') ||
+      pathname === '/student/dashboard' ||
+      pathname.startsWith('/student/bookings') ||
+      pathname === '/student/laundry-orders',
     requireAuth: true,
   },
 ];
