@@ -1,28 +1,44 @@
 
 
-# Fix: Employee Seat Map Shows 0 Seats After Login
+# Fix: Seats Disappearing After Bookings
 
 ## Root Cause
 
-The `VendorSeats` component fetches cabins in a `useEffect([], [])` that runs once on mount. Inside `getVendorCabins()`, it calls `getEffectiveOwnerId()` which calls `supabase.auth.getUser()`. On fresh login, there's a race condition where the Supabase session token may not be fully propagated when this first request fires, causing the query to silently return 0 results. Since `cabins` stays empty, `fetchSeats` early-returns (`cabins.length === 0`), showing "0 seats."
+The `getSeatsForDate` function in `vendorSeatsService.ts` uses `.in('seat_id', seatIds)` for the bookings and seat_block_history queries. The ISSM partner has **401 seats** in "Toppers reading room". With 401 UUIDs in the `.in()` clause, the resulting GET URL exceeds PostgREST's ~8KB URL limit, causing a network-level failure. Since the error occurs inside `Promise.all`, the entire function throws and returns `{ success: false }`. On the initial load, `seats` stays at `[]` (initial state). After a few successful operations or navigations, the issue compounds because every `fetchSeats()` call fails silently.
 
-Additionally, two module-level caches (`roleCache` in AuthContext and `cachedResult` in `getEffectiveOwnerId`) are **never cleared on logout**, which can cause stale data across sessions.
+Additionally, `getVendorCabins` makes a network call via `supabase.auth.getUser()` which can fail during rapid operations (token refresh, rate limiting), causing cabins to fail to load and `fetchSeats` to early-return due to `cabins.length === 0`.
 
 ## Fix
 
-### 1. Clear caches on logout (`src/contexts/AuthContext.tsx`)
-- Import `clearEffectiveOwnerCache` and call it in the `logout` function
-- Clear `roleCache` on logout as well
+### 1. Replace `.in('seat_id', seatIds)` with `.in('cabin_id', cabinIds)` for bookings (`vendorSeatsService.ts`)
 
-### 2. Re-fetch cabins when user changes (`src/pages/vendor/VendorSeats.tsx`)
-- Add `user?.id` to the cabin-fetching `useEffect` dependency array so it re-runs when auth state settles
-- This ensures that if the first fetch fires before auth is ready (returning 0 cabins), it automatically retries once the user object is set
+The `bookings` table has a `cabin_id` column. Instead of filtering by 401 seat IDs, filter by 1-2 cabin IDs. This keeps the URL small regardless of seat count.
 
-### 3. Add error handling for getEffectiveOwnerId failure (`src/api/vendorSeatsService.ts`)
-- If `getEffectiveOwnerId()` throws (user not authenticated yet), catch and retry or skip the `created_by` filter, letting RLS handle access control alone
+```typescript
+// Before: .in('seat_id', seatIds) — 401 UUIDs = 15KB URL → FAIL
+// After:  .in('cabin_id', cabinIds) — 1-2 UUIDs = tiny URL
+```
+
+Extract `cabinIds` from `seatsData` (unique `cabin_id` values) and use that for the bookings query.
+
+### 2. Batch `.in('seat_id', ...)` for seat_block_history (`vendorSeatsService.ts`)
+
+`seat_block_history` has no `cabin_id` column, so batch the seat IDs into chunks of 50, make parallel queries, and merge results.
+
+### 3. Replace `getUser()` with `getSession()` in `getVendorCabins` (`vendorSeatsService.ts`)
+
+`supabase.auth.getUser()` makes a network call that can fail. `supabase.auth.getSession()` reads from local storage — instant and reliable. Use `session.user` instead.
+
+### 4. Refresh button also re-fetches cabins (`VendorSeats.tsx`)
+
+Currently the refresh button only calls `fetchSeats()`, which early-returns if `cabins.length === 0`. If cabins failed to load, refresh never recovers. Fix: make the refresh button also re-fetch cabins if they're empty.
+
+### 5. Add error handling for bookings/blocks sub-queries (`vendorSeatsService.ts`)
+
+Currently `bookingsRes.error` and `blocksRes.error` are never checked. If they fail, `data` is null and silently becomes `[]`. Add explicit error logging so these failures are visible during debugging.
 
 ## Files Changed
-- `src/contexts/AuthContext.tsx` — Clear `roleCache` and `effectiveOwnerCache` on logout
-- `src/pages/vendor/VendorSeats.tsx` — Add `user?.id` dependency to cabin fetch useEffect
-- `src/api/vendorSeatsService.ts` — Graceful fallback when `getEffectiveOwnerId` fails
+
+- **`src/api/vendorSeatsService.ts`** — Use `cabin_id` for bookings filter; batch seat_block_history; replace `getUser()` with `getSession()`; add sub-query error handling
+- **`src/pages/vendor/VendorSeats.tsx`** — Refresh button re-fetches cabins when empty
 
