@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
-import { Users, Check, X, AlertTriangle, TrendingUp, Clock1 } from 'lucide-react';
+import { Users, Check, X, AlertTriangle, Clock1, Building } from 'lucide-react';
 import { vendorApprovalService } from '@/api/vendorApprovalService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VendorStats {
   totalVendors: number;
@@ -23,6 +24,7 @@ export const VendorStatsCards: React.FC = () => {
     totalRevenue: 0,
     monthlyGrowth: 0
   });
+  const [totalProperties, setTotalProperties] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,17 +32,22 @@ export const VendorStatsCards: React.FC = () => {
   }, []);
 
   const fetchStats = async () => {
-    const result = await vendorApprovalService.getVendorStats();
+    const [result, cabinsRes, hostelsRes] = await Promise.all([
+      vendorApprovalService.getVendorStats(),
+      supabase.from('cabins').select('id', { count: 'exact', head: true }),
+      supabase.from('hostels').select('id', { count: 'exact', head: true }),
+    ]);
     if (result.success) {
       setStats(result.data.data);
     }
+    setTotalProperties((cabinsRes.count || 0) + (hostelsRes.count || 0));
     setLoading(false);
   };
 
   if (loading) {
     return (
-      <div className="grid grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+        {Array.from({ length: 6 }).map((_, i) => (
           <Card key={i} className="shadow-none border">
             <div className="p-3">
               <div className="animate-pulse">
@@ -60,10 +67,11 @@ export const VendorStatsCards: React.FC = () => {
     { label: 'Approved', value: stats.approvedVendors, icon: Check, color: 'text-green-600' },
     { label: 'Rejected', value: stats.rejectedVendors, icon: X, color: 'text-red-600' },
     { label: 'Suspended', value: stats.suspendedVendors, icon: AlertTriangle, color: 'text-yellow-600' },
+    { label: 'Properties', value: totalProperties, icon: Building, color: 'text-indigo-600' },
   ];
 
   return (
-    <div className="grid grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+    <div className="grid grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
       {cards.map((card) => (
         <Card key={card.label} className="shadow-none border">
           <div className="p-3">
