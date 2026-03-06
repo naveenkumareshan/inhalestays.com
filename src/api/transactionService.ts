@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface TransactionData {
   bookingId: string;
-  bookingType: 'cabin' | 'hostel' | 'laundry';
+  bookingType: 'cabin' | 'hostel' | 'laundry' | 'mess';
   transactionType: 'booking' | 'renewal' | 'cancellation';
   amount: number;
   currency: string;

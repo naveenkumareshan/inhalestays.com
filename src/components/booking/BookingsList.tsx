@@ -34,7 +34,7 @@ interface BookingDisplay {
     couponValue: number;
   };
   paymentStatus: 'pending' | 'completed' | 'failed';
-  bookingType: 'cabin' | 'hostel' | 'laundry';
+  bookingType: 'cabin' | 'hostel' | 'laundry' | 'mess';
   itemName: string;
   itemNumber: number;
   itemImage?: string;
@@ -200,6 +200,9 @@ export const BookingsList = ({
                     {booking.bookingType === 'hostel' && (
                       <p className="text-[10px] text-muted-foreground">Bed #{booking.itemNumber}</p>
                     )}
+                    {booking.bookingType === 'mess' && (booking as any).messPackageName && (
+                      <p className="text-[10px] text-muted-foreground">{(booking as any).messPackageName}</p>
+                    )}
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
                     {booking.bookingStatus === 'transferred' && (
@@ -331,9 +334,9 @@ export const BookingsList = ({
 
               {['completed', 'advance_paid'].includes(booking.paymentStatus) && (
                 <>
-                  <Link to={`/student/bookings/${(booking as any).serial_number || booking.id}`} className="flex-1">
+                  <Link to={booking.bookingType === 'mess' ? '/student/mess' : `/student/bookings/${(booking as any).serial_number || booking.id}`} className="flex-1">
                     <Button variant="outline" size="sm" className="w-full h-8 text-[12px] rounded-xl gap-1">
-                      <Eye className="h-3.5 w-3.5" /> View Details
+                      <Eye className="h-3.5 w-3.5" /> {booking.bookingType === 'mess' ? 'View Subscription' : 'View Details'}
                     </Button>
                   </Link>
                   {showRenewalOption && canRenew(booking) && (

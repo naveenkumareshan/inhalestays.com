@@ -10,7 +10,7 @@ export interface RazorpayCheckoutProps {
   appliedCoupon?:any;
   bookingId: string;
   endDate: Date,
-  bookingType: 'cabin' | 'hostel' | 'laundry';
+  bookingType: 'cabin' | 'hostel' | 'laundry' | 'mess';
   bookingDuration?: 'daily' | 'weekly' | 'monthly';
   durationCount?: number;
   onSuccess: (response: any) => void;

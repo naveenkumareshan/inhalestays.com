@@ -4,7 +4,7 @@ export interface RazorpayOrderParams {
   amount: number;
   currency: string;
   bookingId: string;
-  bookingType: 'cabin' | 'hostel' | 'laundry';
+  bookingType: 'cabin' | 'hostel' | 'laundry' | 'mess';
   bookingDuration?: 'daily' | 'weekly' | 'monthly';
   durationCount?: number;
   notes?: Record<string, any>;

@@ -7,8 +7,9 @@ import { BookingsList } from '@/components/booking/BookingsList';
 import { useToast } from '@/hooks/use-toast';
 import { bookingsService } from '@/api/bookingsService';
 import { hostelBookingService } from '@/api/hostelBookingService';
+import { getMyMessSubscriptions } from '@/api/messService';
 import { format } from 'date-fns';
-import { Calendar, Building, BookOpen, Plus, CreditCard, CheckCircle, Hotel } from 'lucide-react';
+import { Calendar, Building, BookOpen, Plus, CreditCard, CheckCircle, Hotel, UtensilsCrossed } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -33,7 +34,7 @@ interface Booking {
   seatPrice: number;
   status: 'pending' | 'completed' | 'failed';
   paymentStatus: 'pending' | 'completed' | 'failed';
-  bookingType: 'cabin' | 'hostel' | 'laundry';
+  bookingType: 'cabin' | 'hostel' | 'laundry' | 'mess';
   itemName: string;
   itemNumber: number;
   itemImage?: string;
@@ -97,10 +98,12 @@ const StudentBookings = () => {
     try {
       setIsLoading(true);
 
-      const [currentRes, historyRes, hostelBookingsRes] = await Promise.all([
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const [currentRes, historyRes, hostelBookingsRes, messSubscriptions] = await Promise.all([
         bookingsService.getCurrentBookings(),
         bookingsService.getBookingHistory(),
         hostelBookingService.getUserBookings(),
+        authUser ? getMyMessSubscriptions(authUser.id) : [],
       ]);
 
       const allCurrentRaw = currentRes.success ? currentRes.data : [];
@@ -186,6 +189,37 @@ const StudentBookings = () => {
 
       const hostelBookings = (hostelBookingsRes || []).map(mapHostelBooking);
 
+      // Map mess subscriptions
+      const mapMessSubscription = (sub: any) => ({
+        id: sub.id,
+        bookingId: sub.serial_number || sub.id?.substring(0, 8),
+        startDate: sub.start_date,
+        endDate: sub.end_date,
+        status: sub.payment_status,
+        createdAt: sub.created_at,
+        totalPrice: Number(sub.price_paid) || 0,
+        originalPrice: Number(sub.price_paid) || 0,
+        appliedCoupon: undefined,
+        seatPrice: Number(sub.price_paid) || 0,
+        cabinId: sub.mess_id,
+        paymentStatus: sub.payment_status || 'completed',
+        bookingType: 'mess' as const,
+        itemName: sub.mess_partners?.name || 'Mess',
+        itemNumber: 0,
+        itemImage: sub.mess_partners?.logo_image,
+        bookingStatus: sub.status,
+        location: sub.mess_partners?.location,
+        cabinAddress: '',
+        lockerPrice: 0,
+        keyDeposit: undefined,
+        cabinCode: sub.mess_id || '',
+        transferredHistory: null,
+        serial_number: sub.serial_number,
+        messPackageName: sub.mess_packages?.name,
+      });
+
+      const messBookings = (messSubscriptions || []).map(mapMessSubscription);
+
       const today = new Date().toISOString().split('T')[0];
       const ONE_HOUR = 60 * 60 * 1000;
 
@@ -198,23 +232,29 @@ const StudentBookings = () => {
         return true;
       };
 
-      // Merge cabin current + hostel current
+      // Merge cabin current + hostel current + mess current
       const mappedCurrent = allCurrentRaw.map(mapBooking);
       const hostelCurrent = hostelBookings.filter((b: any) =>
         b.endDate >= today && !['failed', 'cancelled'].includes(b.bookingStatus)
       );
-      const allCurrent = [...mappedCurrent, ...hostelCurrent]
+      const messCurrent = messBookings.filter((b: any) =>
+        b.endDate >= today && !['cancelled', 'paused'].includes(b.bookingStatus)
+      );
+      const allCurrent = [...mappedCurrent, ...hostelCurrent, ...messCurrent]
         .filter(isNotStalePending)
         .map((b: any) => ({ ...b, dueAmount: duesMap.get(b.id) || 0 }))
         .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setCurrentBookings(allCurrent);
 
-      // Merge cabin past + hostel past
+      // Merge cabin past + hostel past + mess past
       const allHistory = allHistoryRaw.map(mapBooking);
       const hostelPast = hostelBookings.filter((b: any) =>
         b.endDate < today || ['failed', 'cancelled'].includes(b.bookingStatus)
       );
-      const allPast = [...allHistory, ...hostelPast]
+      const messPast = messBookings.filter((b: any) =>
+        b.endDate < today || ['cancelled', 'paused'].includes(b.bookingStatus)
+      );
+      const allPast = [...allHistory, ...hostelPast, ...messPast]
         .map((b: any) => ({ ...b, dueAmount: duesMap.get(b.id) || 0 }))
         .filter((b: Booking) =>
           (b.endDate < today && !['pending'].includes(b.paymentStatus)) ||
@@ -296,19 +336,27 @@ const StudentBookings = () => {
         <div className="flex gap-2 mb-4">
           <Button
             onClick={() => navigate('/cabins')}
-            className="flex-1 rounded-2xl py-3 shadow-sm bg-card text-primary border border-primary/20 hover:bg-primary/5 flex items-center gap-2 text-[13px]"
+            className="flex-1 rounded-2xl py-3 shadow-sm bg-card text-primary border border-primary/20 hover:bg-primary/5 flex items-center gap-1.5 text-[12px]"
             variant="outline"
           >
-            <Plus className="w-4 h-4" />
-            Book Reading Room
+            <Plus className="w-3.5 h-3.5" />
+            Reading Room
           </Button>
           <Button
             onClick={() => navigate('/hostels')}
-            className="flex-1 rounded-2xl py-3 shadow-sm bg-card text-primary border border-primary/20 hover:bg-primary/5 flex items-center gap-2 text-[13px]"
+            className="flex-1 rounded-2xl py-3 shadow-sm bg-card text-primary border border-primary/20 hover:bg-primary/5 flex items-center gap-1.5 text-[12px]"
             variant="outline"
           >
-            <Hotel className="w-4 h-4" />
-            Book Hostel
+            <Hotel className="w-3.5 h-3.5" />
+            Hostel
+          </Button>
+          <Button
+            onClick={() => navigate('/mess')}
+            className="flex-1 rounded-2xl py-3 shadow-sm bg-card text-primary border border-primary/20 hover:bg-primary/5 flex items-center gap-1.5 text-[12px]"
+            variant="outline"
+          >
+            <UtensilsCrossed className="w-3.5 h-3.5" />
+            Mess
           </Button>
         </div>
 

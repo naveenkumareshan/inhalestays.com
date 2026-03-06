@@ -5,7 +5,7 @@ export interface TransactionFilters {
   userId?: string;
   bookingId?: string;
   cabinId?: string;
-  bookingType?: 'cabin' | 'hostel' | 'laundry';
+  bookingType?: 'cabin' | 'hostel' | 'laundry' | 'mess';
   transactionType?: 'booking' | 'renewal' | 'cancellation' | 'refund';
   status?: 'pending' | 'completed' | 'failed' | 'cancelled';
   startDate?: string;
