@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,10 +30,24 @@ const MEAL_LABELS: Record<string, string> = { breakfast: 'Breakfast', lunch: 'Lu
 
 export default function MessManagement() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const userId = user?.role === 'vendor_employee' && user.vendorId ? user.vendorId : user?.id;
   const [loading, setLoading] = useState(true);
   const [mess, setMess] = useState<any>(null);
-  const [tab, setTab] = useState('profile');
+
+  const tabFromUrl = searchParams.get('tab') || 'profile';
+  const [tab, setTabState] = useState(tabFromUrl);
+
+  // Sync tab with URL
+  useEffect(() => {
+    const urlTab = searchParams.get('tab') || 'profile';
+    if (urlTab !== tab) setTabState(urlTab);
+  }, [searchParams]);
+
+  const setTab = (newTab: string) => {
+    setTabState(newTab);
+    setSearchParams({ tab: newTab }, { replace: true });
+  };
 
   // Profile form
   const [form, setForm] = useState({ name: '', location: '', description: '', contact_number: '', food_type: 'both', capacity: '' });

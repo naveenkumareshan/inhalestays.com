@@ -19,7 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useVendorEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
 import { Button } from '@/components/ui/button';
-import { 
+import {
   LayoutDashboard, 
   Calendar, 
   Building, 
@@ -49,7 +49,8 @@ import {
   Crown,
   Shirt,
   Activity,
-  UtensilsCrossed
+  UtensilsCrossed,
+  Clock
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight } from 'lucide-react';
@@ -281,11 +282,56 @@ export function AdminSidebar() {
 
   // ===== MESS / FOOD SECTION =====
   if (user?.role === 'admin' || (isPartner && propertyTypes.hasMess)) {
+    const messSubItems: MenuItem[] = [
+      {
+        title: 'Mess Profile',
+        url: `${routePrefix}/mess?tab=profile`,
+        icon: UtensilsCrossed,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      },
+      {
+        title: 'Meal Packages',
+        url: `${routePrefix}/mess?tab=packages`,
+        icon: CreditCard,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      },
+      {
+        title: 'Timings & Menu',
+        url: `${routePrefix}/mess?tab=menu`,
+        icon: Clock,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      },
+      {
+        title: 'Subscriptions',
+        url: `${routePrefix}/mess?tab=subscriptions`,
+        icon: Users,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      },
+      {
+        title: 'Attendance',
+        url: `${routePrefix}/mess?tab=attendance`,
+        icon: ClipboardCheck,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      },
+      {
+        title: 'Revenue',
+        url: `${routePrefix}/mess?tab=revenue`,
+        icon: Wallet,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      },
+      ...(!isPartner ? [{
+        title: 'Reviews',
+        url: '/admin/reviews?module=Mess',
+        icon: Star,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      }] : []) as MenuItem[],
+    ];
+
     menuItems.push({
       title: 'Mess / Food',
-      url: `${routePrefix}/mess`,
       icon: UtensilsCrossed,
       roles: ['admin', 'vendor', 'vendor_employee'],
+      subItems: messSubItems,
     });
   }
 
@@ -489,7 +535,14 @@ export function AdminSidebar() {
   const isActiveItem = (itemUrl?: string, subItems?: MenuItem[]) => {
     if (itemUrl && pathname === itemUrl) return true;
     if (subItems) {
-      return subItems.some(subItem => pathname === subItem.url);
+      return subItems.some(subItem => {
+        if (!subItem.url) return false;
+        const [subPath, subQuery] = subItem.url.split('?');
+        if (subQuery) {
+          return pathname === subPath && window.location.search.includes(subQuery);
+        }
+        return pathname === subItem.url;
+      });
     }
     return false;
   };
@@ -531,7 +584,11 @@ export function AdminSidebar() {
             <CollapsibleContent>
               <SidebarMenuSub>
                 {accessibleSubItems.map((subItem) => {
-                  const isActive = pathname === subItem.url || pathname.startsWith(subItem.url?.split('?')[0] || '____');
+                  const subPath = subItem.url?.split('?')[0] || '____';
+                  const subQuery = subItem.url?.includes('?') ? subItem.url.split('?')[1] : null;
+                  const isActive = subQuery
+                    ? pathname === subPath && window.location.search.includes(subQuery)
+                    : pathname === subItem.url;
                   return (
                     <SidebarMenuSubItem key={subItem.title}>
                       <SidebarMenuSubButton
