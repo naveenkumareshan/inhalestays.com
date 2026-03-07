@@ -29,12 +29,12 @@ const BankManagement: React.FC = () => {
   const fetchBankBalances = async () => {
     setLoading(true);
     try {
-      const tables = ['receipts', 'hostel_receipts', 'mess_receipts', 'laundry_receipts'] as const;
+      const tables = ['receipts', 'hostel_receipts', 'mess_receipts', 'laundry_receipts'];
 
       const results = await Promise.all(
         tables.map((table) =>
           supabase
-            .from(table)
+            .from(table as any)
             .select('amount, reconciled_bank_name')
             .eq('partner_user_id', partnerId!)
             .eq('reconciliation_status', 'approved')

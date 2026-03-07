@@ -377,7 +377,7 @@ export function AdminSidebar() {
       {
         title: 'Banks',
         url: `${routePrefix}/banks`,
-        icon: Building2,
+        icon: Building,
         roles: ['admin', 'vendor', 'vendor_employee'],
       },
     ],
