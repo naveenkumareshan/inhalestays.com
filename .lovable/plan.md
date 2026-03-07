@@ -1,71 +1,35 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
-
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+# Finance Reconciliation — Credit Date, Bank Name & Status Toggle
 
 ## Changes
 
 ### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+Add columns to all 4 receipt tables (`receipts`, `hostel_receipts`, `mess_receipts`, `laundry_receipts`):
+- `credit_date date` — the date money was credited to bank
+- `reconciled_bank_name text` — the bank name selected during approval
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### 2. Approve Dialog (replaces direct approve)
+Currently, clicking "Approve" calls `handleApprove` directly. Replace with an **Approve Dialog** that shows:
+- **Credit Date** picker (required, defaults to today, auto-closes on select)
+- **Bank Name** dropdown populated from `partner_payment_modes` for the property's partner (filtered to bank-type entries)
+- Confirm button saves `reconciliation_status = 'approved'`, `credit_date`, `reconciled_bank_name`, `reconciled_at`, `reconciled_by`
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### 3. Show Credit Date & Bank on Approved Tab
+Add two columns to the Approved tab table: **Credit Date** and **Bank Name**. Also add these fields to the mobile card view and CSV export.
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### 4. Status Toggle — Move Between Approved/Rejected
+On the **Approved** tab, add a "Reject" button on each row (moves it back to rejected with a reason dialog).
+On the **Rejected** tab, add an "Approve" button on each row (opens the approve dialog with credit date + bank selection).
+Both tabs get action columns, reusing the same approve dialog and reject dialog.
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+### 5. ReconciliationRow Interface Update
+Add `credit_date?: string` and `reconciled_bank_name?: string` to the interface, and fetch these fields in the query.
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
+### Files
 
 | File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+|---|---|
+| DB Migration | Add `credit_date`, `reconciled_bank_name` to 4 tables |
+| `src/pages/admin/Reconciliation.tsx` | Approve dialog with date+bank, show on approved tab, action buttons on all tabs |
 
