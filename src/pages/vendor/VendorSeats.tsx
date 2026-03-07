@@ -821,7 +821,7 @@ const VendorSeats: React.FC = () => {
           </Select>
         )}
 
-        <Popover>
+        <Popover open={selectedDateOpen} onOpenChange={setSelectedDateOpen}>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 text-xs gap-1 px-2">
               <CalendarIcon className="h-3 w-3" />
@@ -829,7 +829,7 @@ const VendorSeats: React.FC = () => {
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
-            <Calendar mode="single" selected={selectedDate} onSelect={(d) => d && setSelectedDate(d)} className="p-3 pointer-events-auto" />
+            <Calendar mode="single" selected={selectedDate} onSelect={(d) => { if (d) setSelectedDate(d); setSelectedDateOpen(false); }} className="p-3 pointer-events-auto" />
           </PopoverContent>
         </Popover>
 
