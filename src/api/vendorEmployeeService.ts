@@ -99,6 +99,7 @@ export const vendorEmployeeService = {
       if (updateData.permissions !== undefined) payload.permissions = updateData.permissions;
       if (updateData.status !== undefined) payload.status = updateData.status;
       if (updateData.salary !== undefined) payload.salary = updateData.salary;
+      if (updateData.allowed_properties !== undefined) payload.allowed_properties = updateData.allowed_properties;
 
       const { data, error } = await supabase
         .from('vendor_employees')
