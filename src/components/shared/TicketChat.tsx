@@ -17,6 +17,14 @@ interface TicketChatProps {
   currentUserId: string;
   /** Name to show for the ticket creator's initial description */
   creatorName?: string;
+  /** Optional WhatsApp number for direct contact */
+  whatsappNumber?: string;
+  /** Label for the WhatsApp button */
+  whatsappLabel?: string;
+  /** Ticket subject for pre-filled WhatsApp message */
+  ticketSubject?: string;
+  /** Ticket serial number for pre-filled WhatsApp message */
+  ticketSerialNumber?: string;
 }
 
 const TicketChat: React.FC<TicketChatProps> = ({
