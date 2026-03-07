@@ -53,6 +53,11 @@ export interface PartnerEmployeePermissions {
   // Legacy compat
   view_customers: boolean;
   manage_customers: boolean;
+  // Finance
+  view_reconciliation: boolean;
+  manage_reconciliation: boolean;
+  view_banks: boolean;
+  manage_banks: boolean;
   // Granular Reading Room Actions
   can_create_booking: boolean;
   can_renew_booking: boolean;
