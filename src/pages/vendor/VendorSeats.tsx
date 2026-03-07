@@ -1172,77 +1172,80 @@ const VendorSeats: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  {/* Action buttons: Renew, Book Future, Transfer, Block */}
-                  {canEdit && (selectedCabinInfo?.isActive !== false || user?.role === 'admin' || user?.role === 'super_admin') && (
+                  {/* Action buttons: Renew, Book Future, Block */}
+                  {(canRenewBooking || canBookFuture || canBlockSeat) && (selectedCabinInfo?.isActive !== false || user?.role === 'admin' || user?.role === 'super_admin') && (
                     <div className="grid grid-cols-3 gap-2">
-                      <Button
-                        size="sm"
-                        className="h-8 text-xs gap-1"
-                        onClick={() => {
-                          const endDate = new Date(selectedSeat.currentBooking!.endDate);
-                          const today = new Date();
-                          today.setHours(0,0,0,0);
-                          endDate.setHours(0,0,0,0);
-                          
-                          // Find latest end date across all bookings for this seat (allow pre-booking renewals)
-                          const allBookings = [...currentBookings, ...futureBookings];
-                          let latestEnd = endDate;
-                          allBookings.forEach(b => {
-                            const bEnd = new Date(b.endDate);
-                            bEnd.setHours(0,0,0,0);
-                            if (bEnd > latestEnd) latestEnd = bEnd;
-                          });
-                          const nextDay = addDays(latestEnd, 1);
-
-                          setBookingStartDate(nextDay);
-                          setBookingPrice(String(selectedSeat.price));
-                          // Pre-select same student
-                          if (selectedSeat.currentBooking) {
-                            setSelectedStudent({
-                              id: selectedSeat.currentBooking.userId,
-                              name: selectedSeat.currentBooking.studentName,
-                              email: selectedSeat.currentBooking.studentEmail,
-                              phone: selectedSeat.currentBooking.studentPhone,
-                              serialNumber: '',
-                              profilePicture: selectedSeat.currentBooking.profilePicture,
+                      {canRenewBooking && (
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs gap-1"
+                          onClick={() => {
+                            const endDate = new Date(selectedSeat.currentBooking!.endDate);
+                            const today = new Date();
+                            today.setHours(0,0,0,0);
+                            endDate.setHours(0,0,0,0);
+                            
+                            const allBookings = [...currentBookings, ...futureBookings];
+                            let latestEnd = endDate;
+                            allBookings.forEach(b => {
+                              const bEnd = new Date(b.endDate);
+                              bEnd.setHours(0,0,0,0);
+                              if (bEnd > latestEnd) latestEnd = bEnd;
                             });
-                          setStudentQuery(selectedSeat.currentBooking.studentName);
-                          }
-                          setIsRenewMode(true);
-                          setLockerIncluded(false);
-                          setShowFutureBooking(true);
-                        }}
-                      >
-                        <RotateCcw className="h-3 w-3" /> Renew
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="h-8 text-xs gap-1"
-                        onClick={() => {
-                          // Find latest end date across all current + future bookings
-                          const allBookings = [...currentBookings, ...futureBookings];
-                          let latestEnd = new Date(selectedSeat.currentBooking!.endDate);
-                          allBookings.forEach(b => {
-                            const bEnd = new Date(b.endDate);
-                            if (bEnd > latestEnd) latestEnd = bEnd;
-                          });
-                          const nextDay = addDays(latestEnd, 1);
-                          setBookingStartDate(nextDay);
-                          setBookingPrice(String(selectedSeat.price));
-                          setIsRenewMode(false);
-                          setShowFutureBooking(true);
-                        }}
-                      >
-                        <CalendarIcon className="h-3 w-3" /> Book Future
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-xs gap-1"
-                        onClick={() => openBlockDialog(selectedSeat)}
-                      >
-                        <Lock className="h-3 w-3" /> Block
-                      </Button>
+                            const nextDay = addDays(latestEnd, 1);
+
+                            setBookingStartDate(nextDay);
+                            setBookingPrice(String(selectedSeat.price));
+                            if (selectedSeat.currentBooking) {
+                              setSelectedStudent({
+                                id: selectedSeat.currentBooking.userId,
+                                name: selectedSeat.currentBooking.studentName,
+                                email: selectedSeat.currentBooking.studentEmail,
+                                phone: selectedSeat.currentBooking.studentPhone,
+                                serialNumber: '',
+                                profilePicture: selectedSeat.currentBooking.profilePicture,
+                              });
+                            setStudentQuery(selectedSeat.currentBooking.studentName);
+                            }
+                            setIsRenewMode(true);
+                            setLockerIncluded(false);
+                            setShowFutureBooking(true);
+                          }}
+                        >
+                          <RotateCcw className="h-3 w-3" /> Renew
+                        </Button>
+                      )}
+                      {canBookFuture && (
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs gap-1"
+                          onClick={() => {
+                            const allBookings = [...currentBookings, ...futureBookings];
+                            let latestEnd = new Date(selectedSeat.currentBooking!.endDate);
+                            allBookings.forEach(b => {
+                              const bEnd = new Date(b.endDate);
+                              if (bEnd > latestEnd) latestEnd = bEnd;
+                            });
+                            const nextDay = addDays(latestEnd, 1);
+                            setBookingStartDate(nextDay);
+                            setBookingPrice(String(selectedSeat.price));
+                            setIsRenewMode(false);
+                            setShowFutureBooking(true);
+                          }}
+                        >
+                          <CalendarIcon className="h-3 w-3" /> Book Future
+                        </Button>
+                      )}
+                      {canBlockSeat && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs gap-1"
+                          onClick={() => openBlockDialog(selectedSeat)}
+                        >
+                          <Lock className="h-3 w-3" /> Block
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
