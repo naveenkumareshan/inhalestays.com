@@ -559,6 +559,7 @@ const Reconciliation: React.FC = () => {
                           ) : '-'}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</TableCell>
+                        <TableCell className="text-xs font-mono">{r.serial_number}</TableCell>
                         {tab === 'approved' && <TableCell className="text-xs">{r.credit_date ? format(new Date(r.credit_date), 'dd MMM yyyy') : '-'}</TableCell>}
                         {tab === 'approved' && <TableCell className="text-xs">{r.reconciled_bank_name || '-'}</TableCell>}
                         {tab === 'rejected' && (
