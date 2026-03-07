@@ -362,6 +362,21 @@ export function AdminSidebar() {
     });
   }
 
+  // ===== FINANCE SECTION =====
+  menuItems.push({
+    title: 'Finance',
+    icon: Wallet,
+    roles: ['admin', 'vendor', 'vendor_employee'],
+    subItems: [
+      {
+        title: 'Reconciliation',
+        url: `${routePrefix}/reconciliation`,
+        icon: ClipboardCheck,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      },
+    ],
+  });
+
   if (user?.role === 'admin') {
     menuItems.push(
       {

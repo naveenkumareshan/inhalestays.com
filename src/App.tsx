@@ -80,6 +80,7 @@ const MessBookings = lazy(() => import("./pages/admin/MessBookings"));
 const MessReceipts = lazy(() => import("./pages/admin/MessReceipts"));
 const MessAttendance = lazy(() => import("./pages/admin/MessAttendance"));
 const StudentLaundryOrders = lazy(() => import("./pages/StudentLaundryOrders"));
+const Reconciliation = lazy(() => import("./pages/admin/Reconciliation"));
 const LaundryPartnerDashboard = lazy(() => import("./pages/LaundryPartnerDashboard"));
 // Student / public pages
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
@@ -220,6 +221,7 @@ function App() {
               <Route path="mess-bookings" element={<MessBookings />} />
               <Route path="mess-receipts" element={<MessReceipts />} />
               <Route path="mess-attendance" element={<MessAttendance />} />
+              <Route path="reconciliation" element={<Reconciliation />} />
             </Route>
 
             {/* ── Partner routes (alias for vendor/host admin panel) ── */}
@@ -273,6 +275,7 @@ function App() {
               <Route path="mess-bookings" element={<MessBookings />} />
               <Route path="mess-receipts" element={<MessReceipts />} />
               <Route path="mess-attendance" element={<MessAttendance />} />
+              <Route path="reconciliation" element={<Reconciliation />} />
             </Route>
 
             {/* ── Partner routes (formerly vendor/host) ── */}

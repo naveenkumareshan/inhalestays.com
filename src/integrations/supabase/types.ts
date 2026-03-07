@@ -1445,6 +1445,10 @@ export type Database = {
           payment_method: string
           payment_proof_url: string | null
           receipt_type: string
+          reconciled_at: string | null
+          reconciled_by: string | null
+          reconciliation_status: string
+          rejection_reason: string | null
           serial_number: string | null
           settlement_id: string | null
           settlement_status: string
@@ -1463,6 +1467,10 @@ export type Database = {
           payment_method?: string
           payment_proof_url?: string | null
           receipt_type?: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_status?: string
+          rejection_reason?: string | null
           serial_number?: string | null
           settlement_id?: string | null
           settlement_status?: string
@@ -1481,6 +1489,10 @@ export type Database = {
           payment_method?: string
           payment_proof_url?: string | null
           receipt_type?: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_status?: string
+          rejection_reason?: string | null
           serial_number?: string | null
           settlement_id?: string | null
           settlement_status?: string
@@ -2236,6 +2248,10 @@ export type Database = {
           partner_id: string | null
           payment_method: string
           receipt_type: string
+          reconciled_at: string | null
+          reconciled_by: string | null
+          reconciliation_status: string
+          rejection_reason: string | null
           serial_number: string | null
           settlement_id: string | null
           settlement_status: string
@@ -2250,6 +2266,10 @@ export type Database = {
           partner_id?: string | null
           payment_method?: string
           receipt_type?: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_status?: string
+          rejection_reason?: string | null
           serial_number?: string | null
           settlement_id?: string | null
           settlement_status?: string
@@ -2264,6 +2284,10 @@ export type Database = {
           partner_id?: string | null
           payment_method?: string
           receipt_type?: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_status?: string
+          rejection_reason?: string | null
           serial_number?: string | null
           settlement_id?: string | null
           settlement_status?: string
@@ -2511,6 +2535,10 @@ export type Database = {
           id: string
           mess_id: string
           payment_method: string
+          reconciled_at: string | null
+          reconciled_by: string | null
+          reconciliation_status: string
+          rejection_reason: string | null
           serial_number: string | null
           subscription_id: string
           transaction_id: string
@@ -2522,6 +2550,10 @@ export type Database = {
           id?: string
           mess_id: string
           payment_method?: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_status?: string
+          rejection_reason?: string | null
           serial_number?: string | null
           subscription_id: string
           transaction_id?: string
@@ -2533,6 +2565,10 @@ export type Database = {
           id?: string
           mess_id?: string
           payment_method?: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_status?: string
+          rejection_reason?: string | null
           serial_number?: string | null
           subscription_id?: string
           transaction_id?: string
@@ -3256,6 +3292,10 @@ export type Database = {
           payment_method: string
           payment_proof_url: string | null
           receipt_type: string
+          reconciled_at: string | null
+          reconciled_by: string | null
+          reconciliation_status: string
+          rejection_reason: string | null
           seat_id: string | null
           serial_number: string | null
           settlement_id: string | null
@@ -3276,6 +3316,10 @@ export type Database = {
           payment_method?: string
           payment_proof_url?: string | null
           receipt_type?: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_status?: string
+          rejection_reason?: string | null
           seat_id?: string | null
           serial_number?: string | null
           settlement_id?: string | null
@@ -3296,6 +3340,10 @@ export type Database = {
           payment_method?: string
           payment_proof_url?: string | null
           receipt_type?: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_status?: string
+          rejection_reason?: string | null
           seat_id?: string | null
           serial_number?: string | null
           settlement_id?: string | null

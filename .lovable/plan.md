@@ -1,90 +1,71 @@
 
 
-# Finance Reconciliation — Unified Bank Reconciliation Page
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Overview
-Create a new **Finance** sidebar section with a **Reconciliation** page that aggregates receipts from all 4 modules (Reading Room, Hostel, Mess, Laundry) into one unified view. Finance team can verify each receipt against bank credits and mark them as Approved, Rejected, or Pending.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-## Database Changes
+## Changes
 
-### 1. Add `reconciliation_status` column to all 4 receipt tables
-- `receipts` → `reconciliation_status text DEFAULT 'pending'`
-- `hostel_receipts` → `reconciliation_status text DEFAULT 'pending'`
-- `mess_receipts` → `reconciliation_status text DEFAULT 'pending'`
-- `laundry_receipts` → `reconciliation_status text DEFAULT 'pending'`
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-Also add `reconciled_at timestamptz`, `reconciled_by uuid` to each table for audit trail.
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-### 2. No new tables needed
-The reconciliation status lives directly on each receipt — no separate join table.
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-## New Page: `src/pages/admin/Reconciliation.tsx`
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-### Data Fetching
-Fetch from all 4 receipt tables in parallel, then merge into a unified array:
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-```typescript
-interface ReconciliationRow {
-  id: string;
-  source: 'reading_room' | 'hostel' | 'mess' | 'laundry';
-  serial_number: string;
-  amount: number;
-  payment_method: string;
-  transaction_id: string;
-  student_name: string;
-  student_phone: string;
-  property_name: string;
-  booking_serial: string;
-  reconciliation_status: 'pending' | 'approved' | 'rejected';
-  created_at: string;
-  reconciled_at?: string;
-}
-```
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-Query each table, join with `profiles` for student info, join with `cabins`/`hostels`/`mess_partners`/`laundry_partners` for property name.
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-### UI Layout
-- **3 Tabs**: Pending | Approved | Rejected (with counts as badges)
-- **Filters**: Date range (DateFilterSelector), Source module dropdown (All/Reading Room/Hostel/Mess/Laundry), Payment method, Search (name/phone/txn ID/receipt#)
-- **Summary bar**: Total amount for current tab/filter
-- **Table columns**: S.No, Receipt#, Source (badge), Student (name+phone), Property, Amount, Method, Txn ID, Payment Date, Action (Approve/Reject buttons for pending tab)
-- **Mobile**: Card layout via `isMobile` check (same pattern as existing Receipts page)
-- **Bulk actions**: Select all + bulk approve for efficiency
-- **Export CSV** button
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-### Approve/Reject Flow
-- Click Approve → updates `reconciliation_status = 'approved'`, `reconciled_at = now()`, `reconciled_by = auth.uid()` on the correct source table
-- Click Reject → shows a small reason input, then updates `reconciliation_status = 'rejected'`
-- Row moves to the corresponding tab immediately (optimistic update)
+**Reviews section**: Shown below the booking flow (not in a tab)
 
-## Sidebar Addition
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
 
-In `AdminSidebar.tsx`, add a **Finance** collapsible group (after Partners for admin, or after Earnings for partners):
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
 
-```typescript
-{
-  title: 'Finance',
-  icon: Wallet, // or Landmark
-  roles: ['admin', 'vendor', 'vendor_employee'],
-  subItems: [
-    { title: 'Reconciliation', url: `${routePrefix}/reconciliation`, icon: ClipboardCheck }
-  ]
-}
-```
-
-## Routing
-
-Add to both admin and partner route blocks in `App.tsx`:
-```typescript
-<Route path="reconciliation" element={<Reconciliation />} />
-```
-
-## Files to Create/Modify
+## File Summary
 
 | File | Change |
-|---|---|
-| DB Migration | Add `reconciliation_status`, `reconciled_at`, `reconciled_by` to 4 receipt tables |
-| `src/pages/admin/Reconciliation.tsx` | **New** — full reconciliation page with tabs, filters, table |
-| `src/components/admin/AdminSidebar.tsx` | Add Finance section with Reconciliation link |
-| `src/App.tsx` | Add route for both `/admin/reconciliation` and `/partner/reconciliation` |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 
