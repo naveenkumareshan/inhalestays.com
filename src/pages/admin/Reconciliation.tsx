@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Download, RefreshCw, CheckCircle2, XCircle, Landmark, Eye } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Search, Download, RefreshCw, CheckCircle2, XCircle, Landmark, Eye, CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/currency';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
@@ -19,6 +23,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { DateFilterSelector } from '@/components/common/DateFilterSelector';
 import { getDateRangeFromFilter } from '@/utils/dateFilterUtils';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 
 interface ReconciliationRow {
   id: string;
@@ -31,11 +36,14 @@ interface ReconciliationRow {
   student_name: string;
   student_phone: string;
   property_name: string;
+  property_owner_id?: string;
   booking_serial: string;
   reconciliation_status: 'pending' | 'approved' | 'rejected';
   rejection_reason?: string;
   created_at: string;
   reconciled_at?: string;
+  credit_date?: string;
+  reconciled_bank_name?: string;
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -68,6 +76,15 @@ const Reconciliation: React.FC = () => {
   const [rejectTarget, setRejectTarget] = useState<ReconciliationRow | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Approve dialog state
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [approveTarget, setApproveTarget] = useState<ReconciliationRow | null>(null);
+  const [creditDate, setCreditDate] = useState<Date>(new Date());
+  const [bankName, setBankName] = useState('');
+  const [bankOptions, setBankOptions] = useState<{ id: string; label: string }[]>([]);
+  const [bankLoading, setBankLoading] = useState(false);
+
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { user } = useAuth();
@@ -79,15 +96,13 @@ const Reconciliation: React.FC = () => {
       const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', userId);
       const isAdmin = roles?.some(r => r.role === 'admin' || r.role === 'super_admin');
 
-      // Fetch all 4 receipt tables in parallel
       const [rrRes, hRes, mRes, lRes] = await Promise.all([
-        supabase.from('receipts').select('id, serial_number, booking_id, user_id, cabin_id, amount, payment_method, transaction_id, payment_proof_url, reconciliation_status, rejection_reason, reconciled_at, created_at').order('created_at', { ascending: false }).limit(500),
-        supabase.from('hostel_receipts').select('id, serial_number, booking_id, user_id, hostel_id, amount, payment_method, transaction_id, payment_proof_url, reconciliation_status, rejection_reason, reconciled_at, created_at').order('created_at', { ascending: false }).limit(500),
-        supabase.from('mess_receipts').select('id, serial_number, subscription_id, user_id, mess_id, amount, payment_method, transaction_id, reconciliation_status, rejection_reason, reconciled_at, created_at').order('created_at', { ascending: false }).limit(500),
-        supabase.from('laundry_receipts').select('id, serial_number, order_id, user_id, partner_id, amount, payment_method, transaction_id, reconciliation_status, rejection_reason, reconciled_at, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('receipts').select('id, serial_number, booking_id, user_id, cabin_id, amount, payment_method, transaction_id, payment_proof_url, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('hostel_receipts').select('id, serial_number, booking_id, user_id, hostel_id, amount, payment_method, transaction_id, payment_proof_url, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('mess_receipts').select('id, serial_number, subscription_id, user_id, mess_id, amount, payment_method, transaction_id, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('laundry_receipts').select('id, serial_number, order_id, user_id, partner_id, amount, payment_method, transaction_id, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, created_at').order('created_at', { ascending: false }).limit(500),
       ]);
 
-      // Collect unique IDs for lookups
       const allData = [
         ...(rrRes.data || []).map(r => ({ ...r, _source: 'reading_room' as const, _propId: r.cabin_id })),
         ...(hRes.data || []).map(r => ({ ...r, _source: 'hostel' as const, _propId: r.hostel_id })),
@@ -100,35 +115,32 @@ const Reconciliation: React.FC = () => {
       const hostelIds = [...new Set((hRes.data || []).filter(r => r.hostel_id).map(r => r.hostel_id!))];
       const messIds = [...new Set((mRes.data || []).filter(r => r.mess_id).map(r => r.mess_id!))];
       const laundryPartnerIds = [...new Set((lRes.data || []).filter(r => r.partner_id).map(r => r.partner_id!))];
-      const bookingIds = [...new Set([
-        ...(rrRes.data || []).filter(r => r.booking_id).map(r => r.booking_id!),
-      ])];
-      const hostelBookingIds = [...new Set([
-        ...(hRes.data || []).filter(r => r.booking_id).map(r => r.booking_id!),
-      ])];
+      const bookingIds = [...new Set((rrRes.data || []).filter(r => r.booking_id).map(r => r.booking_id!))];
+      const hostelBookingIds = [...new Set((hRes.data || []).filter(r => r.booking_id).map(r => r.booking_id!))];
 
       const [profilesRes, cabinsRes, hostelsRes, messRes2, laundryRes2, bookingsRes, hBookingsRes] = await Promise.all([
         userIds.length > 0 ? supabase.from('profiles').select('id, name, phone').in('id', userIds) : { data: [] },
-        cabinIds.length > 0 ? supabase.from('cabins').select('id, name').in('id', cabinIds) : { data: [] },
-        hostelIds.length > 0 ? supabase.from('hostels').select('id, name').in('id', hostelIds) : { data: [] },
-        messIds.length > 0 ? supabase.from('mess_partners').select('id, name').in('id', messIds) : { data: [] },
-        laundryPartnerIds.length > 0 ? supabase.from('laundry_partners').select('id, name').in('id', laundryPartnerIds) : { data: [] },
+        cabinIds.length > 0 ? supabase.from('cabins').select('id, name, created_by').in('id', cabinIds) : { data: [] },
+        hostelIds.length > 0 ? supabase.from('hostels').select('id, name, created_by').in('id', hostelIds) : { data: [] },
+        messIds.length > 0 ? supabase.from('mess_partners').select('id, name, partner_user_id').in('id', messIds) : { data: [] },
+        laundryPartnerIds.length > 0 ? supabase.from('laundry_partners').select('id, name, partner_user_id').in('id', laundryPartnerIds) : { data: [] },
         bookingIds.length > 0 ? supabase.from('bookings').select('id, serial_number').in('id', bookingIds) : { data: [] },
         hostelBookingIds.length > 0 ? supabase.from('hostel_bookings').select('id, serial_number').in('id', hostelBookingIds) : { data: [] },
       ]);
 
       const profileMap = Object.fromEntries((profilesRes.data || []).map(p => [p.id, p]));
-      const propMap: Record<string, string> = {};
-      (cabinsRes.data || []).forEach(c => { propMap[c.id] = c.name; });
-      (hostelsRes.data || []).forEach(h => { propMap[h.id] = h.name; });
-      (messRes2.data || []).forEach(m => { propMap[m.id] = m.name; });
-      (laundryRes2.data || []).forEach(l => { propMap[l.id] = l.name; });
+      const propMap: Record<string, { name: string; ownerId?: string }> = {};
+      (cabinsRes.data || []).forEach(c => { propMap[c.id] = { name: c.name, ownerId: c.created_by || undefined }; });
+      (hostelsRes.data || []).forEach(h => { propMap[h.id] = { name: h.name, ownerId: h.created_by || undefined }; });
+      (messRes2.data || []).forEach(m => { propMap[m.id] = { name: m.name, ownerId: m.partner_user_id || undefined }; });
+      (laundryRes2.data || []).forEach(l => { propMap[l.id] = { name: l.name, ownerId: l.partner_user_id || undefined }; });
       const bookingMap: Record<string, string> = {};
       (bookingsRes.data || []).forEach(b => { bookingMap[b.id] = b.serial_number || ''; });
       (hBookingsRes.data || []).forEach(b => { bookingMap[b.id] = b.serial_number || ''; });
 
       const mapped: ReconciliationRow[] = allData.map(r => {
         const bId = (r as any).booking_id || (r as any).subscription_id || (r as any).order_id;
+        const prop = r._propId ? propMap[r._propId] : undefined;
         return {
           id: r.id,
           source: r._source,
@@ -139,16 +151,18 @@ const Reconciliation: React.FC = () => {
           payment_proof_url: (r as any).payment_proof_url || undefined,
           student_name: profileMap[r.user_id]?.name || 'N/A',
           student_phone: profileMap[r.user_id]?.phone || '',
-          property_name: r._propId ? (propMap[r._propId] || '') : '',
+          property_name: prop?.name || '',
+          property_owner_id: prop?.ownerId,
           booking_serial: bId ? (bookingMap[bId] || bId.slice(0, 8)) : '',
           reconciliation_status: (r.reconciliation_status || 'pending') as any,
           rejection_reason: r.rejection_reason || undefined,
           created_at: r.created_at,
           reconciled_at: r.reconciled_at || undefined,
+          credit_date: (r as any).credit_date || undefined,
+          reconciled_bank_name: (r as any).reconciled_bank_name || undefined,
         };
       });
 
-      // Filter by owner for partners
       setRows(mapped);
     } catch (err) {
       toast({ title: 'Error loading reconciliation data', variant: 'destructive' });
@@ -168,20 +182,55 @@ const Reconciliation: React.FC = () => {
     }
   };
 
-  const handleApprove = async (row: ReconciliationRow) => {
+  // Open approve dialog - fetch bank names for this property's partner
+  const openApproveDialog = async (row: ReconciliationRow) => {
+    setApproveTarget(row);
+    setCreditDate(new Date());
+    setBankName('');
+    setApproveDialogOpen(true);
+    setBankLoading(true);
+
+    if (row.property_owner_id) {
+      const { data } = await supabase
+        .from('partner_payment_modes')
+        .select('id, label')
+        .eq('partner_user_id', row.property_owner_id)
+        .eq('is_active', true)
+        .order('display_order');
+      setBankOptions(data || []);
+    } else {
+      setBankOptions([]);
+    }
+    setBankLoading(false);
+  };
+
+  const handleApproveConfirm = async () => {
+    if (!approveTarget) return;
     setActionLoading(true);
-    const table = getTableForSource(row.source);
+    const table = getTableForSource(approveTarget.source);
     const { error } = await (supabase.from(table as any) as any).update({
       reconciliation_status: 'approved',
       reconciled_at: new Date().toISOString(),
       reconciled_by: user?.id,
-    }).eq('id', row.id);
+      credit_date: format(creditDate, 'yyyy-MM-dd'),
+      reconciled_bank_name: bankName || null,
+      rejection_reason: null,
+    }).eq('id', approveTarget.id);
     if (error) {
       toast({ title: 'Failed to approve', variant: 'destructive' });
     } else {
-      setRows(prev => prev.map(r => r.id === row.id ? { ...r, reconciliation_status: 'approved', reconciled_at: new Date().toISOString() } : r));
+      setRows(prev => prev.map(r => r.id === approveTarget.id ? {
+        ...r,
+        reconciliation_status: 'approved' as const,
+        reconciled_at: new Date().toISOString(),
+        credit_date: format(creditDate, 'yyyy-MM-dd'),
+        reconciled_bank_name: bankName || undefined,
+        rejection_reason: undefined,
+      } : r));
       toast({ title: 'Receipt approved' });
     }
+    setApproveDialogOpen(false);
+    setApproveTarget(null);
     setActionLoading(false);
   };
 
@@ -195,16 +244,19 @@ const Reconciliation: React.FC = () => {
       grouped[table].push(r.id);
     });
 
+    const now = new Date().toISOString();
+    const today = format(new Date(), 'yyyy-MM-dd');
     for (const [table, ids] of Object.entries(grouped)) {
       await (supabase.from(table as any) as any).update({
         reconciliation_status: 'approved',
-        reconciled_at: new Date().toISOString(),
+        reconciled_at: now,
         reconciled_by: user?.id,
+        credit_date: today,
       }).in('id', ids);
     }
 
     setRows(prev => prev.map(r => selected.has(`${r.source}-${r.id}`) && r.reconciliation_status === 'pending'
-      ? { ...r, reconciliation_status: 'approved', reconciled_at: new Date().toISOString() }
+      ? { ...r, reconciliation_status: 'approved' as const, reconciled_at: now, credit_date: today }
       : r
     ));
     setSelected(new Set());
@@ -225,7 +277,7 @@ const Reconciliation: React.FC = () => {
     if (error) {
       toast({ title: 'Failed to reject', variant: 'destructive' });
     } else {
-      setRows(prev => prev.map(r => r.id === rejectTarget.id ? { ...r, reconciliation_status: 'rejected', rejection_reason: rejectReason, reconciled_at: new Date().toISOString() } : r));
+      setRows(prev => prev.map(r => r.id === rejectTarget.id ? { ...r, reconciliation_status: 'rejected' as const, rejection_reason: rejectReason, reconciled_at: new Date().toISOString() } : r));
       toast({ title: 'Receipt rejected' });
     }
     setRejectDialogOpen(false);
@@ -282,7 +334,8 @@ const Reconciliation: React.FC = () => {
   };
 
   const exportCsv = () => {
-    const headers = 'S.No,Receipt #,Source,Student,Phone,Property,Amount,Method,Txn ID,Booking ID,Status,Date';
+    const isApproved = tab === 'approved';
+    const headers = ['S.No', 'Receipt #', 'Source', 'Student', 'Phone', 'Property', 'Amount', 'Method', 'Txn ID', 'Booking ID', 'Status', 'Date', ...(isApproved ? ['Credit Date', 'Bank Name'] : [])].join(',');
     const csvRows = filtered.map((r, i) => [
       i + 1,
       r.serial_number,
@@ -296,6 +349,7 @@ const Reconciliation: React.FC = () => {
       r.booking_serial,
       r.reconciliation_status,
       new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      ...(isApproved ? [r.credit_date || '', r.reconciled_bank_name || ''] : []),
     ].join(','));
     const csv = [headers, ...csvRows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -303,6 +357,66 @@ const Reconciliation: React.FC = () => {
     const a = document.createElement('a');
     a.href = url; a.download = `reconciliation_${tab}_${format(new Date(), 'yyyy-MM-dd')}.csv`; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const renderActions = (r: ReconciliationRow) => {
+    if (tab === 'pending') {
+      return (
+        <div className="flex gap-1">
+          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => openApproveDialog(r)} disabled={actionLoading}>
+            <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-destructive hover:bg-destructive/10" onClick={() => { setRejectTarget(r); setRejectDialogOpen(true); }} disabled={actionLoading}>
+            <XCircle className="h-3.5 w-3.5" /> Reject
+          </Button>
+        </div>
+      );
+    }
+    if (tab === 'approved') {
+      return (
+        <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-destructive hover:bg-destructive/10" onClick={() => { setRejectTarget(r); setRejectDialogOpen(true); }} disabled={actionLoading}>
+          <XCircle className="h-3.5 w-3.5" /> Reject
+        </Button>
+      );
+    }
+    if (tab === 'rejected') {
+      return (
+        <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => openApproveDialog(r)} disabled={actionLoading}>
+          <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+        </Button>
+      );
+    }
+    return null;
+  };
+
+  const renderMobileActions = (r: ReconciliationRow) => {
+    if (tab === 'pending') {
+      return (
+        <div className="flex gap-2 pt-1">
+          <Button size="sm" className="h-7 text-xs gap-1 flex-1" onClick={() => openApproveDialog(r)} disabled={actionLoading}>
+            <CheckCircle2 className="h-3 w-3" /> Approve
+          </Button>
+          <Button variant="destructive" size="sm" className="h-7 text-xs gap-1 flex-1" onClick={() => { setRejectTarget(r); setRejectDialogOpen(true); }} disabled={actionLoading}>
+            <XCircle className="h-3 w-3" /> Reject
+          </Button>
+        </div>
+      );
+    }
+    if (tab === 'approved') {
+      return (
+        <Button variant="destructive" size="sm" className="h-7 text-xs gap-1 w-full" onClick={() => { setRejectTarget(r); setRejectDialogOpen(true); }} disabled={actionLoading}>
+          <XCircle className="h-3 w-3" /> Move to Rejected
+        </Button>
+      );
+    }
+    if (tab === 'rejected') {
+      return (
+        <Button size="sm" className="h-7 text-xs gap-1 w-full" onClick={() => openApproveDialog(r)} disabled={actionLoading}>
+          <CheckCircle2 className="h-3 w-3" /> Approve
+        </Button>
+      );
+    }
+    return null;
   };
 
   return (
@@ -415,25 +529,22 @@ const Reconciliation: React.FC = () => {
                       <div><span className="text-muted-foreground">Txn ID: </span><span className="font-mono">{r.transaction_id || '-'}</span></div>
                       <div><span className="text-muted-foreground">Property: </span>{r.property_name || '-'}</div>
                       <div><span className="text-muted-foreground">Date: </span>{new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                      {tab === 'approved' && r.credit_date && (
+                        <div><span className="text-muted-foreground">Credit Date: </span>{format(new Date(r.credit_date), 'dd MMM yyyy')}</div>
+                      )}
+                      {tab === 'approved' && r.reconciled_bank_name && (
+                        <div><span className="text-muted-foreground">Bank: </span>{r.reconciled_bank_name}</div>
+                      )}
                     </div>
                     {r.payment_proof_url && (
                       <a href={r.payment_proof_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline">
                         <Eye className="h-3 w-3" /> View Proof
                       </a>
                     )}
-                    {tab === 'pending' && (
-                      <div className="flex gap-2 pt-1">
-                        <Button size="sm" className="h-7 text-xs gap-1 flex-1" onClick={() => handleApprove(r)} disabled={actionLoading}>
-                          <CheckCircle2 className="h-3 w-3" /> Approve
-                        </Button>
-                        <Button variant="destructive" size="sm" className="h-7 text-xs gap-1 flex-1" onClick={() => { setRejectTarget(r); setRejectDialogOpen(true); }} disabled={actionLoading}>
-                          <XCircle className="h-3 w-3" /> Reject
-                        </Button>
-                      </div>
-                    )}
                     {tab === 'rejected' && r.rejection_reason && (
                       <p className="text-[10px] text-destructive italic">Reason: {r.rejection_reason}</p>
                     )}
+                    {renderMobileActions(r)}
                   </div>
                 ))}
               </div>
@@ -457,8 +568,10 @@ const Reconciliation: React.FC = () => {
                     <TableHead className="text-xs">Booking ID</TableHead>
                     <TableHead className="text-xs">Proof</TableHead>
                     <TableHead className="text-xs">Payment Date</TableHead>
-                    {tab === 'pending' && <TableHead className="text-xs">Actions</TableHead>}
+                    {tab === 'approved' && <TableHead className="text-xs">Credit Date</TableHead>}
+                    {tab === 'approved' && <TableHead className="text-xs">Bank</TableHead>}
                     {tab === 'rejected' && <TableHead className="text-xs">Reason</TableHead>}
+                    <TableHead className="text-xs">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -499,21 +612,12 @@ const Reconciliation: React.FC = () => {
                           ) : '-'}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</TableCell>
-                        {tab === 'pending' && (
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => handleApprove(r)} disabled={actionLoading}>
-                                <CheckCircle2 className="h-3.5 w-3.5" /> Approve
-                              </Button>
-                              <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-destructive hover:bg-destructive/10" onClick={() => { setRejectTarget(r); setRejectDialogOpen(true); }} disabled={actionLoading}>
-                                <XCircle className="h-3.5 w-3.5" /> Reject
-                              </Button>
-                            </div>
-                          </TableCell>
-                        )}
+                        {tab === 'approved' && <TableCell className="text-xs">{r.credit_date ? format(new Date(r.credit_date), 'dd MMM yyyy') : '-'}</TableCell>}
+                        {tab === 'approved' && <TableCell className="text-xs">{r.reconciled_bank_name || '-'}</TableCell>}
                         {tab === 'rejected' && (
                           <TableCell className="text-xs text-destructive italic max-w-[150px] truncate">{r.rejection_reason || '-'}</TableCell>
                         )}
+                        <TableCell>{renderActions(r)}</TableCell>
                       </TableRow>
                     );
                   })}
@@ -531,6 +635,65 @@ const Reconciliation: React.FC = () => {
         onPageChange={setPage}
         onPageSizeChange={s => { setPageSize(s); setPage(1); }}
       />
+
+      {/* Approve dialog */}
+      <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Approve Receipt</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Approving receipt <span className="font-mono font-medium">{approveTarget?.serial_number}</span> — {formatCurrency(approveTarget?.amount || 0)}
+            </p>
+
+            <div className="space-y-2">
+              <Label className="text-xs">Credit Date <span className="text-destructive">*</span></Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-9 text-xs", !creditDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    {creditDate ? format(creditDate, 'dd MMM yyyy') : 'Select date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={creditDate}
+                    onSelect={(d) => d && setCreditDate(d)}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs">Bank Name</Label>
+              {bankLoading ? (
+                <p className="text-xs text-muted-foreground">Loading banks...</p>
+              ) : bankOptions.length > 0 ? (
+                <Select value={bankName} onValueChange={setBankName}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select bank" /></SelectTrigger>
+                  <SelectContent>
+                    {bankOptions.map(b => (
+                      <SelectItem key={b.id} value={b.label} className="text-xs">{b.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input className="h-9 text-xs" placeholder="Enter bank name" value={bankName} onChange={e => setBankName(e.target.value)} />
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setApproveDialogOpen(false)}>Cancel</Button>
+            <Button size="sm" className="text-xs gap-1" onClick={handleApproveConfirm} disabled={actionLoading || !creditDate}>
+              <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reject dialog */}
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
