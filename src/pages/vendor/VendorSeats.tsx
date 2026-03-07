@@ -1067,7 +1067,7 @@ const VendorSeats: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label className="text-[10px] uppercase text-muted-foreground">From</Label>
-                    <Popover>
+                    <Popover open={blockFromOpen} onOpenChange={setBlockFromOpen}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className="h-8 text-xs w-full justify-start gap-1">
                           <CalendarIcon className="h-3 w-3" />
@@ -1075,13 +1075,13 @@ const VendorSeats: React.FC = () => {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={blockFromDate} onSelect={setBlockFromDate} className="p-3 pointer-events-auto" />
+                        <Calendar mode="single" selected={blockFromDate} onSelect={(d) => { setBlockFromDate(d); setBlockFromOpen(false); }} className="p-3 pointer-events-auto" />
                       </PopoverContent>
                     </Popover>
                   </div>
                   <div>
                     <Label className="text-[10px] uppercase text-muted-foreground">To</Label>
-                    <Popover>
+                    <Popover open={blockToOpen} onOpenChange={setBlockToOpen}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className="h-8 text-xs w-full justify-start gap-1">
                           <CalendarIcon className="h-3 w-3" />
@@ -1089,7 +1089,7 @@ const VendorSeats: React.FC = () => {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={blockToDate} onSelect={setBlockToDate} disabled={(d) => blockFromDate ? d < blockFromDate : false} className="p-3 pointer-events-auto" />
+                        <Calendar mode="single" selected={blockToDate} onSelect={(d) => { setBlockToDate(d); setBlockToOpen(false); }} disabled={(d) => blockFromDate ? d < blockFromDate : false} className="p-3 pointer-events-auto" />
                       </PopoverContent>
                     </Popover>
                   </div>
