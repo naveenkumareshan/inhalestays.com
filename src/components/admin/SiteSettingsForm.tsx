@@ -35,18 +35,13 @@ export function SiteSettingsForm() {
     }
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [whatsappEnabled, setWhatsappEnabled] = useState(true);
-  const [whatsappLoading, setWhatsappLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Load settings from localStorage or API
     const savedSettings = localStorage.getItem('siteSettings');
     if (savedSettings) {
       setSettings(JSON.parse(savedSettings));
     }
-    // Load WhatsApp global toggle
-    whatsappLeadService.getSiteWhatsappEnabled().then(setWhatsappEnabled).catch(() => {});
   }, []);
 
   const handleMenuToggle = (menu: keyof SiteSettings['enabledMenus']) => {
