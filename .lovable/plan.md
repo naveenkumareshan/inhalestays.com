@@ -1,71 +1,39 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Link Cash Payment Modes to Employees for Exclusive Access
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Overview
+Add an `assigned_employee_id` column to `partner_payment_modes` so cash entries can be linked to a specific employee (or the partner). When collecting offline payments, the `PaymentMethodSelector` filters cash modes — showing only the one assigned to the current logged-in user.
+
+## Database Change
+
+```sql
+ALTER TABLE public.partner_payment_modes 
+ADD COLUMN assigned_employee_id uuid REFERENCES public.vendor_employees(id) ON DELETE SET NULL;
+```
 
 ## Changes
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### 1. `src/components/vendor/PaymentModesManager.tsx`
+- In the **Cash** tab, add an "Assign To" dropdown populated with:
+  - **Partner (self)** — stores a special value like `partner` or the partner's user ID
+  - All active employees from `vendor_employees` where `partner_user_id = partnerId`
+- On insert, store the selected employee's `vendor_employees.id` (or `null` for the partner) in `assigned_employee_id`
+- In the cash listing, show a badge with the assigned person's name
+- Fetch employees once on mount for the dropdown
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### 2. `src/components/vendor/PaymentMethodSelector.tsx`
+- Extend the query to also select `assigned_employee_id`
+- After fetching modes, filter cash modes:
+  - If current user is the partner (`user.role === 'vendor'`): show cash modes where `assigned_employee_id IS NULL` (assigned to partner)
+  - If current user is an employee (`user.role === 'vendor_employee'`): find their `vendor_employees.id` and only show cash modes where `assigned_employee_id` matches
+- Bank and UPI modes remain visible to everyone (no filtering)
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### 3. Minor: `PaymentModesManager` interface
+- Add `assigned_employee_id: string | null` to the `PaymentMode` interface
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
-
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
-
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+### Files
+- **Migration**: Add `assigned_employee_id` column to `partner_payment_modes`
+- **Edit**: `src/components/vendor/PaymentModesManager.tsx` — employee dropdown for cash, display badge
+- **Edit**: `src/components/vendor/PaymentMethodSelector.tsx` — filter cash modes by current user
 
