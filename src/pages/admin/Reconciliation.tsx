@@ -537,7 +537,6 @@ const Reconciliation: React.FC = () => {
                     return (
                       <TableRow key={key}>
                         <TableCell className="text-xs text-muted-foreground">{getSerialNumber(index, page, pageSize)}</TableCell>
-                        <TableCell className="text-xs font-mono">{r.serial_number}</TableCell>
                         <TableCell>
                           <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${SOURCE_COLORS[r.source]}`}>
                             {SOURCE_LABELS[r.source]}
