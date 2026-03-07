@@ -982,7 +982,7 @@ const VendorSeats: React.FC = () => {
                   <TableCell className="px-2 py-1">
                     <div className="flex items-center gap-1">
                       <span>₹{seat.price}</span>
-                      {canEdit && (
+                      {canEditPrice && (
                         <button
                           className="h-4 w-4 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
                           onClick={(e) => { e.stopPropagation(); setEditingSeatId(seat._id); setEditPrice(String(seat.price)); }}
