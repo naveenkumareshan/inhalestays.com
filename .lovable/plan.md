@@ -1,71 +1,95 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Property-Level Access Control for Partner Employees
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Problem
+Currently, employees see ALL properties owned by their partner. A partner with 3 reading rooms and 2 hostels cannot restrict Employee A to only "Room Alpha" and Employee B to only "Room Beta". Need property-level assignment per employee.
+
+## Approach
+Add an `allowed_properties` column (UUID array) to the `vendor_employees` table. When empty/null, the employee can access ALL partner properties (backward compatible). When populated, the employee can only see and operate on those specific cabins/hostels.
 
 ## Changes
 
 ### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+- Add `allowed_properties uuid[] DEFAULT '{}'` column to `vendor_employees` table
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### 2. `src/api/vendorEmployeeService.ts`
+- Add `allowed_properties: string[]` to `VendorEmployeeData`, `VendorEmployeeCreateData`, `VendorEmployeeUpdateData`
+- Include in create/update payloads
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### 3. `src/contexts/AuthContext.tsx`
+- Fetch `allowed_properties` alongside `permissions` and `partner_user_id` in `buildUser()`
+- Store on the `User` object (add to User interface)
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### 4. `src/components/vendor/VendorEmployeeForm.tsx`
+- Add a "Property Access" section after permissions table
+- Fetch partner's cabins and hostels (using `getEffectiveOwnerId` → query cabins/hostels by `created_by`)
+- Show two lists: Reading Rooms and Hostels, each with checkboxes
+- Option: "All Properties" toggle (clears the array) vs specific selection
+- Save selected property IDs to `allowed_properties`
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+### 5. `src/api/vendorSeatsService.ts` — `getVendorCabins()`
+- After fetching cabins by `created_by = ownerId`, if user is `vendor_employee`, filter results by `allowed_properties` (if non-empty)
+- Read `allowed_properties` from the employee record (or pass from auth context)
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### 6. Hostel flows — similar filtering
+- In hostel listing queries used by partners/employees, apply the same `allowed_properties` filter for employees
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+## Key Implementation Detail
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+**Employee Form — Property Access section:**
+```typescript
+{/* Property Access */}
+<div>
+  <Label className="text-xs font-medium">Property Access</Label>
+  <p className="text-[10px] text-muted-foreground mb-2">
+    Leave "All Properties" on to grant access to everything, or select specific properties
+  </p>
+  <div className="flex items-center gap-2 mb-2">
+    <Checkbox checked={allProperties} onCheckedChange={toggleAll} />
+    <span className="text-xs">All Properties (no restriction)</span>
+  </div>
+  {!allProperties && (
+    <>
+      <p className="text-[10px] font-medium mb-1">Reading Rooms</p>
+      {cabins.map(c => (
+        <div key={c.id} className="flex items-center gap-2">
+          <Checkbox checked={selectedProps.includes(c.id)} 
+                    onCheckedChange={() => toggleProp(c.id)} />
+          <span className="text-xs">{c.name}</span>
+        </div>
+      ))}
+      <p className="text-[10px] font-medium mb-1 mt-2">Hostels</p>
+      {hostels.map(h => (...))}
+    </>
+  )}
+</div>
+```
 
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
+**Filtering in getVendorCabins:**
+```typescript
+// After fetching all partner cabins, filter for employee
+if (!isAdmin) {
+  const { data: empRecord } = await supabase
+    .from('vendor_employees')
+    .select('allowed_properties')
+    .eq('employee_user_id', authUser.id)
+    .maybeSingle();
+  
+  if (empRecord?.allowed_properties?.length > 0) {
+    cabinData = cabinData.filter(c => 
+      empRecord.allowed_properties.includes(c._id)
+    );
+  }
+}
+```
 
 | File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+|------|------|
+| DB Migration | Add `allowed_properties uuid[]` to `vendor_employees` |
+| `src/api/vendorEmployeeService.ts` | Include `allowed_properties` in CRUD |
+| `src/contexts/AuthContext.tsx` | Fetch & store `allowed_properties` on User |
+| `src/components/vendor/VendorEmployeeForm.tsx` | Property selection UI |
+| `src/api/vendorSeatsService.ts` | Filter cabins by `allowed_properties` for employees |
+| Hostel listing queries | Same filtering for hostel properties |
 
