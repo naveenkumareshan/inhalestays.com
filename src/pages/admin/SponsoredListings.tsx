@@ -635,24 +635,24 @@ export default function SponsoredListingsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Start Date *</Label>
-                <Popover>
+                <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className={cn("w-full justify-start text-left text-xs h-9", !startDate && "text-muted-foreground")}>
                       <CalendarIcon className="mr-2 h-3.5 w-3.5" />{startDate ? format(startDate, 'PPP') : 'Pick date'}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={startDate} onSelect={setStartDate} className="p-3 pointer-events-auto" /></PopoverContent>
+                  <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={startDate} onSelect={(d) => { setStartDate(d); setStartDateOpen(false); }} className="p-3 pointer-events-auto" /></PopoverContent>
                 </Popover>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">End Date *</Label>
-                <Popover>
+                <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className={cn("w-full justify-start text-left text-xs h-9", !endDate && "text-muted-foreground")}>
                       <CalendarIcon className="mr-2 h-3.5 w-3.5" />{endDate ? format(endDate, 'PPP') : 'Pick date'}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={endDate} onSelect={setEndDate} className="p-3 pointer-events-auto" /></PopoverContent>
+                  <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={endDate} onSelect={(d) => { setEndDate(d); setEndDateOpen(false); }} className="p-3 pointer-events-auto" /></PopoverContent>
                 </Popover>
               </div>
             </div>

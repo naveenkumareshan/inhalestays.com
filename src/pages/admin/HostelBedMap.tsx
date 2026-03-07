@@ -1668,7 +1668,7 @@ const HostelBedMap: React.FC = () => {
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[10px] uppercase text-muted-foreground">Due Date (Reminder)</Label>
-                        <Popover>
+                        <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
                           <PopoverTrigger asChild>
                             <Button variant="outline" className={cn("w-full h-7 text-xs justify-start", !manualDueDate && "text-muted-foreground")}>
                               <CalendarIcon className="mr-1.5 h-3 w-3" />
@@ -1676,7 +1676,7 @@ const HostelBedMap: React.FC = () => {
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={manualDueDate} onSelect={setManualDueDate} initialFocus className={cn("p-3 pointer-events-auto")} />
+                            <Calendar mode="single" selected={manualDueDate} onSelect={(d) => { setManualDueDate(d); setDueDateOpen(false); }} initialFocus className={cn("p-3 pointer-events-auto")} />
                           </PopoverContent>
                         </Popover>
                       </div>

@@ -255,7 +255,7 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
                 <label className="block text-sm font-medium mb-2">
                   Start Date
                 </label>
-                <Popover>
+                <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -274,7 +274,7 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
                     <Calendar
                       mode="single"
                       selected={startDate}
-                      onSelect={(date) => date && setStartDate(date)}
+                      onSelect={(date) => { if (date) setStartDate(date); setStartDateOpen(false); }}
                       initialFocus
                       disabled={(date) => isBefore(date, startDate)}
                     />
@@ -286,7 +286,7 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
                 <label className="block text-sm font-medium mb-2">
                   End Date
                 </label>
-                <Popover>
+                <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -303,7 +303,7 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
                     <Calendar
                       mode="single"
                       selected={endDate}
-                      onSelect={(date) => date && setEndDate(date)}
+                      onSelect={(date) => { if (date) setEndDate(date); setEndDateOpen(false); }}
                       initialFocus
                       disabled={(date) => isBefore(date, startDate)}
                     />

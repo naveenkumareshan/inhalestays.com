@@ -390,7 +390,7 @@ const NotificationManagement: React.FC = () => {
 
                 <div className="space-y-2">
                   <Label>Schedule for later (Optional)</Label>
-                  <Popover>
+                  <Popover open={scheduledDateOpen} onOpenChange={setScheduledDateOpen}>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="w-full justify-start text-left font-normal">
                         <CalendarIcon className="mr-2 h-4 w-4" />
@@ -401,7 +401,7 @@ const NotificationManagement: React.FC = () => {
                       <Calendar
                         mode="single"
                         selected={scheduledDate}
-                        onSelect={setScheduledDate}
+                        onSelect={(d) => { setScheduledDate(d); setScheduledDateOpen(false); }}
                         initialFocus
                       />
                     </PopoverContent>

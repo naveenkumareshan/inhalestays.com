@@ -195,7 +195,7 @@ export default function BookSharedRoom() {
                 <div className="grid gap-6">
                   <div className="grid gap-2">
                     <Label htmlFor="startDate">Start Date</Label>
-                    <Popover>
+                    <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
@@ -210,7 +210,7 @@ export default function BookSharedRoom() {
                         <Calendar
                           mode="single"
                           selected={startDate}
-                          onSelect={setStartDate}
+                          onSelect={(d) => { setStartDate(d); setStartDateOpen(false); }}
                           initialFocus
                           disabled={(date) => date < new Date()}
                         />
