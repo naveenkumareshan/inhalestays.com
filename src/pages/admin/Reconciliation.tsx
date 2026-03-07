@@ -312,6 +312,12 @@ const Reconciliation: React.FC = () => {
     rejected: rows.filter(r => r.reconciliation_status === 'rejected').length,
   }), [rows]);
 
+  const statusTotals = useMemo(() => ({
+    pending: rows.filter(r => r.reconciliation_status === 'pending').reduce((s, r) => s + r.amount, 0),
+    approved: rows.filter(r => r.reconciliation_status === 'approved').reduce((s, r) => s + r.amount, 0),
+    rejected: rows.filter(r => r.reconciliation_status === 'rejected').reduce((s, r) => s + r.amount, 0),
+  }), [rows]);
+
   const exportCsv = () => {
     const isApproved = tab === 'approved';
     const headers = ['S.No', 'Receipt #', 'Source', 'Student', 'Phone', 'Property', 'Amount', 'Method', 'Txn ID', 'Booking ID', 'Status', 'Date', ...(isApproved ? ['Credit Date', 'Bank Name', 'Bank Narration'] : [])].join(',');
