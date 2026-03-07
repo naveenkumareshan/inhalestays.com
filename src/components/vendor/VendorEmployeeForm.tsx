@@ -124,9 +124,30 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
     permissions: employee?.permissions || [] as string[],
     salary: employee?.salary || 0,
     status: employee?.status || 'active',
+    allowed_properties: employee?.allowed_properties || [] as string[],
   });
   const [loading, setLoading] = useState(false);
+  const [allProperties, setAllProperties] = useState((employee?.allowed_properties || []).length === 0);
+  const [partnerCabins, setPartnerCabins] = useState<{ id: string; name: string }[]>([]);
+  const [partnerHostels, setPartnerHostels] = useState<{ id: string; name: string }[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        const { ownerId } = await getEffectiveOwnerId();
+        const [cabinsRes, hostelsRes] = await Promise.all([
+          supabase.from('cabins').select('id, name').eq('created_by', ownerId).order('name'),
+          supabase.from('hostels').select('id, name').eq('created_by', ownerId).order('name'),
+        ]);
+        setPartnerCabins((cabinsRes.data || []).map(c => ({ id: c.id, name: c.name })));
+        setPartnerHostels((hostelsRes.data || []).map(h => ({ id: h.id, name: h.name })));
+      } catch (e) {
+        console.warn('Failed to fetch properties for employee form', e);
+      }
+    };
+    fetchProperties();
+  }, []);
 
   const isEditing = !!employee;
 
