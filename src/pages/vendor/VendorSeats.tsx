@@ -1523,7 +1523,7 @@ const VendorSeats: React.FC = () => {
                             className="h-3.5 w-3.5"
                           />
                           <Label htmlFor="locker" className="text-[11px] cursor-pointer">
-                            Locker{selectedCabinInfo.lockerMandatory && (selectedCabinInfo.lockerMandatoryDurations || ['daily','weekly','monthly']).includes(selectedDuration.type) ? ' (Mandatory)' : ''}
+                            Locker
                           </Label>
                         </div>
                         {lockerIncluded && <span>₹{selectedCabinInfo.lockerPrice}</span>}
