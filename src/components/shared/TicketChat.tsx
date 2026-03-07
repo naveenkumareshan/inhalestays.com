@@ -104,8 +104,25 @@ const TicketChat: React.FC<TicketChatProps> = ({
     return 'bg-blue-100 text-blue-700';
   };
 
+  const whatsappUrl = whatsappNumber
+    ? `https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(
+        `Hi, I have a ${ticketType} regarding: ${ticketSubject || ticketDescription.slice(0, 60)}${ticketSerialNumber ? `. Ticket ID: ${ticketSerialNumber}` : ''}`
+      )}`
+    : '';
+
   return (
     <div className="flex flex-col h-full">
+      {whatsappNumber && (
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-3 py-2 bg-green-50 border-b text-green-700 hover:bg-green-100 transition-colors"
+        >
+          <FaWhatsapp className="h-4 w-4" />
+          <span className="text-[12px] font-medium">{whatsappLabel}</span>
+        </a>
+      )}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 max-h-[350px] min-h-[200px]">
         {/* Initial description as first message */}
         <div className="flex justify-start">
