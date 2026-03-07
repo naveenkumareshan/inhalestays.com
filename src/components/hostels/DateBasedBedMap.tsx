@@ -153,13 +153,13 @@ export const DateBasedBedMap: React.FC<DateBasedBedMapProps> = ({ hostelId }) =>
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Start Date</label>
-              <Popover>
+              <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />{startDate ? format(startDate, 'PPP') : 'Select'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={startDate} onSelect={d => d && setStartDate(d)} initialFocus /></PopoverContent>
+                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={startDate} onSelect={d => { if (d) setStartDate(d); setStartDateOpen(false); }} initialFocus /></PopoverContent>
               </Popover>
             </div>
             <div>
