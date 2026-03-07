@@ -270,10 +270,8 @@ const VendorSeats: React.FC = () => {
       const nameA = (a.cabinName || '').toLowerCase();
       const nameB = (b.cabinName || '').toLowerCase();
       if (nameA !== nameB) return nameA.localeCompare(nameB);
-      const floorA = (a as any).floor || 0;
-      const floorB = (b as any).floor || 0;
-      if (floorA !== floorB) return floorA - floorB;
-      return a.number - b.number;
+      if (a.number !== b.number) return a.number - b.number;
+      return ((a as any).floor || 0) - ((b as any).floor || 0);
     });
     return result;
   }, [seats, statusFilter, searchTerm, selectedFloor]);
