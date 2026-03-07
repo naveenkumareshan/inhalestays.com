@@ -35,6 +35,7 @@ export function SiteSettingsForm() {
       about: true,
     }
   });
+  const [adminWhatsapp, setAdminWhatsapp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -43,6 +44,12 @@ export function SiteSettingsForm() {
     if (savedSettings) {
       setSettings(JSON.parse(savedSettings));
     }
+    // Load admin WhatsApp from DB
+    supabase.from('site_settings').select('value').eq('key', 'admin_whatsapp').single().then(({ data }) => {
+      if (data?.value && typeof data.value === 'object' && 'number' in (data.value as any)) {
+        setAdminWhatsapp((data.value as any).number || '');
+      }
+    });
   }, []);
 
   const handleMenuToggle = (menu: keyof SiteSettings['enabledMenus']) => {
