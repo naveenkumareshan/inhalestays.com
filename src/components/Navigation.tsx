@@ -19,11 +19,11 @@ import {
 } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import inhalestaysLogo from '@/assets/inhalestays-logo.png';
 
 interface SiteSettings {
   siteName: string;
-  siteDescription: string;
   logoUrl: string;
   enabledMenus: {
     bookings: boolean;
@@ -34,32 +34,45 @@ interface SiteSettings {
   };
 }
 
+const DEFAULT_SETTINGS: SiteSettings = {
+  siteName: "InhaleStays",
+  logoUrl: "",
+  enabledMenus: { bookings: true, hostel: false, laundry: false, roomSharing: true, about: true },
+};
+
 export function Navigation() {
   const { isAuthenticated, user, logout } = useAuth();
   const { pathname } = useLocation();
-  const [settings, setSettings] = useState<SiteSettings>({
-    siteName: "InhaleStays",
-    siteDescription: "Book your perfect stay",
-    logoUrl: "",
-    enabledMenus: {
-      bookings: true,
-      hostel: false,
-      laundry: false,
-      roomSharing: true,
-      about: true,
-    },
-  });
+  const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
 
   useEffect(() => {
-    // Load settings from localStorage
-    const savedSettings = localStorage.getItem("siteSettings");
-    if (savedSettings) {
-      const parsed = JSON.parse(savedSettings);
-      setSettings({
-        ...parsed,
-        logoUrl: parsed.logoUrl || ""
-      });
+    // Try sessionStorage cache first for instant render
+    const cached = sessionStorage.getItem('site_settings_cache');
+    if (cached) {
+      try { setSettings(JSON.parse(cached)); } catch {}
     }
+
+    // Fetch from DB
+    (async () => {
+      const { data } = await supabase
+        .from('site_settings')
+        .select('key, value')
+        .in('key', ['site_name', 'site_logo', 'enabled_menus']);
+
+      if (data && data.length > 0) {
+        const s: SiteSettings = { ...DEFAULT_SETTINGS };
+        for (const row of data) {
+          const v = row.value as any;
+          if (row.key === 'site_name' && v?.value) s.siteName = v.value;
+          if (row.key === 'site_logo' && v?.url) s.logoUrl = v.url;
+          if (row.key === 'enabled_menus' && typeof v === 'object') {
+            s.enabledMenus = { ...DEFAULT_SETTINGS.enabledMenus, ...v };
+          }
+        }
+        setSettings(s);
+        sessionStorage.setItem('site_settings_cache', JSON.stringify(s));
+      }
+    })();
   }, []);
 
   const logoSrc = settings.logoUrl || inhalestaysLogo;
@@ -87,7 +100,7 @@ export function Navigation() {
           <Link to="/" className="mr-8 flex items-center space-x-3">
             <img 
               src={logoSrc} 
-              alt="InhaleStays Logo" 
+              alt="Logo" 
               className="h-10 w-auto"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
@@ -95,7 +108,7 @@ export function Navigation() {
               }}
             />
             <span className="hidden font-bold text-lg text-foreground sm:inline-block">
-              {settings.siteName || "InhaleStays"}
+              {settings.siteName}
             </span>
           </Link>
           <div className="flex items-center gap-1">
