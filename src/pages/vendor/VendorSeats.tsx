@@ -883,7 +883,7 @@ const VendorSeats: React.FC = () => {
                 statusColors(seat.dateStatus)
               )}
             >
-              <span className="text-xs font-bold leading-none">S{seat.number}</span>
+              <span className="text-xs font-bold leading-none">{seatLabel(seat)}</span>
               <span className="text-[9px] text-muted-foreground leading-tight truncate w-full">{seat.category}</span>
               {/* Price with inline edit button */}
               <div className="flex items-center gap-0.5">
