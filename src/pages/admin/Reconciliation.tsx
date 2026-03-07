@@ -30,6 +30,7 @@ interface ReconciliationRow {
   serial_number: string;
   amount: number;
   payment_method: string;
+  raw_payment_method: string;
   transaction_id: string;
   payment_proof_url?: string;
   student_name: string;
