@@ -90,6 +90,13 @@ const VendorSeats: React.FC = () => {
   const [manualAdvanceAmount, setManualAdvanceAmount] = useState('');
   const [manualDueDate, setManualDueDate] = useState<Date | undefined>(undefined);
 
+  // Date picker open states
+  const [selectedDateOpen, setSelectedDateOpen] = useState(false);
+  const [blockFromOpen, setBlockFromOpen] = useState(false);
+  const [blockToOpen, setBlockToOpen] = useState(false);
+  const [bookingStartOpen, setBookingStartOpen] = useState(false);
+  const [dueDateOpen, setDueDateOpen] = useState(false);
+
   // Booking form state
   const [studentQuery, setStudentQuery] = useState('');
   const [studentResults, setStudentResults] = useState<StudentProfile[]>([]);
