@@ -182,6 +182,38 @@ export function SiteSettingsForm() {
                 </div>
               </div>
             </div>
+
+            {/* WhatsApp Chat Toggle */}
+            <div className="grid gap-3">
+              <Label className="mb-2 flex items-center gap-2">
+                <MessageCircle className="h-4 w-4" style={{ color: '#25D366' }} />
+                WhatsApp Chat for Partners
+              </Label>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="whatsapp-toggle">Enable WhatsApp Chat Button</Label>
+                  <p className="text-sm text-muted-foreground">
+                    When enabled, students see a WhatsApp chat button on property pages (if partner has set their number)
+                  </p>
+                </div>
+                <Switch
+                  id="whatsapp-toggle"
+                  checked={whatsappEnabled}
+                  disabled={whatsappLoading}
+                  onCheckedChange={async (checked) => {
+                    setWhatsappLoading(true);
+                    const ok = await whatsappLeadService.setSiteWhatsappEnabled(checked);
+                    if (ok) {
+                      setWhatsappEnabled(checked);
+                      toast({ title: 'Updated', description: `WhatsApp chat ${checked ? 'enabled' : 'disabled'} globally.` });
+                    } else {
+                      toast({ title: 'Error', description: 'Failed to update setting.', variant: 'destructive' });
+                    }
+                    setWhatsappLoading(false);
+                  }}
+                />
+              </div>
+            </div>
           </div>
           
           <CardFooter className="pt-6 px-0">
