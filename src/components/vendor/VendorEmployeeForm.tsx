@@ -228,6 +228,7 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
           permissions: formData.permissions,
           salary: formData.salary,
           employee_user_id: employeeUserId,
+          allowed_properties: formData.allowed_properties,
         });
 
         if (res.success) {
