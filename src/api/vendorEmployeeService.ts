@@ -24,6 +24,7 @@ export interface VendorEmployeeCreateData {
   permissions?: string[];
   salary?: number;
   employee_user_id?: string;
+  allowed_properties?: string[];
 }
 
 export interface VendorEmployeeUpdateData {
