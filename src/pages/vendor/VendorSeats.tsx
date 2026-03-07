@@ -992,12 +992,14 @@ const VendorSeats: React.FC = () => {
                       )}
                     </div>
                   </TableCell>
-                  {canEdit && (
+                  {(canBlockSeat || canEditPrice) && (
                     <TableCell className="px-2 py-1">
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => openBlockDialog(seat, e)}>
-                          {seat.isAvailable ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                        </Button>
+                        {canBlockSeat && (
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => openBlockDialog(seat, e)}>
+                            {seat.isAvailable ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                          </Button>
+                        )}
                         <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); handleSeatClick(seat); }}>
                           <Info className="h-3 w-3" />
                         </Button>
