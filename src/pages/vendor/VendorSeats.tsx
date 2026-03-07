@@ -1095,10 +1095,15 @@ const VendorSeats: React.FC = () => {
               {!(bookingSuccess && lastInvoiceData) && (
                 <>
                   <SheetHeader className="pb-2">
-                    <SheetTitle className="text-sm flex items-center gap-2">
-                      Seat #{selectedSeat.number}
-                      <Badge variant="outline" className="text-[10px]">{selectedSeat.category}</Badge>
-                      <span className="text-xs text-muted-foreground ml-auto">₹{selectedSeat.price}/mo</span>
+                    <SheetTitle className="text-sm flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        Seat #{selectedSeat.number}
+                        <Badge variant="outline" className="text-[10px]">{selectedSeat.category}</Badge>
+                        <span className="text-xs text-muted-foreground ml-auto">₹{selectedSeat.price}/mo</span>
+                      </div>
+                      <div className="text-xs font-normal text-muted-foreground">
+                        {selectedSeat.cabinName} · Floor {(selectedSeat as any).floor}
+                      </div>
                     </SheetTitle>
                   </SheetHeader>
                   <Separator className="my-2" />
