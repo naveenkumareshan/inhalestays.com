@@ -104,10 +104,10 @@ const Reconciliation: React.FC = () => {
       const isAdmin = roles?.some(r => r.role === 'admin' || r.role === 'super_admin');
 
       const [rrRes, hRes, mRes, lRes] = await Promise.all([
-        supabase.from('receipts').select('id, serial_number, booking_id, user_id, cabin_id, amount, payment_method, transaction_id, payment_proof_url, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, created_at').order('created_at', { ascending: false }).limit(500),
-        supabase.from('hostel_receipts').select('id, serial_number, booking_id, user_id, hostel_id, amount, payment_method, transaction_id, payment_proof_url, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, created_at').order('created_at', { ascending: false }).limit(500),
-        supabase.from('mess_receipts').select('id, serial_number, subscription_id, user_id, mess_id, amount, payment_method, transaction_id, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, created_at').order('created_at', { ascending: false }).limit(500),
-        supabase.from('laundry_receipts').select('id, serial_number, order_id, user_id, partner_id, amount, payment_method, transaction_id, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('receipts').select('id, serial_number, booking_id, user_id, cabin_id, amount, payment_method, transaction_id, payment_proof_url, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, bank_narration, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('hostel_receipts').select('id, serial_number, booking_id, user_id, hostel_id, amount, payment_method, transaction_id, payment_proof_url, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, bank_narration, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('mess_receipts').select('id, serial_number, subscription_id, user_id, mess_id, amount, payment_method, transaction_id, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, bank_narration, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('laundry_receipts').select('id, serial_number, order_id, user_id, partner_id, amount, payment_method, transaction_id, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, bank_narration, created_at').order('created_at', { ascending: false }).limit(500),
       ]);
 
       const allData = [
