@@ -177,6 +177,7 @@ const Reconciliation: React.FC = () => {
           reconciled_at: r.reconciled_at || undefined,
           credit_date: (r as any).credit_date || undefined,
           reconciled_bank_name: (r as any).reconciled_bank_name || undefined,
+          bank_narration: (r as any).bank_narration || undefined,
         };
       });
 
