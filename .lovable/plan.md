@@ -1,71 +1,53 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Block Offline Bookings on Deactivated Properties
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Problem
+When an admin deactivates a Reading Room (or hostel/mess/laundry), partners and employees can still create offline bookings. Instead, they should see the property name but get a "Contact admin to activate" message, with the booking form hidden.
 
 ## Changes
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### 1. `src/api/vendorSeatsService.ts` — Include `is_active` in VendorCabin
+- Add `isActive: boolean` to the `VendorCabin` interface
+- Map `cabin.is_active` in the `getVendorCabins` response (~line 240-261)
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### 2. `src/pages/vendor/VendorSeats.tsx` — Block booking on inactive cabins
+- When a seat is clicked and its cabin is inactive, show an alert message: *"This Reading Room has been deactivated. Contact admin to activate."* instead of the booking form
+- Check `selectedCabinInfo?.isActive === false` before the booking form section (~line 1307)
+- Show an info card with `AlertTriangle` icon and the message
+- Keep seat info (name, floor, status) visible but hide all booking actions (Book, Renew, Future Book buttons)
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### 3. `src/pages/admin/ManualBookingManagement.tsx` — Filter or warn for inactive cabins
+- When admin selects an inactive cabin in the manual booking page, show a warning but still allow (admin override). For non-admin users, disable cabin selection for inactive ones.
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### 4. Hostel partner booking flows
+- In hostel bed management views used by partners, add the same `is_active` check and show "Contact admin to activate this hostel" when the hostel is deactivated.
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+## Key Implementation Detail
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+In `VendorSeats.tsx`, around line 1307 where the booking form renders:
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+```typescript
+{/* Deactivated cabin warning for non-admin */}
+{selectedCabinInfo && selectedCabinInfo.isActive === false && user?.role !== 'admin' && (
+  <div className="border border-amber-200 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-4 text-center space-y-2">
+    <AlertTriangle className="h-5 w-5 text-amber-600 mx-auto" />
+    <p className="text-sm font-medium text-amber-700">This Reading Room has been deactivated</p>
+    <p className="text-xs text-muted-foreground">Please contact admin to activate this Reading Room before making bookings.</p>
+  </div>
+)}
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+{/* Only show booking form if cabin is active OR user is admin */}
+{(selectedSeat.dateStatus === 'available' || showFutureBooking) && canEdit && !bookingSuccess && 
+ (selectedCabinInfo?.isActive !== false || user?.role === 'admin') && (
+  // existing booking form...
+)}
+```
 
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
+Also hide the Renew/Future Book buttons in the booked seat view when cabin is inactive for non-admins.
 
 | File | Change |
 |------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+| `src/api/vendorSeatsService.ts` | Add `isActive` to VendorCabin interface and mapping |
+| `src/pages/vendor/VendorSeats.tsx` | Block booking form + show warning when cabin inactive for non-admins |
 
