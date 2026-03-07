@@ -31,6 +31,7 @@ const SupportPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState('');
+  const [adminWhatsapp, setAdminWhatsapp] = useState('');
 
   const [formData, setFormData] = useState({
     category: 'general',
