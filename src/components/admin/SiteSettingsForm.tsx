@@ -7,6 +7,8 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { MessageCircle } from 'lucide-react';
+import { whatsappLeadService } from '@/api/whatsappLeadService';
 
 interface SiteSettings {
   siteName: string;
