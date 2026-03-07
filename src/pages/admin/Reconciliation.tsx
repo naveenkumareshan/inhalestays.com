@@ -233,6 +233,7 @@ const Reconciliation: React.FC = () => {
       reconciled_by: user?.id,
       credit_date: format(creditDate, 'yyyy-MM-dd'),
       reconciled_bank_name: bankName || null,
+      bank_narration: bankNarration || null,
       rejection_reason: null,
     }).eq('id', approveTarget.id);
     if (error) {
