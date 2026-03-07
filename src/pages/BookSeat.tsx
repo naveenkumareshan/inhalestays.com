@@ -179,6 +179,7 @@ const BookSeat = () => {
           fullAddress: (d as any).full_address || undefined,
           serialNumber: (d as any).serial_number || undefined,
           createdBy: (d as any).created_by || undefined,
+          whatsappChatEnabled: (d as any).whatsapp_chat_enabled || false,
         });
         setLayoutImage((d as any).layout_image || null);
         setRoomWidth((d as any).room_width || 800);
