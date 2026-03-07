@@ -263,7 +263,10 @@ const VendorSeats: React.FC = () => {
     }
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
-      result = result.filter(s => String(s.number).includes(q) || s.category.toLowerCase().includes(q));
+      result = result.filter(s => {
+        const label = `${s.cabinName?.charAt(0)?.toUpperCase() || ''}${(s as any).floor}-S${s.number}`.toLowerCase();
+        return String(s.number).includes(q) || s.category.toLowerCase().includes(q) || label.includes(q);
+      });
     }
     return result;
   }, [seats, statusFilter, searchTerm, selectedFloor]);
