@@ -314,7 +314,7 @@ const Reconciliation: React.FC = () => {
 
   const exportCsv = () => {
     const isApproved = tab === 'approved';
-    const headers = ['S.No', 'Receipt #', 'Source', 'Student', 'Phone', 'Property', 'Amount', 'Method', 'Txn ID', 'Booking ID', 'Status', 'Date', ...(isApproved ? ['Credit Date', 'Bank Name'] : [])].join(',');
+    const headers = ['S.No', 'Receipt #', 'Source', 'Student', 'Phone', 'Property', 'Amount', 'Method', 'Txn ID', 'Booking ID', 'Status', 'Date', ...(isApproved ? ['Credit Date', 'Bank Name', 'Bank Narration'] : [])].join(',');
     const csvRows = filtered.map((r, i) => [
       i + 1,
       r.serial_number,
@@ -328,7 +328,7 @@ const Reconciliation: React.FC = () => {
       r.booking_serial,
       r.reconciliation_status,
       new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      ...(isApproved ? [r.credit_date || '', r.reconciled_bank_name || ''] : []),
+      ...(isApproved ? [r.credit_date || '', r.reconciled_bank_name || '', `"${(r.bank_narration || '').replace(/"/g, '""')}"`] : []),
     ].join(','));
     const csv = [headers, ...csvRows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
