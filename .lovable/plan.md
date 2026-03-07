@@ -1,71 +1,100 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Plan: WhatsApp Chat Lead Generation for Partners
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Overview
+Allow partners to set a WhatsApp number. When enabled globally by admin, students see a WhatsApp chat button on property detail pages (Reading Room, Hostel, Mess). Each click is tracked and counts are shown to both partner and admin.
 
-## Changes
+## Database Changes
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### 1. Add `whatsapp_number` to `partners` table
+```sql
+ALTER TABLE partners ADD COLUMN whatsapp_number text;
+ALTER TABLE partners ADD COLUMN whatsapp_enabled boolean DEFAULT false;
+```
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### 2. Add global admin toggle via `site_settings` table
+Create a lightweight `site_settings` table (key-value) to store the global admin toggle:
+```sql
+CREATE TABLE public.site_settings (
+  key text PRIMARY KEY,
+  value jsonb NOT NULL DEFAULT '{}',
+  updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
+-- Everyone can read settings, only admins can update
+CREATE POLICY "Anyone can read" ON site_settings FOR SELECT USING (true);
+CREATE POLICY "Admins can update" ON site_settings FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'super_admin'));
+INSERT INTO site_settings (key, value) VALUES ('whatsapp_chat', '{"enabled": true}');
+```
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### 3. Create `whatsapp_clicks` tracking table
+```sql
+CREATE TABLE public.whatsapp_clicks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  partner_user_id uuid NOT NULL REFERENCES profiles(id),
+  property_type text NOT NULL,       -- 'cabin', 'hostel', 'mess'
+  property_id uuid NOT NULL,
+  user_id uuid REFERENCES profiles(id), -- nullable for anonymous
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE whatsapp_clicks ENABLE ROW LEVEL SECURITY;
+-- Authenticated users can insert
+CREATE POLICY "Auth can insert" ON whatsapp_clicks FOR INSERT TO authenticated WITH CHECK (true);
+-- Partners see their own clicks, admins see all
+CREATE POLICY "Partners see own" ON whatsapp_clicks FOR SELECT TO authenticated
+  USING (partner_user_id = auth.uid() OR is_partner_or_employee_of(partner_user_id)
+         OR has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'super_admin'));
+```
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+## Frontend Changes
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+### 4. New service: `src/api/whatsappLeadService.ts`
+- `getSiteWhatsappEnabled()` — read from `site_settings` where key = `whatsapp_chat`
+- `getPartnerWhatsappNumber(partnerUserId)` — read from `partners`
+- `trackWhatsappClick(partnerUserId, propertyType, propertyId)` — insert into `whatsapp_clicks`
+- `getWhatsappClickCount(partnerUserId)` — count for partner dashboard
+- `getAllWhatsappClicks(filters)` — for admin
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### 5. Student-facing pages — Add WhatsApp button
+**`src/pages/BookSeat.tsx`**: After loading cabin, fetch the partner's WhatsApp number via `created_by`. If site setting enabled + partner has number, show a floating WhatsApp button with pre-drafted message like:
+> "Hi, I'm interested in a seat at {cabin.name}. Can you share more details?"
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+On click: track the click, then open `https://wa.me/{number}?text={encoded_message}`.
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+**`src/pages/HostelRoomDetails.tsx`**: Same pattern using `hostel.created_by`.
 
-**Reviews section**: Shown below the booking flow (not in a tab)
+**`src/pages/MessDetail.tsx`**: Same pattern using `mess.user_id`.
 
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
+### 6. Shared component: `src/components/WhatsAppChatButton.tsx`
+A reusable floating button component that:
+- Takes `partnerUserId`, `propertyType`, `propertyId`, `propertyName`
+- Fetches partner WhatsApp number and global setting
+- Shows green WhatsApp FAB if enabled
+- On click: logs to `whatsapp_clicks`, opens `wa.me` link
 
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
+### 7. Partner side — WhatsApp number input
+**`src/components/vendor/VendorProfile.tsx`**: Add a WhatsApp number field in the profile edit form, reading/writing to `partners.whatsapp_number` and `partners.whatsapp_enabled` toggle.
 
-## File Summary
+### 8. Partner dashboard — Click count card
+**`src/pages/vendor/VendorDashboard.tsx`**: Add a small stat card showing total WhatsApp lead clicks.
+
+### 9. Admin side — Global toggle + click stats
+**`src/components/admin/SiteSettingsForm.tsx`**: Add a "WhatsApp Chat for Partners" toggle that updates `site_settings`.
+
+**Admin Dashboard or a section in settings**: Show aggregated click counts per partner.
+
+## Summary
 
 | File | Change |
 |------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+| Migration | Add `whatsapp_number`, `whatsapp_enabled` to partners; create `site_settings`; create `whatsapp_clicks` |
+| `src/api/whatsappLeadService.ts` | New service for settings, tracking, counts |
+| `src/components/WhatsAppChatButton.tsx` | New reusable floating WhatsApp button |
+| `src/pages/BookSeat.tsx` | Add WhatsAppChatButton with cabin's `created_by` |
+| `src/pages/HostelRoomDetails.tsx` | Add WhatsAppChatButton with hostel's `created_by` |
+| `src/pages/MessDetail.tsx` | Add WhatsAppChatButton with mess's `user_id` |
+| `src/components/vendor/VendorProfile.tsx` | Add WhatsApp number input + enable toggle |
+| `src/pages/vendor/VendorDashboard.tsx` | Add WhatsApp leads stat card |
+| `src/components/admin/SiteSettingsForm.tsx` | Add global WhatsApp chat toggle |
 
