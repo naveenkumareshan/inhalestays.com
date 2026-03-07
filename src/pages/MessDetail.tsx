@@ -606,6 +606,15 @@ export default function MessDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {mess?.user_id && (
+        <WhatsAppChatButton
+          partnerUserId={mess.user_id}
+          propertyType="mess"
+          propertyId={mess.id}
+          propertyName={mess.name}
+        />
+      )}
     </ErrorBoundary>
   );
 }

@@ -437,6 +437,15 @@ const BookSeat = () => {
           )}
         </>
       )}
+
+      {cabin?.createdBy && (
+        <WhatsAppChatButton
+          partnerUserId={cabin.createdBy}
+          propertyType="cabin"
+          propertyId={cabin.id}
+          propertyName={cabin.name}
+        />
+      )}
       </div>
     </div>
   );
