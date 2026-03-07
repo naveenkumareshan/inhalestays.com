@@ -1,0 +1,1 @@
+ALTER TABLE public.vendor_employees ADD COLUMN IF NOT EXISTS allowed_properties uuid[] DEFAULT '{}';

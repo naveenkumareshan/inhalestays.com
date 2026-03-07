@@ -4062,6 +4062,7 @@ export type Database = {
       }
       vendor_employees: {
         Row: {
+          allowed_properties: string[] | null
           created_at: string
           email: string
           employee_user_id: string | null
@@ -4076,6 +4077,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allowed_properties?: string[] | null
           created_at?: string
           email?: string
           employee_user_id?: string | null
@@ -4090,6 +4092,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allowed_properties?: string[] | null
           created_at?: string
           email?: string
           employee_user_id?: string | null
