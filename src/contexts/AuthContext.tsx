@@ -85,11 +85,23 @@ const buildUser = async (supabaseUser: SupabaseUser): Promise<User> => {
   if (role === 'vendor_employee') {
     const { data: empData } = await supabase
       .from('vendor_employees')
-      .select('permissions, partner_user_id')
+      .select('permissions, partner_user_id, allowed_properties')
       .eq('employee_user_id', supabaseUser.id)
       .maybeSingle();
     permissions = empData?.permissions || [];
     vendorId = empData?.partner_user_id || undefined;
+    const allowedProperties = (empData as any)?.allowed_properties || [];
+
+    return {
+      id: supabaseUser.id,
+      name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+      email: supabaseUser.email || '',
+      role,
+      profileImage: supabaseUser.user_metadata?.avatar_url,
+      permissions,
+      vendorId,
+      allowedProperties,
+    };
   }
 
   return {
