@@ -35,6 +35,7 @@ const ComplaintsPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState('');
+  const [partnerWhatsapp, setPartnerWhatsapp] = useState('');
 
   const [formData, setFormData] = useState({
     booking_id: '',
