@@ -70,6 +70,7 @@ export const vendorEmployeeService = {
         role: employeeData.role || 'staff',
         permissions: employeeData.permissions || [],
         salary: employeeData.salary || 0,
+        allowed_properties: employeeData.allowed_properties || [],
       };
       if (employeeData.employee_user_id) {
         insertData.employee_user_id = employeeData.employee_user_id;
