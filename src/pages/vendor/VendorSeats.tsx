@@ -1519,7 +1519,7 @@ const VendorSeats: React.FC = () => {
                             id="locker"
                             checked={lockerIncluded}
                             onCheckedChange={(v) => setLockerIncluded(v === true)}
-                            disabled={selectedCabinInfo.lockerMandatory && (selectedCabinInfo.lockerMandatoryDurations || ['daily','weekly','monthly']).includes(selectedDuration.type)}
+                            
                             className="h-3.5 w-3.5"
                           />
                           <Label htmlFor="locker" className="text-[11px] cursor-pointer">
