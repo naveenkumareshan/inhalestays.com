@@ -35,6 +35,7 @@ export interface VendorEmployeeUpdateData {
   permissions?: string[];
   status?: string;
   salary?: number;
+  allowed_properties?: string[];
 }
 
 export const vendorEmployeeService = {
