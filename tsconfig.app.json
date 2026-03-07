@@ -1,33 +1,39 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "skipDefaultLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
-    "moduleDetection": "force",
-    "noEmit": true,
     "jsx": "react-jsx",
-
-    /* Linting */
-    "strict": false,
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "noFallthroughCasesInSwitch": false,
+    "noImplicitAny": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noImplicitAny": false,
-    "noFallthroughCasesInSwitch": false,
-
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "gl-matrix": ["./src/gl-matrix.d.ts"]
-    }
+      "@/*": [
+        "./src/*"
+      ],
+      "gl-matrix": [
+        "./src/gl-matrix.d.ts"
+      ]
+    },
+    "skipDefaultLibCheck": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "target": "ES2020",
+    "useDefineForClassFields": true
   },
-  "include": ["src"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ],
+  "include": [
+    "src"
+  ]
 }
