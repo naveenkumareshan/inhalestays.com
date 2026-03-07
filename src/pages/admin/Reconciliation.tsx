@@ -572,6 +572,7 @@ const Reconciliation: React.FC = () => {
                         <TableCell className="text-xs font-mono">{r.serial_number}</TableCell>
                         {tab === 'approved' && <TableCell className="text-xs">{r.credit_date ? format(new Date(r.credit_date), 'dd MMM yyyy') : '-'}</TableCell>}
                         {tab === 'approved' && <TableCell className="text-xs">{r.reconciled_bank_name || '-'}</TableCell>}
+                        {tab === 'approved' && <TableCell className="text-xs max-w-[200px] truncate" title={r.bank_narration || ''}>{r.bank_narration || '-'}</TableCell>}
                         {tab === 'rejected' && (
                           <TableCell className="text-xs text-destructive italic max-w-[150px] truncate">{r.rejection_reason || '-'}</TableCell>
                         )}
