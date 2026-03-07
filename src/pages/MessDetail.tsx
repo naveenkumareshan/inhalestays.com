@@ -28,6 +28,7 @@ import { ShareButton } from '@/components/ShareButton';
 import { generateMessShareText } from '@/utils/shareUtils';
 import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { WhatsAppChatButton } from '@/components/WhatsAppChatButton';
 import {
   ArrowLeft, CalendarIcon, Clock, IndianRupee, Loader2,
   MapPin, Star, UtensilsCrossed, Users,
