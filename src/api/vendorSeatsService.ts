@@ -220,6 +220,7 @@ export const vendorSeatsService = {
         .select('role')
         .eq('user_id', authUser.id);
       const isAdmin = roleData?.some(r => r.role === 'admin' || r.role === 'super_admin');
+      const isEmployee = roleData?.some(r => r.role === 'vendor_employee');
       if (!isAdmin) {
         try {
           const { getEffectiveOwnerId } = await import('@/utils/getEffectiveOwnerId');
