@@ -4077,6 +4077,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_duplicate_transaction_id: {
+        Args: { p_txn_id: string }
+        Returns: boolean
+      }
       check_hostel_bed_available: {
         Args: { p_bed_id: string; p_end_date: string; p_start_date: string }
         Returns: boolean
