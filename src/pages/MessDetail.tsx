@@ -613,6 +613,7 @@ export default function MessDetail() {
           propertyType="mess"
           propertyId={mess.id}
           propertyName={mess.name}
+          whatsappChatEnabled={!!(mess as any).whatsapp_chat_enabled}
         />
       )}
     </ErrorBoundary>

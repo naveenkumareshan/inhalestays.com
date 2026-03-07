@@ -476,6 +476,7 @@ export type Database = {
           slots_applicable_durations: Json
           slots_enabled: boolean
           state: string | null
+          whatsapp_chat_enabled: boolean
           working_days: Json
         }
         Insert: {
@@ -524,6 +525,7 @@ export type Database = {
           slots_applicable_durations?: Json
           slots_enabled?: boolean
           state?: string | null
+          whatsapp_chat_enabled?: boolean
           working_days?: Json
         }
         Update: {
@@ -572,6 +574,7 @@ export type Database = {
           slots_applicable_durations?: Json
           slots_enabled?: boolean
           state?: string | null
+          whatsapp_chat_enabled?: boolean
           working_days?: Json
         }
         Relationships: []
@@ -1796,6 +1799,7 @@ export type Database = {
           stay_type: string
           updated_at: string
           vendor_id: string | null
+          whatsapp_chat_enabled: boolean
         }
         Insert: {
           advance_applicable_durations?: Json
@@ -1844,6 +1848,7 @@ export type Database = {
           stay_type?: string
           updated_at?: string
           vendor_id?: string | null
+          whatsapp_chat_enabled?: boolean
         }
         Update: {
           advance_applicable_durations?: Json
@@ -1892,6 +1897,7 @@ export type Database = {
           stay_type?: string
           updated_at?: string
           vendor_id?: string | null
+          whatsapp_chat_enabled?: boolean
         }
         Relationships: [
           {
@@ -2440,6 +2446,7 @@ export type Database = {
           starting_price: number | null
           updated_at: string
           user_id: string
+          whatsapp_chat_enabled: boolean
         }
         Insert: {
           average_rating?: number | null
@@ -2462,6 +2469,7 @@ export type Database = {
           starting_price?: number | null
           updated_at?: string
           user_id: string
+          whatsapp_chat_enabled?: boolean
         }
         Update: {
           average_rating?: number | null
@@ -2484,6 +2492,7 @@ export type Database = {
           starting_price?: number | null
           updated_at?: string
           user_id?: string
+          whatsapp_chat_enabled?: boolean
         }
         Relationships: [
           {

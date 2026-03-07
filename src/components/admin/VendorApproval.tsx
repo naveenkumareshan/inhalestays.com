@@ -10,7 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Eye, Check, X, AlertTriangle, User, Download, Search, RefreshCw, Power, Link2, Copy, Settings, ChevronDown, ChevronRight, Building, Home, MapPin } from 'lucide-react';
+import { Eye, Check, X, AlertTriangle, User, Download, Search, RefreshCw, Power, Link2, Copy, Settings, ChevronDown, ChevronRight, Building, Home, MapPin, MessageCircle } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { whatsappLeadService } from '@/api/whatsappLeadService';
 import { useToast } from '@/hooks/use-toast';
 import { vendorApprovalService, Vendor, VendorFilters, VendorsResponse } from '@/api/vendorApprovalService';
 import { VendorDetailsDialog } from './VendorDetailsDialog';
@@ -33,6 +35,7 @@ interface PropertyInfo {
   activeBookings: number;
   totalSeatsOrBeds: number;
   occupiedSeatsOrBeds: number;
+  whatsapp_chat_enabled: boolean;
 }
 
 const VendorApproval: React.FC = () => {
@@ -79,8 +82,8 @@ const VendorApproval: React.FC = () => {
     setPropertiesLoading(true);
     try {
       const [cabinsRes, hostelsRes, bookingsRes, hostelBookingsRes, seatsRes, bedsRes] = await Promise.all([
-        supabase.from('cabins').select('id, name, city, state, capacity, is_active, is_approved, created_by'),
-        supabase.from('hostels').select('id, name, location, is_active, is_approved, created_by'),
+        supabase.from('cabins').select('id, name, city, state, capacity, is_active, is_approved, created_by, whatsapp_chat_enabled'),
+        supabase.from('hostels').select('id, name, location, is_active, is_approved, created_by, whatsapp_chat_enabled'),
         supabase.from('bookings').select('cabin_id, id').in('payment_status', ['confirmed', 'paid']),
         supabase.from('hostel_bookings').select('hostel_id, id').in('status', ['confirmed', 'active']),
         supabase.from('seats').select('cabin_id, id, is_available'),
@@ -149,10 +152,11 @@ const VendorApproval: React.FC = () => {
           state: c.state || '',
           capacity: c.capacity || 0,
           is_active: c.is_active ?? false,
-          is_approved: c.is_approved ?? false,
+          is_approved: (c as any).is_approved ?? false,
           activeBookings: cabinBookingCounts.get(c.id) || 0,
           totalSeatsOrBeds: seatInfo.total,
           occupiedSeatsOrBeds: seatInfo.occupied,
+          whatsapp_chat_enabled: (c as any).whatsapp_chat_enabled ?? false,
         };
         const existing = map.get(c.created_by) || [];
         existing.push(prop);
@@ -166,7 +170,7 @@ const VendorApproval: React.FC = () => {
           id: h.id,
           name: h.name,
           type: 'Hostel',
-          city: h.location || '',
+          city: (h as any).location || '',
           state: '',
           capacity: 0,
           is_active: h.is_active ?? false,
@@ -174,6 +178,7 @@ const VendorApproval: React.FC = () => {
           activeBookings: hostelBookingCounts.get(h.id) || 0,
           totalSeatsOrBeds: bedInfo.total,
           occupiedSeatsOrBeds: bedInfo.occupied,
+          whatsapp_chat_enabled: (h as any).whatsapp_chat_enabled ?? false,
         };
         const existing = map.get(h.created_by) || [];
         existing.push(prop);
@@ -359,6 +364,28 @@ const VendorApproval: React.FC = () => {
                     <div><span className="text-muted-foreground">Bookings:</span> {p.activeBookings}</div>
                     <div><span className="text-muted-foreground">Occ:</span> {occ}%</div>
                   </div>
+                  <div className="flex items-center justify-between pt-1 border-t">
+                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <MessageCircle className="h-3 w-3" /> WhatsApp
+                    </div>
+                    <Switch
+                      checked={p.whatsapp_chat_enabled}
+                      onCheckedChange={async (checked) => {
+                        const propType = p.type === 'Reading Room' ? 'cabin' : 'hostel';
+                        const ok = await whatsappLeadService.setPropertyWhatsappEnabled(propType as any, p.id, checked);
+                        if (ok) {
+                          setPropertiesMap(prev => {
+                            const next = new Map(prev);
+                            const list = (next.get(userId) || []).map(x => x.id === p.id ? { ...x, whatsapp_chat_enabled: checked } : x);
+                            next.set(userId, list);
+                            return next;
+                          });
+                          toast({ title: `WhatsApp ${checked ? 'enabled' : 'disabled'}` });
+                        }
+                      }}
+                      className="scale-75"
+                    />
+                  </div>
                 </div>
               );
             })}
@@ -374,6 +401,7 @@ const VendorApproval: React.FC = () => {
                 <TableHead className="text-[11px] py-2">Bookings</TableHead>
                 <TableHead className="text-[11px] py-2">Occupancy</TableHead>
                 <TableHead className="text-[11px] py-2">Status</TableHead>
+                <TableHead className="text-[11px] py-2">WhatsApp</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -398,6 +426,25 @@ const VendorApproval: React.FC = () => {
                         <span className="text-[10px]">{p.is_active ? 'Active' : 'Inactive'}</span>
                         {!p.is_approved && <Badge className="text-[9px] bg-amber-50 text-amber-600 border-amber-200 border px-1 py-0">Pending</Badge>}
                       </div>
+                    </TableCell>
+                    <TableCell className="py-1.5">
+                      <Switch
+                        checked={p.whatsapp_chat_enabled}
+                        onCheckedChange={async (checked) => {
+                          const propType = p.type === 'Reading Room' ? 'cabin' : 'hostel';
+                          const ok = await whatsappLeadService.setPropertyWhatsappEnabled(propType as any, p.id, checked);
+                          if (ok) {
+                            setPropertiesMap(prev => {
+                              const next = new Map(prev);
+                              const list = (next.get(userId) || []).map(x => x.id === p.id ? { ...x, whatsapp_chat_enabled: checked } : x);
+                              next.set(userId, list);
+                              return next;
+                            });
+                            toast({ title: `WhatsApp ${checked ? 'enabled' : 'disabled'}` });
+                          }
+                        }}
+                        className="scale-75"
+                      />
                     </TableCell>
                   </TableRow>
                 );

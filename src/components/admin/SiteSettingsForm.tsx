@@ -7,8 +7,6 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MessageCircle } from 'lucide-react';
-import { whatsappLeadService } from '@/api/whatsappLeadService';
 
 interface SiteSettings {
   siteName: string;
@@ -37,18 +35,13 @@ export function SiteSettingsForm() {
     }
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [whatsappEnabled, setWhatsappEnabled] = useState(true);
-  const [whatsappLoading, setWhatsappLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Load settings from localStorage or API
     const savedSettings = localStorage.getItem('siteSettings');
     if (savedSettings) {
       setSettings(JSON.parse(savedSettings));
     }
-    // Load WhatsApp global toggle
-    whatsappLeadService.getSiteWhatsappEnabled().then(setWhatsappEnabled).catch(() => {});
   }, []);
 
   const handleMenuToggle = (menu: keyof SiteSettings['enabledMenus']) => {
@@ -183,36 +176,12 @@ export function SiteSettingsForm() {
               </div>
             </div>
 
-            {/* WhatsApp Chat Toggle */}
+            {/* WhatsApp Chat Info */}
             <div className="grid gap-3">
-              <Label className="mb-2 flex items-center gap-2">
-                <MessageCircle className="h-4 w-4" style={{ color: '#25D366' }} />
-                WhatsApp Chat for Partners
-              </Label>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="whatsapp-toggle">Enable WhatsApp Chat Button</Label>
-                  <p className="text-sm text-muted-foreground">
-                    When enabled, students see a WhatsApp chat button on property pages (if partner has set their number)
-                  </p>
-                </div>
-                <Switch
-                  id="whatsapp-toggle"
-                  checked={whatsappEnabled}
-                  disabled={whatsappLoading}
-                  onCheckedChange={async (checked) => {
-                    setWhatsappLoading(true);
-                    const ok = await whatsappLeadService.setSiteWhatsappEnabled(checked);
-                    if (ok) {
-                      setWhatsappEnabled(checked);
-                      toast({ title: 'Updated', description: `WhatsApp chat ${checked ? 'enabled' : 'disabled'} globally.` });
-                    } else {
-                      toast({ title: 'Error', description: 'Failed to update setting.', variant: 'destructive' });
-                    }
-                    setWhatsappLoading(false);
-                  }}
-                />
-              </div>
+              <Label className="mb-2">WhatsApp Chat for Partners</Label>
+              <p className="text-sm text-muted-foreground">
+                WhatsApp chat is now managed per-property from the Partner Management page.
+              </p>
             </div>
           </div>
           

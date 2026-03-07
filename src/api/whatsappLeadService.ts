@@ -1,21 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export const whatsappLeadService = {
-  /** Check if WhatsApp chat is globally enabled by admin */
-  getSiteWhatsappEnabled: async (): Promise<boolean> => {
-    const { data } = await supabase
-      .from('site_settings' as any)
-      .select('value')
-      .eq('key', 'whatsapp_chat')
-      .maybeSingle();
-    return !!(data as any)?.value?.enabled;
-  },
-
-  /** Toggle global WhatsApp chat setting */
-  setSiteWhatsappEnabled: async (enabled: boolean) => {
+  /** Toggle WhatsApp chat for a specific property */
+  setPropertyWhatsappEnabled: async (propertyType: 'cabin' | 'hostel' | 'mess', propertyId: string, enabled: boolean) => {
+    const table = propertyType === 'cabin' ? 'cabins' : propertyType === 'hostel' ? 'hostels' : 'mess_partners';
     const { error } = await supabase
-      .from('site_settings' as any)
-      .upsert({ key: 'whatsapp_chat', value: { enabled }, updated_at: new Date().toISOString() } as any);
+      .from(table)
+      .update({ whatsapp_chat_enabled: enabled } as any)
+      .eq('id', propertyId);
     return !error;
   },
 

@@ -1,68 +1,71 @@
 
 
-# Plan: Per-Property WhatsApp Toggle by Admin
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Overview
-Replace the global WhatsApp toggle with per-property control. Admin can enable/disable WhatsApp chat for each Reading Room, Hostel, and Mess individually from the Partner Management expanded property rows. Properties under a universal (Diamond) subscription get auto-enabled.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-## Database Changes
+## Changes
 
-### Migration
-```sql
--- Add whatsapp_chat_enabled to cabins, hostels, mess_partners
-ALTER TABLE cabins ADD COLUMN whatsapp_chat_enabled boolean NOT NULL DEFAULT false;
-ALTER TABLE hostels ADD COLUMN whatsapp_chat_enabled boolean NOT NULL DEFAULT false;
-ALTER TABLE mess_partners ADD COLUMN whatsapp_chat_enabled boolean NOT NULL DEFAULT false;
-```
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-No changes to `site_settings` table (keep it but stop using the global toggle for WhatsApp). The per-property column replaces the global check.
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-## Frontend Changes
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-### 1. `src/components/WhatsAppChatButton.tsx`
-- Remove the `whatsappLeadService.getSiteWhatsappEnabled()` call.
-- Add a new prop `whatsappChatEnabled: boolean` passed from the parent page.
-- Show the button only when `whatsappChatEnabled && partnerData?.whatsapp_enabled && partnerData.whatsapp_number`.
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-### 2. `src/pages/BookSeat.tsx`
-- Include `whatsapp_chat_enabled` in the cabin data fetch (already fetching from `cabins` table).
-- Pass `whatsappChatEnabled={cabin.whatsappChatEnabled}` to `WhatsAppChatButton`.
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-### 3. `src/pages/HostelRoomDetails.tsx`
-- Include `whatsapp_chat_enabled` in the hostel fetch.
-- Pass prop to `WhatsAppChatButton`.
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-### 4. `src/pages/MessDetail.tsx`
-- Include `whatsapp_chat_enabled` in the mess fetch.
-- Pass prop to `WhatsAppChatButton`.
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-### 5. `src/components/admin/VendorApproval.tsx` — Add WhatsApp toggle per property
-- Fetch `whatsapp_chat_enabled` alongside existing property data in `fetchProperties`.
-- Add `whatsapp_chat_enabled` to `PropertyInfo` interface.
-- In both mobile card and desktop table rows, add a WhatsApp toggle `Switch` per property.
-- On toggle change, update the corresponding table (`cabins`/`hostels`/`mess_partners`) directly.
-- Add a "WhatsApp" column header in the desktop table.
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-### 6. `src/components/admin/SiteSettingsForm.tsx`
-- Remove the global WhatsApp toggle section (or keep it as informational, noting it's now per-property).
+**Reviews section**: Shown below the booking flow (not in a tab)
 
-### 7. Auto-enable for universal subscribers
-- In `VendorApproval.tsx`, when fetching properties, also check if the partner has an active universal subscription. If so, show the WhatsApp toggle as enabled/auto and optionally auto-enable on property approval.
-- Alternatively, in `WhatsAppChatButton`, add a check: if the property's partner has an active universal subscription, treat `whatsapp_chat_enabled` as true regardless. This is simpler but adds an extra query.
-- **Recommended approach**: Keep it simple — admin manually enables WhatsApp per property, but for universal plan partners, show a badge/note indicating they qualify. Admin still controls the toggle.
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
 
-### 8. `src/api/whatsappLeadService.ts`
-- Remove `getSiteWhatsappEnabled()` and `setSiteWhatsappEnabled()` methods (no longer needed).
-- Add `getPropertyWhatsappEnabled(propertyType, propertyId)` if needed, or just rely on the prop passed from parent.
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
 
 | File | Change |
 |------|--------|
-| Migration | Add `whatsapp_chat_enabled` to `cabins`, `hostels`, `mess_partners` |
-| `src/components/WhatsAppChatButton.tsx` | Accept `whatsappChatEnabled` prop, remove global check |
-| `src/pages/BookSeat.tsx` | Fetch & pass `whatsapp_chat_enabled` |
-| `src/pages/HostelRoomDetails.tsx` | Fetch & pass `whatsapp_chat_enabled` |
-| `src/pages/MessDetail.tsx` | Fetch & pass `whatsapp_chat_enabled` |
-| `src/components/admin/VendorApproval.tsx` | Add per-property WhatsApp toggle in expanded rows |
-| `src/components/admin/SiteSettingsForm.tsx` | Remove global WhatsApp toggle |
-| `src/api/whatsappLeadService.ts` | Remove global setting methods |
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

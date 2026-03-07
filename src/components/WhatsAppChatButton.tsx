@@ -7,6 +7,7 @@ interface WhatsAppChatButtonProps {
   propertyType: 'cabin' | 'hostel' | 'mess';
   propertyId: string;
   propertyName: string;
+  whatsappChatEnabled?: boolean;
 }
 
 export const WhatsAppChatButton: React.FC<WhatsAppChatButtonProps> = ({
@@ -14,25 +15,23 @@ export const WhatsAppChatButton: React.FC<WhatsAppChatButtonProps> = ({
   propertyType,
   propertyId,
   propertyName,
+  whatsappChatEnabled = false,
 }) => {
   const [visible, setVisible] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState('');
 
   useEffect(() => {
-    if (!partnerUserId) return;
+    if (!partnerUserId || !whatsappChatEnabled) return;
     (async () => {
-      const [enabled, partnerData] = await Promise.all([
-        whatsappLeadService.getSiteWhatsappEnabled(),
-        whatsappLeadService.getPartnerWhatsapp(partnerUserId),
-      ]);
-      if (enabled && partnerData?.whatsapp_enabled && partnerData.whatsapp_number) {
+      const partnerData = await whatsappLeadService.getPartnerWhatsapp(partnerUserId);
+      if (partnerData?.whatsapp_enabled && partnerData.whatsapp_number) {
         setWhatsappNumber(partnerData.whatsapp_number);
         setVisible(true);
       }
     })();
-  }, [partnerUserId]);
+  }, [partnerUserId, whatsappChatEnabled]);
 
-  if (!visible) return null;
+  if (!visible || !whatsappChatEnabled) return null;
 
   const typeLabel = propertyType === 'cabin' ? 'reading room' : propertyType;
   const message = `Hi, I'm interested in ${propertyName} (${typeLabel}). Can you share more details?`;
