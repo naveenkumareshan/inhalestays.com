@@ -1331,7 +1331,7 @@ const VendorSeats: React.FC = () => {
               )}
 
               {/* ── AVAILABLE / FUTURE BOOKING: Booking form ── */}
-              {(selectedSeat.dateStatus === 'available' || showFutureBooking) && canEdit && !bookingSuccess && (selectedCabinInfo?.isActive !== false || user?.role === 'admin' || user?.role === 'super_admin') && (
+              {(selectedSeat.dateStatus === 'available' || showFutureBooking) && ((selectedSeat.dateStatus === 'available' ? canCreateBooking : (isRenewMode ? canRenewBooking : canBookFuture))) && !bookingSuccess && (selectedCabinInfo?.isActive !== false || user?.role === 'admin' || user?.role === 'super_admin') && (
                 <div className="space-y-3">
                   {showFutureBooking && (
                     <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-1" onClick={() => { setShowFutureBooking(false); setIsRenewMode(false); }}>
