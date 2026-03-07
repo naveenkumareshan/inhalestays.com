@@ -122,6 +122,22 @@ const VendorDashboard: React.FC = () => {
           </Card>
         </div>
 
+        {/* WhatsApp Leads Card */}
+        {waClicks > 0 && (
+          <div className="mb-4">
+            <Card className="shadow-none border rounded-lg">
+              <div className="p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">WhatsApp Leads</p>
+                  <p className="text-xl font-bold mt-0.5">{waClicks}</p>
+                  <p className="text-[10px] text-muted-foreground">Total chat clicks from students</p>
+                </div>
+                <MessageCircle className="h-4 w-4" style={{ color: '#25D366' }} />
+              </div>
+            </Card>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
           <Card className="shadow-none border rounded-lg">
             <CardHeader className="pb-2 pt-3 px-4">

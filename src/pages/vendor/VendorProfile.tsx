@@ -1,6 +1,7 @@
 import React from 'react';
 import { VendorProfile } from '@/components/vendor/VendorProfile';
 import { PaymentModesManager } from '@/components/vendor/PaymentModesManager';
+import { WhatsAppSettings } from '@/components/vendor/WhatsAppSettings';
 
 const VendorProfilePage: React.FC = () => {
   return (
@@ -13,6 +14,7 @@ const VendorProfilePage: React.FC = () => {
       </div>
       
       <VendorProfile />
+      <WhatsAppSettings />
       <PaymentModesManager />
     </div>
   );
