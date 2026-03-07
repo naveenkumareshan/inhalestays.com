@@ -2799,6 +2799,7 @@ export type Database = {
           id: string
           is_active: boolean
           label: string
+          linked_bank_id: string | null
           mode_type: string
           partner_user_id: string
         }
@@ -2808,6 +2809,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           label: string
+          linked_bank_id?: string | null
           mode_type?: string
           partner_user_id: string
         }
@@ -2817,10 +2819,19 @@ export type Database = {
           id?: string
           is_active?: boolean
           label?: string
+          linked_bank_id?: string | null
           mode_type?: string
           partner_user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "partner_payment_modes_linked_bank_id_fkey"
+            columns: ["linked_bank_id"]
+            isOneToOne: false
+            referencedRelation: "partner_payment_modes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       partner_payout_settings: {
         Row: {

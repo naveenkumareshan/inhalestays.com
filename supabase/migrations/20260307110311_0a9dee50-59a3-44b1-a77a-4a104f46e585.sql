@@ -1,0 +1,1 @@
+ALTER TABLE public.partner_payment_modes ADD COLUMN linked_bank_id uuid REFERENCES public.partner_payment_modes(id) ON DELETE SET NULL;
