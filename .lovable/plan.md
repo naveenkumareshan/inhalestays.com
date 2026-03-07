@@ -1,71 +1,58 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Upgrade Admin Settings UI + Dynamic Splash Screen
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Two tasks
 
-## Changes
+### Task 1: Site Settings — Add logo upload + tagline field
+Currently the logo field is just a URL text input. Replace it with an actual image upload button (reuse `ImageUpload` component or add a simple file-to-storage upload). Add a dedicated "Tagline" field separate from description (stored as `site_tagline` in `site_settings`).
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### Task 2: Modernize Payment, Email, SMS, Platform tabs
+These tabs use the old large Card/CardHeader style with `text-lg` fonts and full-size buttons. Convert them all to the compact high-density SaaS-style that Site Settings already uses (text-xs labels, h-8 inputs, compact cards, text-[11px] descriptions, small save buttons).
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### Task 3: Splash screen reads dynamic settings
+Currently `SplashOverlay` has hardcoded logo (`/splash-logo.png`), name (`InhaleStays`), and tagline (`Reading Room Booking`). Update it to fetch from `site_settings` table on mount and display the dynamic logo, site name, and tagline.
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+---
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+## Detailed changes
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+### `src/components/admin/SiteSettingsForm.tsx`
+- Add `site_tagline` to `SETTINGS_KEYS` array and state
+- Replace the Logo URL text input with a file upload area:
+  - Use Supabase storage (`cabin-images` bucket or a new `site-assets` bucket) to upload the logo file
+  - Show current logo preview with a change/remove button
+  - On upload, save the public URL to `site_logo` setting
+- Add a "Tagline" input field (short text, e.g. "Reading Room Booking") stored as `{ value: tagline }` under key `site_tagline`
+- Keep the existing compact UI style
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### `src/components/admin/settings/PaymentGatewaySettings.tsx`
+- Replace the outer `Card > CardHeader > CardTitle/CardDescription` with compact card style (text-sm title, text-[11px] description, pb-3 header)
+- Reduce all `text-lg` to `text-xs font-medium`, all Labels to `text-xs`
+- Inputs to `h-8 text-xs`, Switches to `scale-90`
+- Save button to `size="sm" h-8 text-xs gap-1.5` with Save icon
+- Provider section headers become compact divider rows
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+### `src/components/admin/settings/EmailSettings.tsx`
+- Same compact treatment: small card headers, text-xs labels, h-8 inputs, compact grid
+- Test email section made compact
+- Save button matches site settings style
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+### `src/components/admin/settings/SmsSettings.tsx`
+- Same compact treatment for all provider sections and templates
+- Templates textarea to `text-xs min-h-[60px] resize-none`
+- Save button compact
 
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
+### `src/components/SplashOverlay.tsx`
+- On mount, query `site_settings` for keys `site_name`, `site_logo`, `site_tagline`
+- Use fetched values (with fallbacks to current hardcoded defaults)
+- Show the dynamic logo URL, site name, and tagline on the splash screen
 
 | File | Change |
 |------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+| `src/components/admin/SiteSettingsForm.tsx` | Add logo file upload + tagline field |
+| `src/components/admin/settings/PaymentGatewaySettings.tsx` | Compact SaaS-style UI |
+| `src/components/admin/settings/EmailSettings.tsx` | Compact SaaS-style UI |
+| `src/components/admin/settings/SmsSettings.tsx` | Compact SaaS-style UI |
+| `src/components/SplashOverlay.tsx` | Fetch dynamic logo, name, tagline from DB |
 
