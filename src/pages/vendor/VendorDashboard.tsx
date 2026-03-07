@@ -1,11 +1,14 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Navigation } from '@/components/Navigation';
-import { DollarSign, Users, Calendar, MapPin, Settings, Eye, Banknote } from 'lucide-react';
+import { DollarSign, Users, Calendar, MapPin, Settings, Eye, Banknote, MessageCircle } from 'lucide-react';
+import { whatsappLeadService } from '@/api/whatsappLeadService';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
+import { supabase } from '@/integrations/supabase/client';
 
 const VendorDashboard: React.FC = () => {
   // Mock data - replace with actual API calls
