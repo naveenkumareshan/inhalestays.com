@@ -53,6 +53,21 @@ export interface PartnerEmployeePermissions {
   // Legacy compat
   view_customers: boolean;
   manage_customers: boolean;
+  // Granular Reading Room Actions
+  can_create_booking: boolean;
+  can_renew_booking: boolean;
+  can_book_future: boolean;
+  can_cancel_booking: boolean;
+  can_release_booking: boolean;
+  can_transfer_booking: boolean;
+  can_edit_booking_dates: boolean;
+  can_block_seat: boolean;
+  can_edit_price: boolean;
+  // Granular Hostel Actions
+  can_hostel_create_booking: boolean;
+  can_hostel_cancel_booking: boolean;
+  can_hostel_release_booking: boolean;
+  can_hostel_transfer_booking: boolean;
 }
 
 const ALL_PERMISSION_KEYS: (keyof PartnerEmployeePermissions)[] = [
