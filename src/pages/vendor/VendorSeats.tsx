@@ -155,6 +155,15 @@ const VendorSeats: React.FC = () => {
   const { user } = useAuth();
 
   const canEdit = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('seats_available_edit');
+  const canEditPrice = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_edit_price');
+  const canBlockSeat = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_block_seat');
+  const canCreateBooking = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_create_booking');
+  const canRenewBooking = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_renew_booking');
+  const canBookFuture = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_book_future');
+  const canCancelBooking = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_cancel_booking');
+  const canReleaseBooking = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_release_booking');
+  const canTransferBooking = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_transfer_booking');
+  const canEditBookingDates = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_edit_booking_dates');
 
   // Get cabin locker info for the selected seat
   const selectedCabinInfo = useMemo(() => {

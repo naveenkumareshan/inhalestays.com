@@ -283,7 +283,8 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
                           {group.group}
                         </td>
                       </tr>
-                      {group.modules.map((mod) => {
+                      {/* Module-level view/edit permissions */}
+                      {group.modules?.map((mod) => {
                         const idx = rowIndex++;
                         return (
                           <tr key={mod.label} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
@@ -300,6 +301,22 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
                                 id={mod.editKey}
                                 checked={formData.permissions.includes(mod.editKey)}
                                 onCheckedChange={() => handlePermissionChange(mod.editKey)}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {/* Action-level single toggle permissions */}
+                      {group.actions?.map((action) => {
+                        const idx = rowIndex++;
+                        return (
+                          <tr key={action.key} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
+                            <td className="py-1.5 px-3 text-[11px] font-medium" colSpan={2}>{action.label}</td>
+                            <td className="py-1.5 px-3 text-center">
+                              <Checkbox
+                                id={action.key}
+                                checked={formData.permissions.includes(action.key)}
+                                onCheckedChange={() => handlePermissionChange(action.key)}
                               />
                             </td>
                           </tr>
