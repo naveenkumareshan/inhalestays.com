@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -60,6 +59,13 @@ const SOURCE_COLORS: Record<string, string> = {
   laundry: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
 };
 
+const DEFAULT_METHOD_LABELS: Record<string, string> = {
+  cash: 'Cash',
+  upi: 'UPI',
+  bank_transfer: 'Bank Transfer',
+  online: 'Online',
+};
+
 const Reconciliation: React.FC = () => {
   const [rows, setRows] = useState<ReconciliationRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +77,6 @@ const Reconciliation: React.FC = () => {
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<ReconciliationRow | null>(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -84,6 +89,7 @@ const Reconciliation: React.FC = () => {
   const [bankName, setBankName] = useState('');
   const [bankOptions, setBankOptions] = useState<{ id: string; label: string }[]>([]);
   const [bankLoading, setBankLoading] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -109,6 +115,15 @@ const Reconciliation: React.FC = () => {
         ...(mRes.data || []).map(r => ({ ...r, _source: 'mess' as const, _propId: r.mess_id })),
         ...(lRes.data || []).map(r => ({ ...r, _source: 'laundry' as const, _propId: r.partner_id })),
       ];
+
+      // Resolve custom payment method labels
+      const customMethods = [...new Set(allData.map(r => r.payment_method).filter(m => m?.startsWith('custom_')))];
+      const customIds = customMethods.map(m => m.replace('custom_', ''));
+      let methodLabels: Record<string, string> = {};
+      if (customIds.length > 0) {
+        const { data: labelData } = await supabase.from('partner_payment_modes').select('id, label').in('id', customIds);
+        labelData?.forEach(m => { methodLabels[`custom_${m.id}`] = m.label; });
+      }
 
       const userIds = [...new Set(allData.map(r => r.user_id).filter(Boolean))];
       const cabinIds = [...new Set((rrRes.data || []).filter(r => r.cabin_id).map(r => r.cabin_id!))];
@@ -141,12 +156,13 @@ const Reconciliation: React.FC = () => {
       const mapped: ReconciliationRow[] = allData.map(r => {
         const bId = (r as any).booking_id || (r as any).subscription_id || (r as any).order_id;
         const prop = r._propId ? propMap[r._propId] : undefined;
+        const rawMethod = r.payment_method || '';
         return {
           id: r.id,
           source: r._source,
           serial_number: r.serial_number || '',
           amount: Number(r.amount),
-          payment_method: r.payment_method || '',
+          payment_method: methodLabels[rawMethod] || DEFAULT_METHOD_LABELS[rawMethod] || rawMethod,
           transaction_id: r.transaction_id || '',
           payment_proof_url: (r as any).payment_proof_url || undefined,
           student_name: profileMap[r.user_id]?.name || 'N/A',
@@ -234,36 +250,6 @@ const Reconciliation: React.FC = () => {
     setActionLoading(false);
   };
 
-  const handleBulkApprove = async () => {
-    setActionLoading(true);
-    const toApprove = rows.filter(r => selected.has(`${r.source}-${r.id}`) && r.reconciliation_status === 'pending');
-    const grouped: Record<string, string[]> = {};
-    toApprove.forEach(r => {
-      const table = getTableForSource(r.source);
-      if (!grouped[table]) grouped[table] = [];
-      grouped[table].push(r.id);
-    });
-
-    const now = new Date().toISOString();
-    const today = format(new Date(), 'yyyy-MM-dd');
-    for (const [table, ids] of Object.entries(grouped)) {
-      await (supabase.from(table as any) as any).update({
-        reconciliation_status: 'approved',
-        reconciled_at: now,
-        reconciled_by: user?.id,
-        credit_date: today,
-      }).in('id', ids);
-    }
-
-    setRows(prev => prev.map(r => selected.has(`${r.source}-${r.id}`) && r.reconciliation_status === 'pending'
-      ? { ...r, reconciliation_status: 'approved' as const, reconciled_at: now, credit_date: today }
-      : r
-    ));
-    setSelected(new Set());
-    toast({ title: `${toApprove.length} receipts approved` });
-    setActionLoading(false);
-  };
-
   const handleReject = async () => {
     if (!rejectTarget) return;
     setActionLoading(true);
@@ -319,19 +305,6 @@ const Reconciliation: React.FC = () => {
     approved: rows.filter(r => r.reconciliation_status === 'approved').length,
     rejected: rows.filter(r => r.reconciliation_status === 'rejected').length,
   }), [rows]);
-
-  const allPageSelected = paginated.length > 0 && paginated.every(r => selected.has(`${r.source}-${r.id}`));
-  const toggleSelectAll = () => {
-    if (allPageSelected) {
-      const next = new Set(selected);
-      paginated.forEach(r => next.delete(`${r.source}-${r.id}`));
-      setSelected(next);
-    } else {
-      const next = new Set(selected);
-      paginated.forEach(r => next.add(`${r.source}-${r.id}`));
-      setSelected(next);
-    }
-  };
 
   const exportCsv = () => {
     const isApproved = tab === 'approved';
@@ -449,7 +422,7 @@ const Reconciliation: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <Tabs value={tab} onValueChange={v => { setTab(v); setPage(1); setSelected(new Set()); }}>
+      <Tabs value={tab} onValueChange={v => { setTab(v); setPage(1); }}>
         <TabsList className="h-9">
           <TabsTrigger value="pending" className="text-xs gap-1.5">
             Pending <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{counts.pending}</Badge>
@@ -491,17 +464,6 @@ const Reconciliation: React.FC = () => {
             <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setDateFilter('all'); setStartDate(undefined); setEndDate(undefined); setSourceFilter('all'); setSearchTerm(''); setPage(1); }}>Clear</Button>
           )}
         </div>
-
-        {/* Bulk actions */}
-        {tab === 'pending' && selected.size > 0 && (
-          <div className="flex items-center gap-2 mt-2 p-2 bg-primary/5 border rounded-md">
-            <span className="text-xs font-medium">{selected.size} selected</span>
-            <Button size="sm" className="h-7 text-xs gap-1" onClick={handleBulkApprove} disabled={actionLoading}>
-              <CheckCircle2 className="h-3 w-3" /> Approve Selected
-            </Button>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelected(new Set())}>Clear</Button>
-          </div>
-        )}
 
         <TabsContent value={tab} className="mt-3">
           <div className="border rounded-md">
@@ -552,11 +514,6 @@ const Reconciliation: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {tab === 'pending' && (
-                      <TableHead className="w-8">
-                        <Checkbox checked={allPageSelected} onCheckedChange={toggleSelectAll} />
-                      </TableHead>
-                    )}
                     <TableHead className="text-xs">S.No</TableHead>
                     <TableHead className="text-xs">Receipt #</TableHead>
                     <TableHead className="text-xs">Source</TableHead>
@@ -579,15 +536,6 @@ const Reconciliation: React.FC = () => {
                     const key = `${r.source}-${r.id}`;
                     return (
                       <TableRow key={key}>
-                        {tab === 'pending' && (
-                          <TableCell>
-                            <Checkbox checked={selected.has(key)} onCheckedChange={() => {
-                              const next = new Set(selected);
-                              next.has(key) ? next.delete(key) : next.add(key);
-                              setSelected(next);
-                            }} />
-                          </TableCell>
-                        )}
                         <TableCell className="text-xs text-muted-foreground">{getSerialNumber(index, page, pageSize)}</TableCell>
                         <TableCell className="text-xs font-mono">{r.serial_number}</TableCell>
                         <TableCell>
@@ -649,7 +597,7 @@ const Reconciliation: React.FC = () => {
 
             <div className="space-y-2">
               <Label className="text-xs">Credit Date <span className="text-destructive">*</span></Label>
-              <Popover>
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-9 text-xs", !creditDate && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-3.5 w-3.5" />
@@ -660,7 +608,7 @@ const Reconciliation: React.FC = () => {
                   <Calendar
                     mode="single"
                     selected={creditDate}
-                    onSelect={(d) => d && setCreditDate(d)}
+                    onSelect={(d) => { if (d) { setCreditDate(d); setCalendarOpen(false); } }}
                     initialFocus
                     className={cn("p-3 pointer-events-auto")}
                   />
