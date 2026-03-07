@@ -187,11 +187,17 @@ export function SiteSettingsForm() {
               </div>
             </div>
 
-            {/* WhatsApp Chat Info */}
+            {/* Admin Support WhatsApp Number */}
             <div className="grid gap-3">
-              <Label className="mb-2">WhatsApp Chat for Partners</Label>
+              <Label htmlFor="adminWhatsapp">Admin Support WhatsApp Number</Label>
+              <Input
+                id="adminWhatsapp"
+                value={adminWhatsapp}
+                onChange={(e) => setAdminWhatsapp(e.target.value)}
+                placeholder="e.g. 919876543210"
+              />
               <p className="text-sm text-muted-foreground">
-                WhatsApp chat is now managed per-property from the Partner Management page.
+                Students can reach you via WhatsApp from support tickets. Enter with country code (no + symbol).
               </p>
             </div>
           </div>

@@ -111,6 +111,10 @@ const SupportPage = () => {
             senderRole="student"
             currentUserId={currentUserId}
             creatorName="You"
+            whatsappNumber={adminWhatsapp}
+            whatsappLabel="Chat with Support"
+            ticketSubject={selectedTicket.subject}
+            ticketSerialNumber={selectedTicket.serial_number}
           />
         </div>
       </div>

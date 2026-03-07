@@ -123,6 +123,29 @@ const ComplaintsPage = () => {
     }
   };
 
+  // Fetch partner WhatsApp when complaint is selected
+  useEffect(() => {
+    if (!selectedComplaint) { setPartnerWhatsapp(''); return; }
+    const fetchPartnerWhatsapp = async () => {
+      let ownerId: string | null = null;
+      if (selectedComplaint.cabin_id) {
+        const { data } = await supabase.from('cabins').select('created_by').eq('id', selectedComplaint.cabin_id).single();
+        ownerId = data?.created_by || null;
+      } else if (selectedComplaint.hostel_id) {
+        const { data } = await supabase.from('hostels').select('created_by').eq('id', selectedComplaint.hostel_id).single();
+        ownerId = data?.created_by || null;
+      } else if (selectedComplaint.mess_id) {
+        const { data } = await supabase.from('mess_partners').select('user_id').eq('id', selectedComplaint.mess_id).single();
+        ownerId = data?.user_id || null;
+      }
+      if (ownerId) {
+        const { data: partner } = await supabase.from('partners').select('whatsapp_number').eq('user_id', ownerId).single();
+        setPartnerWhatsapp(partner?.whatsapp_number || '');
+      }
+    };
+    fetchPartnerWhatsapp();
+  }, [selectedComplaint]);
+
   // Chat view for selected complaint
   if (selectedComplaint) {
     return (
@@ -149,6 +172,10 @@ const ComplaintsPage = () => {
             senderRole="student"
             currentUserId={currentUserId}
             creatorName="You"
+            whatsappNumber={partnerWhatsapp}
+            whatsappLabel="Chat with Property Owner"
+            ticketSubject={selectedComplaint.subject}
+            ticketSerialNumber={selectedComplaint.serial_number}
           />
         </div>
       </div>
