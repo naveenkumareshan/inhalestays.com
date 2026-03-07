@@ -196,11 +196,11 @@ const Reconciliation: React.FC = () => {
     });
 
     for (const [table, ids] of Object.entries(grouped)) {
-      await supabase.from(table).update({
+      await (supabase.from(table as any) as any).update({
         reconciliation_status: 'approved',
         reconciled_at: new Date().toISOString(),
         reconciled_by: user?.id,
-      } as any).in('id', ids);
+      }).in('id', ids);
     }
 
     setRows(prev => prev.map(r => selected.has(`${r.source}-${r.id}`) && r.reconciliation_status === 'pending'
