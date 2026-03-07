@@ -43,6 +43,7 @@ interface ReconciliationRow {
   reconciled_at?: string;
   credit_date?: string;
   reconciled_bank_name?: string;
+  bank_narration?: string;
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -89,6 +90,7 @@ const Reconciliation: React.FC = () => {
   const [bankName, setBankName] = useState('');
   const [bankOptions, setBankOptions] = useState<{ id: string; label: string }[]>([]);
   const [bankLoading, setBankLoading] = useState(false);
+  const [bankNarration, setBankNarration] = useState('');
   const [calendarOpen, setCalendarOpen] = useState(false);
 
   const { toast } = useToast();
@@ -103,10 +105,10 @@ const Reconciliation: React.FC = () => {
       const isAdmin = roles?.some(r => r.role === 'admin' || r.role === 'super_admin');
 
       const [rrRes, hRes, mRes, lRes] = await Promise.all([
-        supabase.from('receipts').select('id, serial_number, booking_id, user_id, cabin_id, amount, payment_method, transaction_id, payment_proof_url, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, created_at').order('created_at', { ascending: false }).limit(500),
-        supabase.from('hostel_receipts').select('id, serial_number, booking_id, user_id, hostel_id, amount, payment_method, transaction_id, payment_proof_url, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, created_at').order('created_at', { ascending: false }).limit(500),
-        supabase.from('mess_receipts').select('id, serial_number, subscription_id, user_id, mess_id, amount, payment_method, transaction_id, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, created_at').order('created_at', { ascending: false }).limit(500),
-        supabase.from('laundry_receipts').select('id, serial_number, order_id, user_id, partner_id, amount, payment_method, transaction_id, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('receipts').select('id, serial_number, booking_id, user_id, cabin_id, amount, payment_method, transaction_id, payment_proof_url, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, bank_narration, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('hostel_receipts').select('id, serial_number, booking_id, user_id, hostel_id, amount, payment_method, transaction_id, payment_proof_url, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, bank_narration, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('mess_receipts').select('id, serial_number, subscription_id, user_id, mess_id, amount, payment_method, transaction_id, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, bank_narration, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('laundry_receipts').select('id, serial_number, order_id, user_id, partner_id, amount, payment_method, transaction_id, reconciliation_status, rejection_reason, reconciled_at, credit_date, reconciled_bank_name, bank_narration, created_at').order('created_at', { ascending: false }).limit(500),
       ]);
 
       const allData = [
@@ -176,6 +178,7 @@ const Reconciliation: React.FC = () => {
           reconciled_at: r.reconciled_at || undefined,
           credit_date: (r as any).credit_date || undefined,
           reconciled_bank_name: (r as any).reconciled_bank_name || undefined,
+          bank_narration: (r as any).bank_narration || undefined,
         };
       });
 
@@ -203,6 +206,7 @@ const Reconciliation: React.FC = () => {
     setApproveTarget(row);
     setCreditDate(new Date());
     setBankName('');
+    setBankNarration('');
     setApproveDialogOpen(true);
     setBankLoading(true);
 
@@ -230,6 +234,7 @@ const Reconciliation: React.FC = () => {
       reconciled_by: user?.id,
       credit_date: format(creditDate, 'yyyy-MM-dd'),
       reconciled_bank_name: bankName || null,
+      bank_narration: bankNarration || null,
       rejection_reason: null,
     }).eq('id', approveTarget.id);
     if (error) {
@@ -241,6 +246,7 @@ const Reconciliation: React.FC = () => {
         reconciled_at: new Date().toISOString(),
         credit_date: format(creditDate, 'yyyy-MM-dd'),
         reconciled_bank_name: bankName || undefined,
+        bank_narration: bankNarration || undefined,
         rejection_reason: undefined,
       } : r));
       toast({ title: 'Receipt approved' });
@@ -308,7 +314,7 @@ const Reconciliation: React.FC = () => {
 
   const exportCsv = () => {
     const isApproved = tab === 'approved';
-    const headers = ['S.No', 'Receipt #', 'Source', 'Student', 'Phone', 'Property', 'Amount', 'Method', 'Txn ID', 'Booking ID', 'Status', 'Date', ...(isApproved ? ['Credit Date', 'Bank Name'] : [])].join(',');
+    const headers = ['S.No', 'Receipt #', 'Source', 'Student', 'Phone', 'Property', 'Amount', 'Method', 'Txn ID', 'Booking ID', 'Status', 'Date', ...(isApproved ? ['Credit Date', 'Bank Name', 'Bank Narration'] : [])].join(',');
     const csvRows = filtered.map((r, i) => [
       i + 1,
       r.serial_number,
@@ -322,7 +328,7 @@ const Reconciliation: React.FC = () => {
       r.booking_serial,
       r.reconciliation_status,
       new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      ...(isApproved ? [r.credit_date || '', r.reconciled_bank_name || ''] : []),
+      ...(isApproved ? [r.credit_date || '', r.reconciled_bank_name || '', `"${(r.bank_narration || '').replace(/"/g, '""')}"`] : []),
     ].join(','));
     const csv = [headers, ...csvRows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -497,6 +503,9 @@ const Reconciliation: React.FC = () => {
                       {tab === 'approved' && r.reconciled_bank_name && (
                         <div><span className="text-muted-foreground">Bank: </span>{r.reconciled_bank_name}</div>
                       )}
+                      {tab === 'approved' && r.bank_narration && (
+                        <div className="col-span-2"><span className="text-muted-foreground">Narration: </span>{r.bank_narration}</div>
+                      )}
                     </div>
                     {r.payment_proof_url && (
                       <a href={r.payment_proof_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline">
@@ -527,6 +536,7 @@ const Reconciliation: React.FC = () => {
                     <TableHead className="text-xs">Receipt #</TableHead>
                     {tab === 'approved' && <TableHead className="text-xs">Credit Date</TableHead>}
                     {tab === 'approved' && <TableHead className="text-xs">Bank</TableHead>}
+                    {tab === 'approved' && <TableHead className="text-xs">Narration</TableHead>}
                     {tab === 'rejected' && <TableHead className="text-xs">Reason</TableHead>}
                     <TableHead className="text-xs">Actions</TableHead>
                   </TableRow>
@@ -562,6 +572,7 @@ const Reconciliation: React.FC = () => {
                         <TableCell className="text-xs font-mono">{r.serial_number}</TableCell>
                         {tab === 'approved' && <TableCell className="text-xs">{r.credit_date ? format(new Date(r.credit_date), 'dd MMM yyyy') : '-'}</TableCell>}
                         {tab === 'approved' && <TableCell className="text-xs">{r.reconciled_bank_name || '-'}</TableCell>}
+                        {tab === 'approved' && <TableCell className="text-xs max-w-[200px] truncate" title={r.bank_narration || ''}>{r.bank_narration || '-'}</TableCell>}
                         {tab === 'rejected' && (
                           <TableCell className="text-xs text-destructive italic max-w-[150px] truncate">{r.rejection_reason || '-'}</TableCell>
                         )}
@@ -632,6 +643,16 @@ const Reconciliation: React.FC = () => {
               ) : (
                 <Input className="h-9 text-xs" placeholder="Enter bank name" value={bankName} onChange={e => setBankName(e.target.value)} />
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs">Bank Narration</Label>
+              <Textarea
+                className="text-xs min-h-[60px]"
+                placeholder="Paste bank statement remarks here"
+                value={bankNarration}
+                onChange={e => setBankNarration(e.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>

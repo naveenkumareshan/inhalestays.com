@@ -1435,6 +1435,7 @@ export type Database = {
       hostel_receipts: {
         Row: {
           amount: number
+          bank_narration: string | null
           booking_id: string | null
           collected_by: string | null
           collected_by_name: string | null
@@ -1459,6 +1460,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          bank_narration?: string | null
           booking_id?: string | null
           collected_by?: string | null
           collected_by_name?: string | null
@@ -1483,6 +1485,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bank_narration?: string | null
           booking_id?: string | null
           collected_by?: string | null
           collected_by_name?: string | null
@@ -2248,6 +2251,7 @@ export type Database = {
       laundry_receipts: {
         Row: {
           amount: number
+          bank_narration: string | null
           created_at: string
           credit_date: string | null
           id: string
@@ -2268,6 +2272,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          bank_narration?: string | null
           created_at?: string
           credit_date?: string | null
           id?: string
@@ -2288,6 +2293,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bank_narration?: string | null
           created_at?: string
           credit_date?: string | null
           id?: string
@@ -2543,6 +2549,7 @@ export type Database = {
       mess_receipts: {
         Row: {
           amount: number
+          bank_narration: string | null
           created_at: string
           credit_date: string | null
           id: string
@@ -2560,6 +2567,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          bank_narration?: string | null
           created_at?: string
           credit_date?: string | null
           id?: string
@@ -2577,6 +2585,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bank_narration?: string | null
           created_at?: string
           credit_date?: string | null
           id?: string
@@ -3299,6 +3308,7 @@ export type Database = {
       receipts: {
         Row: {
           amount: number
+          bank_narration: string | null
           booking_id: string | null
           cabin_id: string | null
           collected_by: string | null
@@ -3325,6 +3335,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          bank_narration?: string | null
           booking_id?: string | null
           cabin_id?: string | null
           collected_by?: string | null
@@ -3351,6 +3362,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bank_narration?: string | null
           booking_id?: string | null
           cabin_id?: string | null
           collected_by?: string | null
