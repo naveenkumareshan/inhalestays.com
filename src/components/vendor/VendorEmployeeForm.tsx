@@ -158,6 +158,21 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
     setFormData(prev => ({ ...prev, permissions: updated }));
   };
 
+  const toggleProperty = (propId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      allowed_properties: prev.allowed_properties.includes(propId)
+        ? prev.allowed_properties.filter(p => p !== propId)
+        : [...prev.allowed_properties, propId],
+    }));
+  };
+
+  const handleAllPropertiesToggle = (checked: boolean) => {
+    setAllProperties(!!checked);
+    if (checked) {
+      setFormData(prev => ({ ...prev, allowed_properties: [] }));
+    }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.phone) {
