@@ -364,6 +364,28 @@ const VendorApproval: React.FC = () => {
                     <div><span className="text-muted-foreground">Bookings:</span> {p.activeBookings}</div>
                     <div><span className="text-muted-foreground">Occ:</span> {occ}%</div>
                   </div>
+                  <div className="flex items-center justify-between pt-1 border-t">
+                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <MessageCircle className="h-3 w-3" /> WhatsApp
+                    </div>
+                    <Switch
+                      checked={p.whatsapp_chat_enabled}
+                      onCheckedChange={async (checked) => {
+                        const propType = p.type === 'Reading Room' ? 'cabin' : 'hostel';
+                        const ok = await whatsappLeadService.setPropertyWhatsappEnabled(propType as any, p.id, checked);
+                        if (ok) {
+                          setPropertiesMap(prev => {
+                            const next = new Map(prev);
+                            const list = (next.get(userId) || []).map(x => x.id === p.id ? { ...x, whatsapp_chat_enabled: checked } : x);
+                            next.set(userId, list);
+                            return next;
+                          });
+                          toast({ title: `WhatsApp ${checked ? 'enabled' : 'disabled'}` });
+                        }
+                      }}
+                      className="scale-75"
+                    />
+                  </div>
                 </div>
               );
             })}
@@ -379,6 +401,7 @@ const VendorApproval: React.FC = () => {
                 <TableHead className="text-[11px] py-2">Bookings</TableHead>
                 <TableHead className="text-[11px] py-2">Occupancy</TableHead>
                 <TableHead className="text-[11px] py-2">Status</TableHead>
+                <TableHead className="text-[11px] py-2">WhatsApp</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -403,6 +426,25 @@ const VendorApproval: React.FC = () => {
                         <span className="text-[10px]">{p.is_active ? 'Active' : 'Inactive'}</span>
                         {!p.is_approved && <Badge className="text-[9px] bg-amber-50 text-amber-600 border-amber-200 border px-1 py-0">Pending</Badge>}
                       </div>
+                    </TableCell>
+                    <TableCell className="py-1.5">
+                      <Switch
+                        checked={p.whatsapp_chat_enabled}
+                        onCheckedChange={async (checked) => {
+                          const propType = p.type === 'Reading Room' ? 'cabin' : 'hostel';
+                          const ok = await whatsappLeadService.setPropertyWhatsappEnabled(propType as any, p.id, checked);
+                          if (ok) {
+                            setPropertiesMap(prev => {
+                              const next = new Map(prev);
+                              const list = (next.get(userId) || []).map(x => x.id === p.id ? { ...x, whatsapp_chat_enabled: checked } : x);
+                              next.set(userId, list);
+                              return next;
+                            });
+                            toast({ title: `WhatsApp ${checked ? 'enabled' : 'disabled'}` });
+                          }
+                        }}
+                        className="scale-75"
+                      />
                     </TableCell>
                   </TableRow>
                 );
