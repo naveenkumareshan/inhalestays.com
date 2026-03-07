@@ -2022,26 +2022,32 @@ const VendorSeats: React.FC = () => {
                           >
                             <IndianRupee className="h-2.5 w-2.5" /> Receipts
                           </Button>
-                          {canEdit && (
-                            <>
+                          <>
+                            {canTransferBooking && (
                               <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
                                 onClick={() => openTransferDialog(b.bookingId)}>
                                 <ArrowRightLeft className="h-2.5 w-2.5" /> Transfer
                               </Button>
+                            )}
+                            {canEditBookingDates && (
                               <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
                                 onClick={() => { setDateEditBooking({ ...b, id: b.bookingId }); setDateEditOpen(true); }}>
                                 <Pencil className="h-2.5 w-2.5" /> Edit Dates
                               </Button>
+                            )}
+                            {canReleaseBooking && (
                               <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-amber-600"
                                 onClick={() => { setActionBookingId(b.bookingId); setReleaseDialogOpen(true); }}>
                                 <LogOut className="h-2.5 w-2.5" /> Release
                               </Button>
+                            )}
+                            {canCancelBooking && (
                               <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-destructive"
                                 onClick={() => { setActionBookingId(b.bookingId); setCancelDialogOpen(true); }}>
                                 <XCircle className="h-2.5 w-2.5" /> Cancel
                               </Button>
-                            </>
-                          )}
+                            )}
+                          </>
                         </div>
                       </div>
                       );
