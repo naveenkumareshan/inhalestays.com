@@ -20,6 +20,8 @@ interface DateBasedBedMapProps {
 export const DateBasedBedMap: React.FC<DateBasedBedMapProps> = ({ hostelId }) => {
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(addDays(new Date(), 30));
+  const [startDateOpen, setStartDateOpen] = useState(false);
+  const [endDateOpen, setEndDateOpen] = useState(false);
   const [rooms, setRooms] = useState<any[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [beds, setBeds] = useState<ViewerBed[]>([]);
@@ -151,24 +153,24 @@ export const DateBasedBedMap: React.FC<DateBasedBedMapProps> = ({ hostelId }) =>
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Start Date</label>
-              <Popover>
+              <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />{startDate ? format(startDate, 'PPP') : 'Select'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={startDate} onSelect={d => d && setStartDate(d)} initialFocus /></PopoverContent>
+                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={startDate} onSelect={d => { if (d) setStartDate(d); setStartDateOpen(false); }} initialFocus /></PopoverContent>
               </Popover>
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">End Date</label>
-              <Popover>
+              <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />{endDate ? format(endDate, 'PPP') : 'Select'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={endDate} onSelect={d => d && setEndDate(d)} initialFocus disabled={d => isBefore(d, startDate)} /></PopoverContent>
+                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={endDate} onSelect={d => { if (d) setEndDate(d); setEndDateOpen(false); }} initialFocus disabled={d => isBefore(d, startDate)} /></PopoverContent>
               </Popover>
             </div>
           </div>

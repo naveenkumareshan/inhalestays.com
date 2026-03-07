@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -27,6 +27,9 @@ export const DateFilterSelector: React.FC<DateFilterProps> = ({
   onEndDateChange,
   compact
 }) => {
+  const [startDateOpen, setStartDateOpen] = useState(false);
+  const [endDateOpen, setEndDateOpen] = useState(false);
+
   return (
     <div className={cn("flex", compact ? "flex-row gap-2" : "flex-col md:flex-row gap-4")}>
       <Select value={dateFilter} onValueChange={onDateFilterChange}>
@@ -49,7 +52,7 @@ export const DateFilterSelector: React.FC<DateFilterProps> = ({
 
       {dateFilter === 'custom' && (
         <div className="flex gap-2">
-          <Popover>
+          <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
@@ -67,14 +70,14 @@ export const DateFilterSelector: React.FC<DateFilterProps> = ({
               <Calendar
                 mode="single"
                 selected={startDate}
-                onSelect={onStartDateChange}
+                onSelect={(d) => { onStartDateChange(d); setStartDateOpen(false); }}
                 initialFocus
                 className={cn("p-3 pointer-events-auto")}
               />
             </PopoverContent>
           </Popover>
 
-          <Popover>
+          <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
@@ -92,7 +95,7 @@ export const DateFilterSelector: React.FC<DateFilterProps> = ({
               <Calendar
                 mode="single"
                 selected={endDate}
-                onSelect={onEndDateChange}
+                onSelect={(d) => { onEndDateChange(d); setEndDateOpen(false); }}
                 initialFocus
                 className={cn("p-3 pointer-events-auto")}
               />

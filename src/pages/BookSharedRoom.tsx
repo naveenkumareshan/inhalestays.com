@@ -37,6 +37,7 @@ export default function BookSharedRoom() {
   
   // Booking form state
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
+  const [startDateOpen, setStartDateOpen] = useState(false);
   const [months, setMonths] = useState<number>(1);
   
   // Calculate end date based on start date and number of months
@@ -195,7 +196,7 @@ export default function BookSharedRoom() {
                 <div className="grid gap-6">
                   <div className="grid gap-2">
                     <Label htmlFor="startDate">Start Date</Label>
-                    <Popover>
+                    <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
@@ -210,7 +211,7 @@ export default function BookSharedRoom() {
                         <Calendar
                           mode="single"
                           selected={startDate}
-                          onSelect={setStartDate}
+                          onSelect={(d) => { setStartDate(d); setStartDateOpen(false); }}
                           initialFocus
                           disabled={(date) => date < new Date()}
                         />

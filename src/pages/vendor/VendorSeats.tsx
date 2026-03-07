@@ -90,6 +90,13 @@ const VendorSeats: React.FC = () => {
   const [manualAdvanceAmount, setManualAdvanceAmount] = useState('');
   const [manualDueDate, setManualDueDate] = useState<Date | undefined>(undefined);
 
+  // Date picker open states
+  const [selectedDateOpen, setSelectedDateOpen] = useState(false);
+  const [blockFromOpen, setBlockFromOpen] = useState(false);
+  const [blockToOpen, setBlockToOpen] = useState(false);
+  const [bookingStartOpen, setBookingStartOpen] = useState(false);
+  const [dueDateOpen, setDueDateOpen] = useState(false);
+
   // Booking form state
   const [studentQuery, setStudentQuery] = useState('');
   const [studentResults, setStudentResults] = useState<StudentProfile[]>([]);
@@ -821,7 +828,7 @@ const VendorSeats: React.FC = () => {
           </Select>
         )}
 
-        <Popover>
+        <Popover open={selectedDateOpen} onOpenChange={setSelectedDateOpen}>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 text-xs gap-1 px-2">
               <CalendarIcon className="h-3 w-3" />
@@ -829,7 +836,7 @@ const VendorSeats: React.FC = () => {
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
-            <Calendar mode="single" selected={selectedDate} onSelect={(d) => d && setSelectedDate(d)} className="p-3 pointer-events-auto" />
+            <Calendar mode="single" selected={selectedDate} onSelect={(d) => { if (d) setSelectedDate(d); setSelectedDateOpen(false); }} className="p-3 pointer-events-auto" />
           </PopoverContent>
         </Popover>
 
@@ -1067,7 +1074,7 @@ const VendorSeats: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label className="text-[10px] uppercase text-muted-foreground">From</Label>
-                    <Popover>
+                    <Popover open={blockFromOpen} onOpenChange={setBlockFromOpen}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className="h-8 text-xs w-full justify-start gap-1">
                           <CalendarIcon className="h-3 w-3" />
@@ -1075,13 +1082,13 @@ const VendorSeats: React.FC = () => {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={blockFromDate} onSelect={setBlockFromDate} className="p-3 pointer-events-auto" />
+                        <Calendar mode="single" selected={blockFromDate} onSelect={(d) => { setBlockFromDate(d); setBlockFromOpen(false); }} className="p-3 pointer-events-auto" />
                       </PopoverContent>
                     </Popover>
                   </div>
                   <div>
                     <Label className="text-[10px] uppercase text-muted-foreground">To</Label>
-                    <Popover>
+                    <Popover open={blockToOpen} onOpenChange={setBlockToOpen}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className="h-8 text-xs w-full justify-start gap-1">
                           <CalendarIcon className="h-3 w-3" />
@@ -1089,7 +1096,7 @@ const VendorSeats: React.FC = () => {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={blockToDate} onSelect={setBlockToDate} disabled={(d) => blockFromDate ? d < blockFromDate : false} className="p-3 pointer-events-auto" />
+                        <Calendar mode="single" selected={blockToDate} onSelect={(d) => { setBlockToDate(d); setBlockToOpen(false); }} disabled={(d) => blockFromDate ? d < blockFromDate : false} className="p-3 pointer-events-auto" />
                       </PopoverContent>
                     </Popover>
                   </div>
@@ -1513,7 +1520,7 @@ const VendorSeats: React.FC = () => {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <Label className="text-[10px] uppercase text-muted-foreground">Start</Label>
-                      <Popover>
+                      <Popover open={bookingStartOpen} onOpenChange={setBookingStartOpen}>
                         <PopoverTrigger asChild>
                           <Button variant="outline" size="sm" className="h-8 text-xs w-full justify-start gap-1">
                             <CalendarIcon className="h-3 w-3" />
@@ -1521,11 +1528,10 @@ const VendorSeats: React.FC = () => {
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={bookingStartDate} onSelect={d => d && setBookingStartDate(d)} className="p-3 pointer-events-auto" disabled={(date) => {
+                          <Calendar mode="single" selected={bookingStartDate} onSelect={d => { if (d) setBookingStartDate(d); setBookingStartOpen(false); }} className="p-3 pointer-events-auto" disabled={(date) => {
                             if (isRenewMode || showFutureBooking) {
                               return date < bookingStartDate;
                             }
-                            // Allow past dates (up to 90 days back) for first-time offline bookings
                             const ninetyDaysAgo = new Date();
                             ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
                             return date < new Date(ninetyDaysAgo.toDateString());
@@ -1623,7 +1629,7 @@ const VendorSeats: React.FC = () => {
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[10px] uppercase text-muted-foreground">Seat Valid Until (Due Date)</Label>
-                        <Popover>
+                        <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
                           <PopoverTrigger asChild>
                             <Button variant="outline" className={cn("w-full h-7 text-xs justify-start", !manualDueDate && "text-muted-foreground")}>
                               <CalendarIcon className="mr-1 h-3 w-3" />
@@ -1634,7 +1640,7 @@ const VendorSeats: React.FC = () => {
                             <Calendar
                               mode="single"
                               selected={manualDueDate || advanceComputed.dueDate}
-                              onSelect={(d) => setManualDueDate(d || undefined)}
+                              onSelect={(d) => { setManualDueDate(d || undefined); setDueDateOpen(false); }}
                               initialFocus
                               className={cn("p-3 pointer-events-auto")}
                             />

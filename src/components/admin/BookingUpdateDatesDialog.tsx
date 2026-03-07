@@ -43,6 +43,7 @@ export const BookingUpdateDatesDialog = ({
   bedId,
 }: BookingExtensionDialogProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [startDateOpen, setStartDateOpen] = useState(false);
   const { toast } = useToast();
 
   const [startDate, setStartDate] = useState<Date>(new Date(booking.startDate));
@@ -181,7 +182,7 @@ export const BookingUpdateDatesDialog = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label className="mb-2 block">Start Date</Label>
-              <Popover>
+              <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -198,7 +199,7 @@ export const BookingUpdateDatesDialog = ({
                   <Calendar
                     mode="single"
                     selected={startDate}
-                    onSelect={(date) => date && setStartDate(date)}
+                    onSelect={(date) => { if (date) setStartDate(date); setStartDateOpen(false); }}
                     initialFocus
                   />
                 </PopoverContent>

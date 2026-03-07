@@ -143,6 +143,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
   const { user, isAuthenticated } = useAuth();
 
   const [startDate, setStartDate] = useState<Date>(new Date());
+  const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(
     initialSelectedSeat || null
@@ -707,7 +708,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
 
               <div className="flex-1">
                 <Label className="block mb-1 text-xs text-muted-foreground">Start Date</Label>
-                <Popover>
+                <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -724,7 +725,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                     <Calendar
                       mode="single"
                       selected={startDate}
-                      onSelect={(date) => date && setStartDate(date)}
+                      onSelect={(date) => { if (date) setStartDate(date); setStartDateOpen(false); }}
                       initialFocus
                       disabled={(date) => {
                         const today = new Date();

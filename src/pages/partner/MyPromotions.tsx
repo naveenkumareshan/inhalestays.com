@@ -81,6 +81,7 @@ export default function MyPromotions() {
   const [bookCityId, setBookCityId] = useState('');
   const [bookAreaIds, setBookAreaIds] = useState<string[]>([]);
   const [bookStartDate, setBookStartDate] = useState<Date>();
+  const [bookStartDateOpen, setBookStartDateOpen] = useState(false);
   const [myProperties, setMyProperties] = useState<any[]>([]);
   const [cities, setCities] = useState<any[]>([]);
   const [areas, setAreas] = useState<any[]>([]);
@@ -393,13 +394,13 @@ export default function MyPromotions() {
                 )}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Start Date *</Label>
-                  <Popover>
+                  <Popover open={bookStartDateOpen} onOpenChange={setBookStartDateOpen}>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className={cn("w-full justify-start text-left text-xs h-9", !bookStartDate && "text-muted-foreground")}>
                         <CalendarIcon className="mr-2 h-3.5 w-3.5" />{bookStartDate ? format(bookStartDate, 'PPP') : 'Pick start date'}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={bookStartDate} onSelect={setBookStartDate} className="p-3 pointer-events-auto" /></PopoverContent>
+                    <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={bookStartDate} onSelect={(d) => { setBookStartDate(d); setBookStartDateOpen(false); }} className="p-3 pointer-events-auto" /></PopoverContent>
                   </Popover>
                   {bookStartDate && selectedPkgId && (
                     <p className="text-[10px] text-muted-foreground">
