@@ -2935,6 +2935,8 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string
+          whatsapp_enabled: boolean | null
+          whatsapp_number: string | null
         }
         Insert: {
           address?: Json
@@ -2954,6 +2956,8 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id: string
+          whatsapp_enabled?: boolean | null
+          whatsapp_number?: string | null
         }
         Update: {
           address?: Json
@@ -2973,6 +2977,8 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+          whatsapp_enabled?: boolean | null
+          whatsapp_number?: string | null
         }
         Relationships: []
       }
@@ -3653,6 +3659,24 @@ export type Database = {
           },
         ]
       }
+      site_settings: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       sponsored_listing_events: {
         Row: {
           created_at: string
@@ -4071,6 +4095,48 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      whatsapp_clicks: {
+        Row: {
+          created_at: string | null
+          id: string
+          partner_user_id: string
+          property_id: string
+          property_type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          partner_user_id: string
+          property_id: string
+          property_type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          partner_user_id?: string
+          property_id?: string
+          property_type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_clicks_partner_user_id_fkey"
+            columns: ["partner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_clicks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

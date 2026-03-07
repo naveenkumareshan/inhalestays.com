@@ -55,6 +55,7 @@ import { FoodMenuModal } from "@/components/hostels/FoodMenuModal";
 import { ShareButton } from "@/components/ShareButton";
 import { generateHostelShareText } from "@/utils/shareUtils";
 import { isUUID } from "@/utils/idUtils";
+import { WhatsAppChatButton } from "@/components/WhatsAppChatButton";
 /* ─── Skeleton ─── */
 const HostelDetailSkeleton = () => (
   <div className="min-h-screen bg-background pb-24">
@@ -1060,6 +1061,15 @@ const HostelRoomDetails = () => {
         )}
 
       </div>
+
+      {hostel?.created_by && (
+        <WhatsAppChatButton
+          partnerUserId={hostel.created_by}
+          propertyType="hostel"
+          propertyId={hostel.id}
+          propertyName={hostel.name}
+        />
+      )}
       </div>
     </ErrorBoundary>
   );

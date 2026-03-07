@@ -12,6 +12,7 @@ import { ShareButton } from "@/components/ShareButton";
 import { generateCabinShareText } from "@/utils/shareUtils";
 import { useAuth } from "@/hooks/use-auth";
 import { isUUID } from "@/utils/idUtils";
+import { WhatsAppChatButton } from "@/components/WhatsAppChatButton";
 
 const SeatBookingForm = lazy(() =>
   import("@/components/seats/SeatBookingForm").then((m) => ({
@@ -63,6 +64,7 @@ export interface Cabin {
   is24Hours?: boolean;
   slotsEnabled?: boolean;
   fullAddress?: string;
+  createdBy?: string;
 }
 
 export interface RoomElement {
@@ -176,6 +178,7 @@ const BookSeat = () => {
           slotsEnabled: (d as any).slots_enabled || false,
           fullAddress: (d as any).full_address || undefined,
           serialNumber: (d as any).serial_number || undefined,
+          createdBy: (d as any).created_by || undefined,
         });
         setLayoutImage((d as any).layout_image || null);
         setRoomWidth((d as any).room_width || 800);
@@ -433,6 +436,15 @@ const BookSeat = () => {
             </div>
           )}
         </>
+      )}
+
+      {cabin?.createdBy && (
+        <WhatsAppChatButton
+          partnerUserId={cabin.createdBy}
+          propertyType="cabin"
+          propertyId={cabin.id}
+          propertyName={cabin.name}
+        />
       )}
       </div>
     </div>

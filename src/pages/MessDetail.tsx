@@ -28,6 +28,7 @@ import { ShareButton } from '@/components/ShareButton';
 import { generateMessShareText } from '@/utils/shareUtils';
 import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { WhatsAppChatButton } from '@/components/WhatsAppChatButton';
 import {
   ArrowLeft, CalendarIcon, Clock, IndianRupee, Loader2,
   MapPin, Star, UtensilsCrossed, Users,
@@ -605,6 +606,15 @@ export default function MessDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {mess?.user_id && (
+        <WhatsAppChatButton
+          partnerUserId={mess.user_id}
+          propertyType="mess"
+          propertyId={mess.id}
+          propertyName={mess.name}
+        />
+      )}
     </ErrorBoundary>
   );
 }

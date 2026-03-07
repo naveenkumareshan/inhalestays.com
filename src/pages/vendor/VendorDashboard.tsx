@@ -1,13 +1,36 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Navigation } from '@/components/Navigation';
-import { DollarSign, Users, Calendar, MapPin, Settings, Eye, Banknote } from 'lucide-react';
+import { DollarSign, Users, Calendar, MapPin, Settings, Eye, Banknote, MessageCircle } from 'lucide-react';
+import { whatsappLeadService } from '@/api/whatsappLeadService';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
+import { supabase } from '@/integrations/supabase/client';
 
 const VendorDashboard: React.FC = () => {
+  const [waClicks, setWaClicks] = useState<number>(0);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        let ownerId: string;
+        try {
+          const r = await getEffectiveOwnerId();
+          ownerId = r.ownerId;
+        } catch {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          ownerId = user.id;
+        }
+        const count = await whatsappLeadService.getClickCount(ownerId);
+        setWaClicks(count);
+      } catch {}
+    })();
+  }, []);
+
   // Mock data - replace with actual API calls
   const dashboardData = {
     totalRevenue: 125000,
@@ -98,6 +121,22 @@ const VendorDashboard: React.FC = () => {
             </div>
           </Card>
         </div>
+
+        {/* WhatsApp Leads Card */}
+        {waClicks > 0 && (
+          <div className="mb-4">
+            <Card className="shadow-none border rounded-lg">
+              <div className="p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">WhatsApp Leads</p>
+                  <p className="text-xl font-bold mt-0.5">{waClicks}</p>
+                  <p className="text-[10px] text-muted-foreground">Total chat clicks from students</p>
+                </div>
+                <MessageCircle className="h-4 w-4" style={{ color: '#25D366' }} />
+              </div>
+            </Card>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
           <Card className="shadow-none border rounded-lg">
