@@ -1960,7 +1960,7 @@ const VendorSeats: React.FC = () => {
                               )}
                               {canCancelBooking && (
                                 <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-destructive"
-                                  onClick={() => { setActionBookingId(b.bookingId); setCancelDialogOpen(true); }}>
+                                  onClick={() => { setActionBookingId(b.bookingId); setActionSerialNumber(b.serialNumber || ''); setCancelDialogOpen(true); }}>
                                   <XCircle className="h-2.5 w-2.5" /> Cancel
                                 </Button>
                               )}
