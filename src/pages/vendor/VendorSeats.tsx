@@ -449,10 +449,11 @@ const VendorSeats: React.FC = () => {
   const handleCancelBooking = async () => {
     if (!actionBookingId) return;
     setActionLoading(true);
-    const res = await vendorSeatsService.cancelBooking(actionBookingId);
+    const res = await vendorSeatsService.cancelBooking(actionBookingId, undefined, cancelReason);
     if (res.success) {
       toast({ title: 'Booking cancelled successfully' });
       setCancelDialogOpen(false);
+      setCancelReason('');
       setSheetOpen(false);
       fetchSeats();
     } else {
