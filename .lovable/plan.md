@@ -1,71 +1,46 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Fix: Hostel Floors Not Showing in Bed Map
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Problem
+The `HostelBedMap.tsx` page uses the legacy integer `floor` column from `hostel_rooms` (which is always `1`), ignoring the `hostel_floors` table entirely. Since all rooms have `floor = 1`, the floor filter shows only "Floor 1" even when multiple named floors exist (e.g., "2nd Floor", "3rd Floor").
 
-## Changes
+## Root Cause
+- The beds query selects `hostel_rooms!inner(room_number, category, floor, hostel_id, ...)` — uses integer `floor`, not `floor_id`
+- Floor filter derives from `beds.map(b => b.floor)` which is always `1`
+- Floor labels are generic "Floor 1" instead of actual floor names
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+## Solution
+Fetch `hostel_floors` data separately for the selected hostel, then use each room's `floor_id` to map beds to named floors.
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### Changes to `src/pages/admin/HostelBedMap.tsx`
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+1. **Add `floor_id` to the beds query select**: Change the hostel_rooms select to include `floor_id`
+2. **Store `floorId` and `floorName` on each `HostelBed`**: Add `floorId: string` and `floorName: string` to the interface, populated from `room.floor_id`
+3. **Fetch `hostel_floors` when a hostel is selected**: Query `hostel_floors` table for the selected hostel(s) to get floor names
+4. **Update `availableFloors`**: Use `floorId` + floor name from the fetched floors data instead of the integer `floor`
+5. **Update floor filtering**: Filter by `floorId` instead of integer `floor`
+6. **Update display labels**: Show actual floor names (e.g., "2nd Floor") instead of "Floor 1"
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### Detailed edits
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+**Interface** (line ~41-61): Add `floorId` and `floorName` fields to `HostelBed`
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+**Beds query** (line ~230): Add `floor_id` to the select:
+```
+hostel_rooms!inner(room_number, category, floor, floor_id, hostel_id, hostels!inner(id, name))
+```
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+**Fetch floors** (new state + effect): Add `hostelFloors` state. When hostels load or `selectedHostelId` changes, fetch from `hostel_floors` table for relevant hostel IDs.
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+**Bed mapping** (line ~340-361): Map `floorId` from `room.floor_id` and resolve `floorName` from fetched floors.
 
-**Reviews section**: Shown below the booking flow (not in a tab)
+**`availableFloors` memo** (line ~383-387): Derive from `floorId`/`floorName` pairs on beds instead of integer `floor`.
 
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
+**`filteredBeds` and `availableRooms`** (lines ~389-432): Filter by `floorId` instead of `String(b.floor)`.
 
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
+**Floor display** (line ~1339): Show `floorName` instead of `Floor {floor}`.
 
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+### Files
+- **Edit**: `src/pages/admin/HostelBedMap.tsx` — all changes above
 
