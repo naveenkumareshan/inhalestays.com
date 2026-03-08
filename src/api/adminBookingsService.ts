@@ -118,7 +118,7 @@ export const adminBookingsService = {
             profilePicture: profile?.profile_picture || '',
           },
           cabinId: cabin ? { name: cabin.name, cabinCode: cabin.serial_number || '' } : undefined,
-          seatId: seat ? { number: seat.number } : undefined,
+          seatId: seat ? { number: seat.number, floor: seat.floor } : undefined,
           startDate: b.start_date,
           endDate: b.end_date,
           totalPrice,
