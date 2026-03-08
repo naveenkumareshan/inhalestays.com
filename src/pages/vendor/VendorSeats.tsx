@@ -2050,7 +2050,7 @@ const VendorSeats: React.FC = () => {
                             )}
                             {canReleaseBooking && (
                               <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-amber-600"
-                                onClick={() => { setActionBookingId(b.bookingId); setReleaseDialogOpen(true); }}>
+                                onClick={() => { setActionBookingId(b.bookingId); setActionSerialNumber(b.serialNumber || ''); setReleaseDialogOpen(true); }}>
                                 <LogOut className="h-2.5 w-2.5" /> Release
                               </Button>
                             )}
