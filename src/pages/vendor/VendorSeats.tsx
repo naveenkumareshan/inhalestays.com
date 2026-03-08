@@ -433,10 +433,11 @@ const VendorSeats: React.FC = () => {
   const handleReleaseSeat = async () => {
     if (!actionBookingId) return;
     setActionLoading(true);
-    const res = await vendorSeatsService.releaseSeat(actionBookingId);
+    const res = await vendorSeatsService.releaseSeat(actionBookingId, undefined, releaseReason);
     if (res.success) {
       toast({ title: 'Seat released successfully' });
       setReleaseDialogOpen(false);
+      setReleaseReason('');
       setSheetOpen(false);
       fetchSeats();
     } else {
