@@ -151,6 +151,7 @@ const VendorSeats: React.FC = () => {
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [actionBookingId, setActionBookingId] = useState<string>('');
+  const [actionSerialNumber, setActionSerialNumber] = useState<string>('');
   const [actionLoading, setActionLoading] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [releaseReason, setReleaseReason] = useState('');
