@@ -17,6 +17,12 @@ interface HostelBedMapProps {
   endDate?: string;
 }
 
+interface FloorInfo {
+  id: string;
+  name: string;
+  floor_order: number;
+}
+
 export const HostelBedMap: React.FC<HostelBedMapProps> = ({
   hostelId,
   selectedBedId,
@@ -29,7 +35,8 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
   endDate,
 }) => {
   const [loading, setLoading] = useState(true);
-  const [floorData, setFloorData] = useState<Record<number, any[]>>({});
+  const [floorData, setFloorData] = useState<Record<string, any[]>>({});
+  const [floors, setFloors] = useState<FloorInfo[]>([]);
   const [selectedFloor, setSelectedFloor] = useState<string>('');
   const [internalRoomFilter, setInternalRoomFilter] = useState<string>('all');
 
@@ -37,9 +44,17 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Fetch named floors from hostel_floors table
+        const { data: namedFloors } = await supabase
+          .from('hostel_floors')
+          .select('id, name, floor_order')
+          .eq('hostel_id', hostelId)
+          .eq('is_active', true)
+          .order('floor_order');
+
         const { data: rooms } = await supabase
           .from('hostel_rooms')
-          .select('id, room_number, floor, category')
+          .select('id, room_number, floor, floor_id, category')
           .eq('hostel_id', hostelId)
           .eq('is_active', true)
           .order('floor')
@@ -47,6 +62,7 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
 
         if (!rooms?.length) {
           setFloorData({});
+          setFloors([]);
           setLoading(false);
           return;
         }
@@ -59,7 +75,6 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
           .in('room_id', roomIds)
           .order('bed_number');
 
-        // Use RPC to bypass RLS and see all users' bookings
         const { data: bookings } = await supabase.rpc('get_conflicting_hostel_bookings', {
           p_hostel_id: hostelId,
           p_start_date: startDate || null,
@@ -71,16 +86,40 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
           bookingMap.set(b.bed_id, b.user_name || 'Occupied');
         });
 
-        const grouped: Record<number, any[]> = {};
-        rooms.forEach(room => {
-          const floor = room.floor;
-          if (!grouped[floor]) grouped[floor] = [];
+        // Build floor map from hostel_floors
+        const floorMap = new Map<string, FloorInfo>();
+        (namedFloors || []).forEach((f: any) => {
+          floorMap.set(f.id, { id: f.id, name: f.name, floor_order: f.floor_order });
+        });
+
+        // Group rooms by floor_id (named floors) or fallback to integer floor
+        const grouped: Record<string, any[]> = {};
+        const resolvedFloors: FloorInfo[] = [];
+        const seenFloorKeys = new Set<string>();
+
+        rooms.forEach((room: any) => {
+          let floorKey: string;
+          let floorInfo: FloorInfo;
+
+          if (room.floor_id && floorMap.has(room.floor_id)) {
+            floorKey = room.floor_id;
+            floorInfo = floorMap.get(room.floor_id)!;
+          } else {
+            // Fallback to legacy integer floor
+            floorKey = `legacy-${room.floor}`;
+            floorInfo = { id: floorKey, name: `Floor ${room.floor}`, floor_order: room.floor };
+          }
+
+          if (!seenFloorKeys.has(floorKey)) {
+            seenFloorKeys.add(floorKey);
+            resolvedFloors.push(floorInfo);
+          }
+
+          if (!grouped[floorKey]) grouped[floorKey] = [];
 
           const roomBeds = (beds || [])
             .filter(b => b.room_id === room.id)
             .map(b => {
-              const isOccupied = !b.is_available || b.is_blocked || bookingMap.has(b.id);
-              const isFutureBooked = !isOccupied && b.is_available && !b.is_blocked && !bookingMap.has(b.id) === false;
               return {
                 id: b.id,
                 bed_number: b.bed_number,
@@ -98,7 +137,7 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
               };
             });
 
-          grouped[floor].push({
+          grouped[floorKey].push({
             roomId: room.id,
             roomNumber: room.room_number,
             category: room.category,
@@ -106,6 +145,10 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
           });
         });
 
+        // Sort floors by floor_order
+        resolvedFloors.sort((a, b) => a.floor_order - b.floor_order);
+
+        setFloors(resolvedFloors);
         setFloorData(grouped);
       } catch (error) {
         console.error('Error fetching bed map data:', error);
@@ -117,12 +160,10 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
     fetchData();
   }, [hostelId, startDate, endDate]);
 
-  const floors = Object.keys(floorData).map(Number).sort();
-
   // Set default floor
   useEffect(() => {
     if (floors.length > 0 && !selectedFloor) {
-      setSelectedFloor(String(floors[0]));
+      setSelectedFloor(floors[0].id);
     }
   }, [floors, selectedFloor]);
 
@@ -135,7 +176,7 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
   const effectiveRoomFilter = roomFilter ?? internalRoomFilter;
 
   // Rooms for current floor
-  const currentFloorRooms = selectedFloor ? (floorData[Number(selectedFloor)] || []) : [];
+  const currentFloorRooms = selectedFloor ? (floorData[selectedFloor] || []) : [];
 
   if (loading) {
     return (
@@ -156,12 +197,12 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
 
   return (
     <div>
-      <Tabs value={selectedFloor || String(floors[0])} onValueChange={setSelectedFloor}>
+      <Tabs value={selectedFloor || floors[0]?.id} onValueChange={setSelectedFloor}>
         <TabsList className="mb-2">
           {floors.map(floor => (
-            <TabsTrigger key={floor} value={String(floor)} className="flex items-center gap-1">
+            <TabsTrigger key={floor.id} value={floor.id} className="flex items-center gap-1">
               <Layers className="h-3.5 w-3.5" />
-              Floor {floor}
+              {floor.name}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -196,10 +237,10 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
         )}
 
         {floors.map(floor => (
-          <TabsContent key={floor} value={String(floor)}>
+          <TabsContent key={floor.id} value={floor.id}>
             <HostelFloorView
-              floorNumber={floor}
-              rooms={floorData[floor]}
+              floorNumber={floor.floor_order}
+              rooms={floorData[floor.id] || []}
               selectedBedId={selectedBedId}
               onBedSelect={onBedSelect}
               readOnly={readOnly}
