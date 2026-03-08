@@ -842,7 +842,7 @@ export const vendorSeatsService = {
     try {
       let query = supabase
         .from('dues')
-        .select('*, profiles:user_id(name, email, phone), cabins:cabin_id(name), seats:seat_id(number), bookings:booking_id(serial_number, start_date, end_date)')
+        .select('*, profiles:user_id(name, email, phone), cabins:cabin_id(name), seats:seat_id(number, floor), bookings:booking_id(serial_number, start_date, end_date)')
         .order('created_at', { ascending: false });
 
       if (filters?.cabinId && filters.cabinId !== 'all') {
