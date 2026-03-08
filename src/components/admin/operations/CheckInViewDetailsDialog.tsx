@@ -64,7 +64,7 @@ const CheckInViewDetailsDialog: React.FC<CheckInViewDetailsDialogProps> = ({ ope
             <div className="space-y-0.5">
               <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Booking</h4>
               {module === 'reading_room' ? (
-                <InfoRow label="Room / Seat" value={`${booking.cabins?.name || '—'} / Seat #${booking.seats?.number || '—'}`} />
+                <InfoRow label="Room / Seat" value={`${booking.cabins?.name || '—'} / ${booking.seats?.floor ? `Floor ${booking.seats.floor} · ` : ''}Seat #${booking.seats?.number || '—'}`} />
               ) : (
                 <InfoRow label="Hostel / Bed" value={`${booking.hostels?.name || '—'} / Bed #${booking.hostel_beds?.bed_number || '—'}`} />
               )}

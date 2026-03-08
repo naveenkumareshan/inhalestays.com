@@ -57,6 +57,7 @@ interface Booking {
   };
   seatId?: {
     number: number;
+    floor?: number;
   };
   bedId?: {
     number: number;
@@ -236,7 +237,7 @@ const AdminBookingsList = () => {
             booking.userId?.name || "",
             booking.userId?.email || "",
             (booking.cabinId?.name || "") +
-              (booking.seatId ? ` - Seat ${booking.seatId.number}` : ""),
+              (booking.seatId ? ` - ${booking.seatId.floor ? `Floor ${booking.seatId.floor} · ` : ''}Seat ${booking.seatId.number}` : ""),
             new Date(booking.startDate).toLocaleDateString(),
             new Date(booking.endDate).toLocaleDateString(),
             booking.originalPrice || booking.totalPrice,
@@ -480,7 +481,7 @@ const AdminBookingsList = () => {
                           {booking.cabinId?.cabinCode &&
                             `cabinCode #${booking.cabinId?.cabinCode || "N/A"}`}
                           {booking.cabinId
-                            ? `Seat #${booking.seatId?.number || "N/A"}`
+                            ? `${booking.seatId?.floor ? `Floor ${booking.seatId.floor} · ` : ''}Seat #${booking.seatId?.number || "N/A"}`
                             : `Bed #${booking.bedId?.number || "N/A"}`}
                         </div>
                       </div>

@@ -528,7 +528,7 @@ export const ProfileManagement = () => {
                       <p className="text-[12px] font-semibold text-foreground truncate">
                         {b.type === 'hostel'
                           ? `${(b.hostels as any)?.name || 'Hostel'} — Bed #${b.bed_number || '—'}`
-                          : `${(b.cabins as any)?.name || 'Reading Room'} — Seat #${b.seat_number || '—'}`}
+                          : `${(b.cabins as any)?.name || 'Reading Room'} — ${(b.seats as any)?.floor ? `Floor ${(b.seats as any).floor} · ` : ''}Seat #${b.seat_number || '—'}`}
                       </p>
                       <p className="text-[11px] text-muted-foreground">
                         {b.start_date ? format(new Date(b.start_date), 'd MMM') : '—'} → {b.end_date ? format(new Date(b.end_date), 'd MMM yyyy') : '—'}

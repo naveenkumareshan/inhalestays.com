@@ -24,7 +24,7 @@ export const adminBookingsService = {
 
       let query = supabase
         .from('bookings')
-        .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number, category), cabin_slots:slot_id(name), dues!dues_booking_id_fkey(advance_paid, paid_amount, due_amount)', { count: 'exact' });
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number, category, floor), cabin_slots:slot_id(name), dues!dues_booking_id_fkey(advance_paid, paid_amount, due_amount)', { count: 'exact' });
 
       // Apply filters
       if (filters?.status && filters.status !== 'all') {
@@ -118,7 +118,7 @@ export const adminBookingsService = {
             profilePicture: profile?.profile_picture || '',
           },
           cabinId: cabin ? { name: cabin.name, cabinCode: cabin.serial_number || '' } : undefined,
-          seatId: seat ? { number: seat.number } : undefined,
+          seatId: seat ? { number: seat.number, floor: seat.floor } : undefined,
           startDate: b.start_date,
           endDate: b.end_date,
           totalPrice,
@@ -168,7 +168,7 @@ export const adminBookingsService = {
 
   getBookingById: async (id: string) => {
     try {
-      const selectQuery = '*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number, price)';
+      const selectQuery = '*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number, price, floor)';
 
       let { data } = await supabase
         .from('bookings')
@@ -487,7 +487,7 @@ export const adminBookingsService = {
 
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, profiles!bookings_user_id_fkey(name, email, phone), cabins:cabin_id(name), seats:seat_id(number)')
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone), cabins:cabin_id(name), seats:seat_id(number, floor)')
         .eq('payment_status', 'completed')
         .gte('end_date', today.toISOString().split('T')[0])
         .lte('end_date', futureDate.toISOString().split('T')[0])

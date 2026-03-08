@@ -23,7 +23,7 @@ const ReportedTodaySection = ({ module }: { module: Module }) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, profiles:user_id(name, phone, email), cabins:cabin_id(name), seats:seat_id(number)')
+        .select('*, profiles:user_id(name, phone, email), cabins:cabin_id(name), seats:seat_id(number, floor)')
         .gte('checked_in_at', todayStart)
         .order('checked_in_at', { ascending: false });
       if (error) throw error;
@@ -136,7 +136,7 @@ const ReportedTodaySection = ({ module }: { module: Module }) => {
                     </td>
                     <td className="py-1.5 px-3">
                       {module === 'reading_room' ? (
-                        <span>{b.cabins?.name || '—'} / Seat #{b.seats?.number || '—'}</span>
+                        <span>{b.cabins?.name || '—'} / {b.seats?.floor ? `Floor ${b.seats.floor} · ` : ''}Seat #{b.seats?.number || '—'}</span>
                       ) : (
                         <span>{b.hostels?.name || '—'} / Bed #{b.hostel_beds?.bed_number || '—'}</span>
                       )}

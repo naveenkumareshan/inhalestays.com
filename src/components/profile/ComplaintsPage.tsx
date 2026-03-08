@@ -61,7 +61,7 @@ const ComplaintsPage = () => {
 
     const cabinBookings = (cabinBookingsRes.success ? cabinBookingsRes.data : []).map((b: any) => ({
       ...b, _type: 'cabin',
-      _label: `${(b.cabins as any)?.name || 'Room'} — Seat #${b.seat_number || '—'}`,
+      _label: `${(b.cabins as any)?.name || 'Room'} — ${(b.seats as any)?.floor ? `Floor ${(b.seats as any).floor} · ` : ''}Seat #${b.seat_number || '—'}`,
     }));
 
     const hostelBookings = (hostelBookingsRes || []).map((hb: any) => ({

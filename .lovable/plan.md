@@ -1,67 +1,71 @@
 
 
-# Add Floor Info to Booking Lists (Admin + Partner + Employee Views)
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Problem
-Booking lists across admin and partner/employee views show Room and Seat but not the Floor number, making it difficult to locate students in multi-floor reading rooms.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-## Scope of Changes
+## Changes
 
-The `seats` table has a `floor` column. We need to include it in all queries that fetch seat info and display it alongside the seat number.
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-### 1. Service Layer — Add `floor` to seat select queries
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-**`src/api/adminBookingsService.ts`**
-- Line 27: Change `seats:seat_id(number, category)` → `seats:seat_id(number, category, floor)`
-- Line 121: Include `floor` in seatId mapping: `{ number: seat.number, floor: seat.floor }`
-- Line 171: Change `seats:seat_id(number, price)` → `seats:seat_id(number, price, floor)`
-- Line 490: Change `seats:seat_id(number)` → `seats:seat_id(number, floor)`
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-**`src/api/bookingsService.ts`** (line 110): Add `floor` to seat select
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-**`src/components/admin/operations/CheckInTracker.tsx`** (line 61): Add `floor` to seat select  
-**`src/components/admin/operations/ReportedTodaySection.tsx`** (line 26): Add `floor` to seat select
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-### 2. UI — Display floor alongside seat number
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-Format: `Floor X · Seat #Y` (show floor only when > 0 or present)
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-**`src/components/admin/AdminBookingsList.tsx`**
-- Line 58-60: Add `floor?: number` to seatId type
-- Line 483: Show `Floor X · Seat #Y`
-- Line 239: Include floor in CSV export
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-**`src/components/booking/BookingTransactionView.tsx`** (line 135): Show floor in seat display
+**Reviews section**: Shown below the booking flow (not in a tab)
 
-**`src/components/admin/operations/CheckInTracker.tsx`** (line 284): Show floor in tracker
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
 
-**`src/components/admin/operations/CheckInViewDetailsDialog.tsx`** (line 67): Show floor in detail view
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
 
-**`src/components/profile/ProfileManagement.tsx`** (line 531): Show floor for student profile bookings
+## File Summary
 
-**`src/components/profile/ComplaintsPage.tsx`** (line 64): Show floor in complaint labels
-
-**`src/pages/admin/DueManagement.tsx`** (line 304): Show floor in due management
-
-### 3. Display Helper
-
-Create a small utility or inline pattern:
-```typescript
-const seatDisplay = (seat: any) => {
-  const floor = seat?.floor ? `Floor ${seat.floor} · ` : '';
-  return `${floor}Seat #${seat?.number || 'N/A'}`;
-};
-```
-
-### Files to modify
-- `src/api/adminBookingsService.ts` — add floor to select queries + mapping
-- `src/api/bookingsService.ts` — add floor to select query
-- `src/components/admin/AdminBookingsList.tsx` — type + display + CSV
-- `src/components/booking/BookingTransactionView.tsx` — display
-- `src/components/admin/operations/CheckInTracker.tsx` — query + display
-- `src/components/admin/operations/ReportedTodaySection.tsx` — query
-- `src/components/admin/operations/CheckInViewDetailsDialog.tsx` — display
-- `src/components/profile/ProfileManagement.tsx` — display
-- `src/components/profile/ComplaintsPage.tsx` — display
-- `src/pages/admin/DueManagement.tsx` — display
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 
