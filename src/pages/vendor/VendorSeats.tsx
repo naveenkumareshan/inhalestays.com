@@ -439,6 +439,7 @@ const VendorSeats: React.FC = () => {
       toast({ title: 'Seat released successfully' });
       setReleaseDialogOpen(false);
       setReleaseReason('');
+      setActionSerialNumber('');
       setSheetOpen(false);
       fetchSeats();
     } else {
