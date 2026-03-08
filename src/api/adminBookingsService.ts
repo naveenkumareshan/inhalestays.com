@@ -487,7 +487,7 @@ export const adminBookingsService = {
 
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, profiles!bookings_user_id_fkey(name, email, phone), cabins:cabin_id(name), seats:seat_id(number)')
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone), cabins:cabin_id(name), seats:seat_id(number, floor)')
         .eq('payment_status', 'completed')
         .gte('end_date', today.toISOString().split('T')[0])
         .lte('end_date', futureDate.toISOString().split('T')[0])

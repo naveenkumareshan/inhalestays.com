@@ -995,7 +995,7 @@ export const vendorSeatsService = {
 
       const { data, error } = await supabase
         .from('dues')
-        .select('*, cabins:cabin_id(name), seats:seat_id(number)')
+        .select('*, cabins:cabin_id(name), seats:seat_id(number, floor)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw error;

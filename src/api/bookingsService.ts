@@ -107,7 +107,7 @@ export const bookingsService = {
     try {
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, cabins(name, category, image_url, city, area, description, full_address, locker_available, locker_price), seats:seat_id(price, number, category), cabin_slots:slot_id(name, start_time, end_time, price)')
+        .select('*, cabins(name, category, image_url, city, area, description, full_address, locker_available, locker_price), seats:seat_id(price, number, category, floor), cabin_slots:slot_id(name, start_time, end_time, price)')
         .eq('id', id)
         .single();
       return { success: !error, data };

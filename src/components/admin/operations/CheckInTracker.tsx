@@ -58,7 +58,7 @@ const CheckInTracker = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, profiles:user_id(name, phone, email), cabins:cabin_id(name), seats:seat_id(number)')
+        .select('*, profiles:user_id(name, phone, email), cabins:cabin_id(name), seats:seat_id(number, floor)')
         .is('checked_in_at', null)
         .in('payment_status', ['completed', 'advance_paid'])
         .in('start_date', [today, yesterday])
