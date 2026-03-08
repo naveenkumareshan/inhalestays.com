@@ -55,9 +55,17 @@ interface HostelBed {
   hostelId: string;
   hostelName: string;
   floor: number;
+  floorId: string;
+  floorName: string;
   dateStatus: 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked';
   currentBooking: any | null;
   allBookings: any[];
+}
+
+interface HostelFloorInfo {
+  id: string;
+  name: string;
+  floor_order: number;
 }
 
 interface HostelInfo {
