@@ -168,7 +168,7 @@ export const adminBookingsService = {
 
   getBookingById: async (id: string) => {
     try {
-      const selectQuery = '*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number, price)';
+      const selectQuery = '*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number, price, floor)';
 
       let { data } = await supabase
         .from('bookings')
