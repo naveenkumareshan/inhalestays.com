@@ -706,10 +706,11 @@ const HostelBedMap: React.FC = () => {
       try {
         const { logBookingActivity } = await import('@/api/bookingActivityLogService');
         const bk = selectedBed?.allBookings.find((b: any) => b.bookingId === actionBookingId);
-        await logBookingActivity({ bookingId: actionBookingId, bookingType: 'hostel', activityType: 'released', serialNumber: bk?.serialNumber });
+        await logBookingActivity({ bookingId: actionBookingId, bookingType: 'hostel', activityType: 'released', serialNumber: bk?.serialNumber, details: { reason: releaseReason || '' } });
       } catch (e) { console.error('Activity log failed:', e); }
       toast({ title: 'Bed released successfully' });
       setReleaseDialogOpen(false);
+      setReleaseReason('');
       setSheetOpen(false);
       fetchBeds();
     } else {
@@ -724,7 +725,7 @@ const HostelBedMap: React.FC = () => {
     setActionLoading(true);
     const { error } = await supabase
       .from('hostel_bookings')
-      .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+      .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), cancellation_reason: cancelReason || null })
       .eq('id', actionBookingId);
     if (!error) {
       await supabase
@@ -736,10 +737,11 @@ const HostelBedMap: React.FC = () => {
       try {
         const { logBookingActivity } = await import('@/api/bookingActivityLogService');
         const bk = selectedBed?.allBookings.find((b: any) => b.bookingId === actionBookingId);
-        await logBookingActivity({ bookingId: actionBookingId, bookingType: 'hostel', activityType: 'cancelled', serialNumber: bk?.serialNumber });
+        await logBookingActivity({ bookingId: actionBookingId, bookingType: 'hostel', activityType: 'cancelled', serialNumber: bk?.serialNumber, details: { reason: cancelReason || '' } });
       } catch (e) { console.error('Activity log failed:', e); }
       toast({ title: 'Booking cancelled successfully' });
       setCancelDialogOpen(false);
+      setCancelReason('');
       setSheetOpen(false);
       fetchBeds();
     } else {
