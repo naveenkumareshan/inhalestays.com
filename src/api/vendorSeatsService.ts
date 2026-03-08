@@ -1019,7 +1019,7 @@ export const vendorSeatsService = {
     }
   },
 
-  releaseSeat: async (bookingId: string, serialNumber?: string) => {
+  releaseSeat: async (bookingId: string, serialNumber?: string, reason?: string) => {
     try {
       const { error } = await supabase.from('bookings').update({
         payment_status: 'terminated',
@@ -1028,7 +1028,7 @@ export const vendorSeatsService = {
       if (error) throw error;
       // Log activity
       const { logBookingActivity } = await import('@/api/bookingActivityLogService');
-      await logBookingActivity({ bookingId, bookingType: 'cabin', activityType: 'released', serialNumber });
+      await logBookingActivity({ bookingId, bookingType: 'cabin', activityType: 'released', serialNumber, details: { reason: reason || '' } });
       return { success: true };
     } catch (error) {
       console.error('Error releasing seat:', error);
@@ -1036,7 +1036,7 @@ export const vendorSeatsService = {
     }
   },
 
-  cancelBooking: async (bookingId: string, serialNumber?: string) => {
+  cancelBooking: async (bookingId: string, serialNumber?: string, reason?: string) => {
     try {
       const { error } = await supabase.from('bookings').update({
         payment_status: 'cancelled',
@@ -1048,7 +1048,7 @@ export const vendorSeatsService = {
       }).eq('booking_id', bookingId).eq('status', 'pending');
       // Log activity
       const { logBookingActivity } = await import('@/api/bookingActivityLogService');
-      await logBookingActivity({ bookingId, bookingType: 'cabin', activityType: 'cancelled', serialNumber });
+      await logBookingActivity({ bookingId, bookingType: 'cabin', activityType: 'cancelled', serialNumber, details: { reason: reason || '' } });
       return { success: true };
     } catch (error) {
       console.error('Error cancelling booking:', error);

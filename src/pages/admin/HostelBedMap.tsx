@@ -34,6 +34,7 @@ import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesDialog';
+import { Textarea } from '@/components/ui/textarea';
 
 type ViewMode = 'grid' | 'table';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked';
@@ -188,6 +189,8 @@ const HostelBedMap: React.FC = () => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [actionBookingId, setActionBookingId] = useState<string>('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [releaseReason, setReleaseReason] = useState('');
 
   // Date edit state
   const [dateEditOpen, setDateEditOpen] = useState(false);
@@ -704,10 +707,11 @@ const HostelBedMap: React.FC = () => {
       try {
         const { logBookingActivity } = await import('@/api/bookingActivityLogService');
         const bk = selectedBed?.allBookings.find((b: any) => b.bookingId === actionBookingId);
-        await logBookingActivity({ bookingId: actionBookingId, bookingType: 'hostel', activityType: 'released', serialNumber: bk?.serialNumber });
+        await logBookingActivity({ bookingId: actionBookingId, bookingType: 'hostel', activityType: 'released', serialNumber: bk?.serialNumber, details: { reason: releaseReason || '' } });
       } catch (e) { console.error('Activity log failed:', e); }
       toast({ title: 'Bed released successfully' });
       setReleaseDialogOpen(false);
+      setReleaseReason('');
       setSheetOpen(false);
       fetchBeds();
     } else {
@@ -722,7 +726,7 @@ const HostelBedMap: React.FC = () => {
     setActionLoading(true);
     const { error } = await supabase
       .from('hostel_bookings')
-      .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+      .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), cancellation_reason: cancelReason || null })
       .eq('id', actionBookingId);
     if (!error) {
       await supabase
@@ -734,10 +738,11 @@ const HostelBedMap: React.FC = () => {
       try {
         const { logBookingActivity } = await import('@/api/bookingActivityLogService');
         const bk = selectedBed?.allBookings.find((b: any) => b.bookingId === actionBookingId);
-        await logBookingActivity({ bookingId: actionBookingId, bookingType: 'hostel', activityType: 'cancelled', serialNumber: bk?.serialNumber });
+        await logBookingActivity({ bookingId: actionBookingId, bookingType: 'hostel', activityType: 'cancelled', serialNumber: bk?.serialNumber, details: { reason: cancelReason || '' } });
       } catch (e) { console.error('Activity log failed:', e); }
       toast({ title: 'Booking cancelled successfully' });
       setCancelDialogOpen(false);
+      setCancelReason('');
       setSheetOpen(false);
       fetchBeds();
     } else {
@@ -2057,7 +2062,7 @@ const HostelBedMap: React.FC = () => {
       </Dialog>
 
       {/* ──── Release Bed Confirmation ──── */}
-      <AlertDialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
+      <AlertDialog open={releaseDialogOpen} onOpenChange={(open) => { setReleaseDialogOpen(open); if (!open) setReleaseReason(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Release Bed</AlertDialogTitle>
@@ -2065,9 +2070,13 @@ const HostelBedMap: React.FC = () => {
               This will terminate the booking and free the bed immediately. The student will no longer have access. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-2">
+            <Label className="text-sm font-medium">Reason for release <span className="text-destructive">*</span></Label>
+            <Textarea placeholder="Reason for release..." value={releaseReason} onChange={e => setReleaseReason(e.target.value)} className="mt-1" />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReleaseBed} disabled={actionLoading} className="bg-amber-600 hover:bg-amber-700">
+            <AlertDialogAction onClick={handleReleaseBed} disabled={actionLoading || !releaseReason.trim()} className="bg-amber-600 hover:bg-amber-700">
               {actionLoading ? 'Releasing...' : 'Release Bed'}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -2075,7 +2084,7 @@ const HostelBedMap: React.FC = () => {
       </AlertDialog>
 
       {/* ──── Cancel Booking Confirmation ──── */}
-      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+      <AlertDialog open={cancelDialogOpen} onOpenChange={(open) => { setCancelDialogOpen(open); if (!open) setCancelReason(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel Booking</AlertDialogTitle>
@@ -2083,9 +2092,13 @@ const HostelBedMap: React.FC = () => {
               This will cancel the booking, free the bed, and cancel any pending dues. Transaction history will be preserved. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-2">
+            <Label className="text-sm font-medium">Reason for cancellation <span className="text-destructive">*</span></Label>
+            <Textarea placeholder="Reason for cancellation..." value={cancelReason} onChange={e => setCancelReason(e.target.value)} className="mt-1" />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCancelHostelBooking} disabled={actionLoading} className="bg-destructive hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleCancelHostelBooking} disabled={actionLoading || !cancelReason.trim()} className="bg-destructive hover:bg-destructive/90">
               {actionLoading ? 'Cancelling...' : 'Cancel Booking'}
             </AlertDialogAction>
           </AlertDialogFooter>
