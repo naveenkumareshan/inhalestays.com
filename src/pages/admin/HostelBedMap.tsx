@@ -378,6 +378,15 @@ const HostelBedMap: React.FC = () => {
         hostelId: hostel?.id || '',
         hostelName: hostel?.name || '',
         floor: room?.floor || 1,
+        floorId: room?.floor_id || '',
+        floorName: (() => {
+          const fid = room?.floor_id;
+          if (fid) {
+            const found = hostelFloors.find((f: any) => f.id === fid);
+            if (found) return found.name;
+          }
+          return `Floor ${room?.floor || 1}`;
+        })(),
         dateStatus,
         currentBooking: currentBooking ? formatBooking(currentBooking) : null,
         allBookings: allBeds.map(formatBooking),
