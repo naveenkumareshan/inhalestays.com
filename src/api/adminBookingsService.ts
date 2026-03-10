@@ -387,13 +387,18 @@ export const adminBookingsService = {
     endDate?: string;
     timeframe?: 'daily' | 'weekly' | 'monthly' | 'yearly';
     cabinId?: string;
+    partnerUserId?: string;
   }) => {
     try {
       // Get all active cabins with their seats
-      const { data: cabins, error: cabinsError } = await supabase
+      let cabinQuery = supabase
         .from('cabins')
         .select('id, name, category')
         .eq('is_active', true);
+      if (params.partnerUserId) {
+        cabinQuery = cabinQuery.eq('created_by', params.partnerUserId);
+      }
+      const { data: cabins, error: cabinsError } = await cabinQuery;
       if (cabinsError) throw cabinsError;
 
       if (!cabins || cabins.length === 0) {
