@@ -158,7 +158,7 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
         filters.search = searchQuery.trim();
       }
       
-      const response = await adminBookingsService.getAllBookings(filters);
+      const response = await adminBookingsService.getAllBookings(filters, partnerUserId);
       
       if (response.success && response.data) {
         setTransactions(response.data);
