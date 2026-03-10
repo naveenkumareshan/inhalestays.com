@@ -602,13 +602,18 @@ export const adminBookingsService = {
     }
   },
 
-  getMonthlyOccupancy: async (year: number = new Date().getFullYear()) => {
+  getMonthlyOccupancy: async (year: number = new Date().getFullYear(), partnerUserId?: string) => {
     try {
       // Get total seat capacity
+      let cabinQuery = supabase.from('cabins').select('id').eq('is_active', true);
+      if (partnerUserId) cabinQuery = cabinQuery.eq('created_by', partnerUserId);
+      const cabinIds = (await cabinQuery).data?.map(c => c.id) || [];
+      if (cabinIds.length === 0) return { success: true, data: [] };
+
       const { data: seats } = await supabase
         .from('seats')
         .select('id, cabin_id')
-        .in('cabin_id', (await supabase.from('cabins').select('id').eq('is_active', true)).data?.map(c => c.id) || []);
+        .in('cabin_id', cabinIds);
 
       const totalSeats = (seats || []).length;
       if (totalSeats === 0) return { success: true, data: [] };

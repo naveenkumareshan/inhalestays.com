@@ -23,7 +23,13 @@ export function OccupancyChart() {
     const fetchMonthlyOccupancy = async () => {
       try {
         setLoading(true);
-        const response = await adminBookingsService.getMonthlyOccupancy();
+        let partnerUserId: string | undefined;
+        if (user?.role === 'vendor') partnerUserId = user.id;
+        else if (user?.role === 'vendor_employee') {
+          const { ownerId } = await getEffectiveOwnerId();
+          partnerUserId = ownerId;
+        }
+        const response = await adminBookingsService.getMonthlyOccupancy(new Date().getFullYear(), partnerUserId);
         
         if (response.success && response.data) {
           const chartData = response.data.map((month: any) => ({

@@ -25,16 +25,26 @@ interface TopFillingRoom {
 }
 
 export function DashboardStatistics() {
+  const { user } = useAuth();
   const [topFillingRooms, setTopFillingRooms] = useState<TopFillingRoom[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState(false);
   const hasFetchedRef = useRef(false);
+  const [partnerUserId, setPartnerUserId] = useState<string | undefined>(
+    user?.role === 'vendor' ? user.id : undefined
+  );
 
-  const fetchDashboardData = async () => {
+  useEffect(() => {
+    if (user?.role === 'vendor_employee') {
+      getEffectiveOwnerId().then(({ ownerId }) => setPartnerUserId(ownerId));
+    }
+  }, [user]);
+
+  const fetchDashboardData = async (pId?: string) => {
     try {
       setLoading(true);
       setError(false);
-      const topRoomsResponse = await adminBookingsService.getTopFillingRooms();
+      const topRoomsResponse = await adminBookingsService.getTopFillingRooms(10, pId);
       if (topRoomsResponse.success && topRoomsResponse.data) {
         setTopFillingRooms(topRoomsResponse.data.slice(0, 10));
       }
@@ -48,9 +58,11 @@ export function DashboardStatistics() {
 
   useEffect(() => {
     if (hasFetchedRef.current) return;
+    // Wait for employee resolution
+    if (user?.role === 'vendor_employee' && !partnerUserId) return;
     hasFetchedRef.current = true;
-    fetchDashboardData();
-  }, []);
+    fetchDashboardData(partnerUserId);
+  }, [partnerUserId]);
   
   const getCategoryBadgeColor = (category: string) => {
     switch (category.toLowerCase()) {
