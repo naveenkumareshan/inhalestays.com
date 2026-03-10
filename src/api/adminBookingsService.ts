@@ -500,12 +500,14 @@ export const adminBookingsService = {
     }
   },
 
-  getTopFillingRooms: async (limit: number = 10) => {
+  getTopFillingRooms: async (limit: number = 10, partnerUserId?: string) => {
     try {
-      const { data: cabins } = await supabase
+      let cabinQuery = supabase
         .from('cabins')
         .select('id, name, category')
         .eq('is_active', true);
+      if (partnerUserId) cabinQuery = cabinQuery.eq('created_by', partnerUserId);
+      const { data: cabins } = await cabinQuery;
       if (!cabins || cabins.length === 0) return { success: true, data: [] };
 
       const cabinIds = cabins.map(c => c.id);
