@@ -16,7 +16,7 @@ interface BookingFilters {
 }
 
 export const adminBookingsService = {
-  getAllBookings: async (filters?: BookingFilters) => {
+  getAllBookings: async (filters?: BookingFilters, partnerUserId?: string) => {
     try {
       const page = filters?.page || 1;
       const limit = filters?.limit || 10;
