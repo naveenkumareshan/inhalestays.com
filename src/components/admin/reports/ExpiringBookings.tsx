@@ -11,7 +11,7 @@ import { format, differenceInDays, addDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
-export function ExpiringBookings() {
+export function ExpiringBookings({ partnerUserId }: { partnerUserId?: string }) {
   const [expiringBookings, setExpiringBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [daysThreshold, setDaysThreshold] = useState('7');
