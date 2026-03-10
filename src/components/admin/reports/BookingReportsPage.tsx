@@ -16,13 +16,24 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 
 const BookingReportsPage: React.FC = () => {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [dateFilterType, setDateFilterType] = useState('today');
   const [dateRange, setDateRange] = useState<DateRange>({
     from: new Date(new Date().setDate(new Date().getDate())),
     to: new Date()
   });
+  const [partnerUserId, setPartnerUserId] = useState<string | undefined>(undefined);
   
+  const isPartner = user?.role === 'vendor' || user?.role === 'vendor_employee';
+
+  // Resolve partner user ID
+  useEffect(() => {
+    if (isPartner) {
+      getEffectiveOwnerId().then(({ ownerId }) => setPartnerUserId(ownerId));
+    }
+  }, [isPartner]);
+
   // Get active tab from URL params or default to 'revenue'
   const tabFromUrl = searchParams.get('tab') as 'revenue' | 'occupancy' | 'transactions' | 'expirybooking' | 'calendar' | null;
   const [activeTab, setActiveTab] = useState<'revenue' | 'occupancy' | 'transactions' | 'expirybooking' | 'calendar'>(
