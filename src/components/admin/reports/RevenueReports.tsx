@@ -36,7 +36,7 @@ const RevenueReportsComponent: React.FC<RevenueReportsProps> = ({ dateRange, par
           filters.endDate = format(dateRange.to, 'yyyy-MM-dd');
         }
         
-        const response = await adminBookingsService.getRevenueReport(filters, dateRange ? undefined : undefined, partnerUserId);
+        const response = await adminBookingsService.getRevenueReport(filters, partnerUserId);
         
         if (response.success && response.data) {
           // Process data for charts based on the selected period
