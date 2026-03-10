@@ -7,8 +7,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Toolti
 import { Skeleton } from '@/components/ui/skeleton';
 import { adminBookingsService } from '@/api/adminBookingsService';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useAuth } from '@/contexts/AuthContext';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 
 export function RevenueChart() {
+  const { user } = useAuth();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
