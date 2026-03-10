@@ -12,6 +12,8 @@ import { DashboardExpiringBookings } from './DashboardExpiringBookings';
 import { TrendingUp } from 'lucide-react';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useAuth } from '@/contexts/AuthContext';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 
 interface TopFillingRoom {
   id: string;
