@@ -27,7 +27,7 @@ interface BookingTransactionsProps {
   partnerUserId?: string;
 }
 
-export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRange }) => {
+export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRange, partnerUserId }) => {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
