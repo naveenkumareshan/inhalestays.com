@@ -38,7 +38,7 @@ interface OverallOccupancy {
   occupancyRate: number;
 }
 
-export function OccupancyReports({ dateRange }: { dateRange: DateRange }) {
+export function OccupancyReports({ dateRange, partnerUserId }: { dateRange: DateRange; partnerUserId?: string }) {
   const [occupancyData, setOccupancyData] = useState<OccupancyData[]>([]);
   const [occupancyTrend, setOccupancyTrend] = useState<OccupancyTrendData[]>([]);
   const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
