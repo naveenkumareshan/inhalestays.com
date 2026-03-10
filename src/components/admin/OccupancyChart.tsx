@@ -7,8 +7,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { adminBookingsService } from '@/api/adminBookingsService';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TrendingUp } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 
 export function OccupancyChart() {
+  const { user } = useAuth();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -20,7 +23,13 @@ export function OccupancyChart() {
     const fetchMonthlyOccupancy = async () => {
       try {
         setLoading(true);
-        const response = await adminBookingsService.getMonthlyOccupancy();
+        let partnerUserId: string | undefined;
+        if (user?.role === 'vendor') partnerUserId = user.id;
+        else if (user?.role === 'vendor_employee') {
+          const { ownerId } = await getEffectiveOwnerId();
+          partnerUserId = ownerId;
+        }
+        const response = await adminBookingsService.getMonthlyOccupancy(new Date().getFullYear(), partnerUserId);
         
         if (response.success && response.data) {
           const chartData = response.data.map((month: any) => ({

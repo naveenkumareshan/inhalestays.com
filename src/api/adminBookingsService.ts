@@ -500,12 +500,14 @@ export const adminBookingsService = {
     }
   },
 
-  getTopFillingRooms: async (limit: number = 10) => {
+  getTopFillingRooms: async (limit: number = 10, partnerUserId?: string) => {
     try {
-      const { data: cabins } = await supabase
+      let cabinQuery = supabase
         .from('cabins')
         .select('id, name, category')
         .eq('is_active', true);
+      if (partnerUserId) cabinQuery = cabinQuery.eq('created_by', partnerUserId);
+      const { data: cabins } = await cabinQuery;
       if (!cabins || cabins.length === 0) return { success: true, data: [] };
 
       const cabinIds = cabins.map(c => c.id);
@@ -555,17 +557,26 @@ export const adminBookingsService = {
     }
   },
 
-  getMonthlyRevenue: async (year: number = new Date().getFullYear()) => {
+  getMonthlyRevenue: async (year: number = new Date().getFullYear(), partnerUserId?: string) => {
     try {
       const startOfYear = `${year}-01-01`;
       const endOfYear = `${year}-12-31T23:59:59`;
 
-      const { data, error } = await supabase
+      let partnerCabinIds: string[] | null = null;
+      if (partnerUserId) {
+        const { data: pCabins } = await supabase.from('cabins').select('id').eq('created_by', partnerUserId);
+        partnerCabinIds = (pCabins || []).map(c => c.id);
+        if (partnerCabinIds.length === 0) return { success: true, data: [] };
+      }
+
+      let query = supabase
         .from('bookings')
-        .select('total_price, created_at')
+        .select('total_price, created_at, cabin_id')
         .eq('payment_status', 'completed')
         .gte('created_at', startOfYear)
         .lte('created_at', endOfYear);
+      if (partnerCabinIds) query = query.in('cabin_id', partnerCabinIds);
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -591,13 +602,18 @@ export const adminBookingsService = {
     }
   },
 
-  getMonthlyOccupancy: async (year: number = new Date().getFullYear()) => {
+  getMonthlyOccupancy: async (year: number = new Date().getFullYear(), partnerUserId?: string) => {
     try {
       // Get total seat capacity
+      let cabinQuery = supabase.from('cabins').select('id').eq('is_active', true);
+      if (partnerUserId) cabinQuery = cabinQuery.eq('created_by', partnerUserId);
+      const cabinIds = (await cabinQuery).data?.map(c => c.id) || [];
+      if (cabinIds.length === 0) return { success: true, data: [] };
+
       const { data: seats } = await supabase
         .from('seats')
         .select('id, cabin_id')
-        .in('cabin_id', (await supabase.from('cabins').select('id').eq('is_active', true)).data?.map(c => c.id) || []);
+        .in('cabin_id', cabinIds);
 
       const totalSeats = (seats || []).length;
       if (totalSeats === 0) return { success: true, data: [] };
