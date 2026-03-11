@@ -29,6 +29,7 @@ export function ImageUpload({
   const { toast } = useToast();
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
   
   // Use both existing and locally uploaded images (filter out falsy values)
   const allImages = [...existingImages.filter(Boolean), ...uploadedImages.filter(img => img && !existingImages.includes(img))];
