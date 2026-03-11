@@ -1,71 +1,27 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Expiring Bookings Pages — Match Standard UI Format
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Problem
+Both `ExpiringBookingsPage` and `HostelExpiringBookingsPage` use a basic Card+Table layout that doesn't match the standard booking list format used in `AdminBookingsList` (compact filter row, serial numbers, pagination, proper column structure).
 
 ## Changes
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### Both `ExpiringBookingsPage.tsx` and `HostelExpiringBookingsPage.tsx`
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+Rewrite to match the `AdminBookingsList` UI pattern:
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+1. **Compact filter row** at top — search input (h-8, w-48), days threshold select, sort order, Clear button, CSV export button — all inline in a flex-wrap row
+2. **Serial number column** using `getSerialNumber(idx, currentPage, itemsPerPage)` from `AdminTablePagination`
+3. **Standard table columns**:
+   - Reading Room: S.No. | Booking ID | Customer (name + email + phone stacked) | Room / Seat (cabin name + seat number) | Start Date | End Date | Expires In (badge + date) | Actions (Eye + Details button)
+   - Hostel: S.No. | Booking ID | Customer | Hostel / Room / Bed | Start Date | End Date | Expires In | Actions
+4. **Pagination** using `AdminTablePagination` component (client-side pagination since data is already fetched)
+5. **Loading skeleton** matching the `AdminBookingsList` skeleton pattern
+6. **Proper route prefix** — use `location.pathname` to determine `/admin` vs `/partner` for the View button navigation
+7. **Table header style** — match `bg-muted/30` row, `text-xs font-medium uppercase tracking-wider` headers
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
-
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
-
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+### Files Modified
+- `src/pages/admin/ExpiringBookingsPage.tsx` — full rewrite
+- `src/pages/admin/HostelExpiringBookingsPage.tsx` — full rewrite
 
