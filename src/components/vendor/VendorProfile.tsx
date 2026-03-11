@@ -435,52 +435,6 @@ export const VendorProfile: React.FC = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="bank" className="space-y-3">
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm flex items-center gap-2"><CreditCard className="h-4 w-4" />Bank Details</CardTitle>
-                <div className="flex items-center gap-2">
-                  <SectionBadge section="bank_details" />
-                  {!isSectionLocked('bank_details') && !editMode && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditMode(true)}>Edit</Button>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {[
-                  { key: 'accountHolderName', label: 'Account Holder Name' },
-                  { key: 'accountNumber', label: 'Account Number' },
-                  { key: 'bankName', label: 'Bank Name' },
-                  { key: 'ifscCode', label: 'IFSC Code' },
-                  { key: 'upiId', label: 'UPI ID' },
-                ].map(({ key, label }) => (
-                  <div key={key}>
-                    <Label className="text-xs">{label}</Label>
-                    {editMode && !isSectionLocked('bank_details') ? (
-                      <Input className="h-8 text-xs" value={(formData.bankDetails as any)?.[key] || ''} onChange={(e) => setFormData({...formData, bankDetails: {...formData.bankDetails, [key]: e.target.value}})} />
-                    ) : (
-                      <p className="mt-0.5 text-sm font-medium">
-                        {key === 'accountNumber' && (profile.bankDetails as any)?.[key]
-                          ? `****${(profile.bankDetails as any)[key].slice(-4)}`
-                          : (profile.bankDetails as any)?.[key] || 'Not provided'}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {editMode && !isSectionLocked('bank_details') && (
-                <div className="flex gap-2 pt-2 border-t">
-                  <Button size="sm" className="h-7 text-xs" onClick={handleUpdate} disabled={updating}>{updating ? 'Saving...' : 'Save'}</Button>
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditMode(false)}>Cancel</Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="documents" className="space-y-3">
           <Card>
             <CardHeader className="pb-2">
