@@ -183,7 +183,6 @@ const VendorRegister: React.FC = () => {
         businessType: formData.businessType,
         businessDetails: formData.businessDetails,
         address: formData.address,
-        bankDetails: formData.bankDetails,
         contactPerson: formData.contactPerson
       };
 
