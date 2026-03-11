@@ -67,12 +67,34 @@ const AdminEmployees: React.FC = () => {
     if (!passwordDialog || !newPassword) return;
     setResetLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
-        body: { userId: passwordDialog.employee_user_id, newPassword },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast({ title: "Success", description: "Password updated successfully" });
+      if (!passwordDialog.employee_user_id) {
+        // No auth account yet — create one via edge function
+        const { data, error } = await supabase.functions.invoke('admin-create-user', {
+          body: {
+            name: passwordDialog.name,
+            email: passwordDialog.email,
+            password: newPassword,
+            role: 'admin_employee',
+          },
+        });
+        if (error) throw new Error(error.message);
+        if (data?.error) throw new Error(data.error);
+        if (data?.userId) {
+          await supabase
+            .from('admin_employees')
+            .update({ employee_user_id: data.userId })
+            .eq('id', passwordDialog.id);
+        }
+        toast({ title: "Success", description: "Login account created successfully" });
+        fetchEmployees();
+      } else {
+        const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+          body: { userId: passwordDialog.employee_user_id, newPassword },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        toast({ title: "Success", description: "Password updated successfully" });
+      }
       setPasswordDialog(null);
       setNewPassword('');
     } catch (e: any) {
@@ -194,7 +216,12 @@ const AdminEmployees: React.FC = () => {
                         <Edit className="h-3 w-3" />
                       </Button>
                       {emp.employee_user_id && (
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setPasswordDialog(emp); setNewPassword(''); }} title="Change Password">
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setPasswordDialog(emp); setNewPassword(''); }} title="Reset Password">
+                          <KeyRound className="h-3 w-3" />
+                        </Button>
+                      )}
+                      {!emp.employee_user_id && (
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary" onClick={() => { setPasswordDialog(emp); setNewPassword(''); }} title="Create Login">
                           <KeyRound className="h-3 w-3" />
                         </Button>
                       )}
@@ -229,6 +256,7 @@ const AdminEmployees: React.FC = () => {
                   <p className="font-medium text-xs mb-1">Work Info</p>
                   <p><span className="text-muted-foreground">Role:</span> <Badge variant="secondary" className="text-[9px] capitalize">{viewingEmployee.role}</Badge></p>
                   <p><span className="text-muted-foreground">Status:</span> <Badge variant={viewingEmployee.status === 'active' ? 'default' : 'destructive'} className="text-[9px]">{viewingEmployee.status}</Badge></p>
+                  <p><span className="text-muted-foreground">Login:</span> <Badge variant={viewingEmployee.employee_user_id ? 'default' : 'secondary'} className="text-[9px]">{viewingEmployee.employee_user_id ? 'Active' : 'Not Created'}</Badge></p>
                 </div>
               </div>
               <div className="p-3 border rounded-lg">
@@ -242,30 +270,41 @@ const AdminEmployees: React.FC = () => {
                   )}
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground">
-                Added on {new Date(viewingEmployee.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] text-muted-foreground">
+                  Added on {new Date(viewingEmployee.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </p>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => { setViewingEmployee(null); setPasswordDialog(viewingEmployee); setNewPassword(''); }}>
+                  <KeyRound className="h-3 w-3" />
+                  {viewingEmployee.employee_user_id ? 'Reset Password' : 'Create Login'}
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Password Reset Dialog */}
+      {/* Password Reset / Create Login Dialog */}
       <Dialog open={!!passwordDialog} onOpenChange={(open) => { if (!open) { setPasswordDialog(null); setNewPassword(''); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-sm">Change Password</DialogTitle>
+            <DialogTitle className="text-sm">{passwordDialog?.employee_user_id ? 'Reset Password' : 'Create Login'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">Set a new password for <strong>{passwordDialog?.name}</strong></p>
+            <p className="text-xs text-muted-foreground">
+              {passwordDialog?.employee_user_id
+                ? <>Set a new password for <strong>{passwordDialog?.name}</strong> ({passwordDialog?.email})</>
+                : <>Create a login account for <strong>{passwordDialog?.name}</strong> ({passwordDialog?.email})</>
+              }
+            </p>
             <div>
               <Label className="text-xs">New Password</Label>
-              <Input type="password" className="h-8 text-xs" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Enter new password" />
+              <Input type="password" className="h-8 text-xs" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min 6 characters" />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPasswordDialog(null)}>Cancel</Button>
-              <Button size="sm" className="h-7 text-xs" onClick={handlePasswordReset} disabled={resetLoading || !newPassword}>
-                {resetLoading ? 'Updating...' : 'Update Password'}
+              <Button size="sm" className="h-7 text-xs" onClick={handlePasswordReset} disabled={resetLoading || newPassword.length < 6}>
+                {resetLoading ? 'Processing...' : (passwordDialog?.employee_user_id ? 'Reset Password' : 'Create Login')}
               </Button>
             </div>
           </div>

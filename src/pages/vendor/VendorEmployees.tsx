@@ -299,9 +299,15 @@ const VendorEmployees: React.FC = () => {
                   )}
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground">
-                Added on {new Date(viewingEmployee.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] text-muted-foreground">
+                  Added on {new Date(viewingEmployee.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </p>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => { setViewingEmployee(null); setResetPasswordEmployee(viewingEmployee); setNewPassword(''); }}>
+                  <KeyRound className="h-3 w-3" />
+                  {viewingEmployee.employee_user_id ? 'Reset Password' : 'Create Login'}
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

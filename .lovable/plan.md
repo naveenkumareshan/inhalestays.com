@@ -1,27 +1,71 @@
 
 
-# Enhance Employee Details & Add Password Management
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Summary of remaining changes (keeping bank details as-is)
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-### 1. Admin Employee View Dialog — Add Salary & Reset Password Button
-**File: `src/pages/admin/AdminEmployees.tsx`**
-- Add Salary field to the view dialog (currently missing — partner employee view has it)
-- Add a "Reset Password" button inside the view dialog
-- Show the KeyRound action button in the table even when `employee_user_id` is missing (to allow creating login, matching partner employee behavior)
-- Use the same create-login-or-reset pattern as VendorEmployees
+## Changes
 
-### 2. Partner Employee View Dialog — Add Reset Password Button
-**File: `src/pages/vendor/VendorEmployees.tsx`**
-- Add a "Reset Password" button inside the view detail dialog so users can trigger password reset from the detail view too (not just from the table row action)
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-### 3. Partner Profile — Add "Change Own Password" Section
-**File: `src/pages/vendor/VendorProfile.tsx`**
-- Add a "Change Password" card/section below VendorProfile and WhatsAppSettings
-- Uses `supabase.auth.updateUser({ password })` for self-password change
-- Simple form: New Password + Confirm Password fields with a submit button
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-### What stays unchanged
-- Bank Details tab in VendorProfile.tsx — kept as requested
-- All existing employee fields and dialogs remain intact
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
+
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
+
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
+
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 
