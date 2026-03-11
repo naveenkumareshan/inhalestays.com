@@ -15,7 +15,7 @@ const VendorProfilePage: React.FC = () => {
       
       <VendorProfile />
       <WhatsAppSettings />
-      <PaymentModesManager />
+      
     </div>
   );
 };
