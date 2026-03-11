@@ -1,8 +1,20 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BookingCalendarDashboard } from '@/components/admin/BookingCalendarDashboard';
+import { useAuth } from '@/contexts/AuthContext';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 
 const BookingCalendarPage: React.FC = () => {
+  const { user } = useAuth();
+  const [partnerUserId, setPartnerUserId] = useState<string | undefined>(undefined);
+  const isPartner = user?.role === 'vendor' || user?.role === 'vendor_employee';
+
+  useEffect(() => {
+    if (isPartner) {
+      getEffectiveOwnerId().then(({ ownerId }) => setPartnerUserId(ownerId));
+    }
+  }, [isPartner]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <div className="container mx-auto p-6">
@@ -16,7 +28,7 @@ const BookingCalendarPage: React.FC = () => {
           </p>
         </div>
         
-        <BookingCalendarDashboard />
+        <BookingCalendarDashboard partnerUserId={partnerUserId} />
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { adminBookingsService } from '@/api/adminBookingsService';
-import { cabinsService } from '@/api/cabinsService';
+import { supabase } from '@/integrations/supabase/client';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -41,7 +41,7 @@ const BOOKING_COLORS = [
   'bg-teal-500'
 ];
 
-export const BookingCalendarDashboard = () => {
+export const BookingCalendarDashboard = ({ partnerUserId }: { partnerUserId?: string }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [bookings, setBookings] = useState<BookingEvent[]>([]);
   const [cabins, setCabins] = useState<Cabin[]>([]);
@@ -56,7 +56,7 @@ export const BookingCalendarDashboard = () => {
   useEffect(() => {
     fetchBookings();
     fetchCabins();
-  }, [currentDate, selectedCabin]);
+  }, [currentDate, selectedCabin, partnerUserId]);
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -85,9 +85,13 @@ export const BookingCalendarDashboard = () => {
 
   const fetchCabins = async () => {
     try {
-      const response = await cabinsService.getAllCabins();
-        if (response.success && response.data) {
-        setCabins((response.data as any[]).map((c: any) => ({ _id: c.id || c._id, name: c.name, category: c.category })));
+      let query = supabase.from('cabins').select('id, name, category');
+      if (partnerUserId) {
+        query = query.eq('created_by', partnerUserId);
+      }
+      const { data, error } = await query;
+      if (!error && data) {
+        setCabins(data.map((c: any) => ({ _id: c.id, name: c.name, category: c.category })));
       }
     } catch (error) {
       console.error('Error fetching cabins:', error);
