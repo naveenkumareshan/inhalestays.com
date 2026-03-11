@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Edit, FileMinus, FilePlus, Trash2, Users } from 'lucide-react';
+import { Edit, FileMinus, FilePlus, Trash2, Users, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { WhatsAppPropertyDialog } from './WhatsAppPropertyDialog';
 
 interface CabinData {
   _id: string;
