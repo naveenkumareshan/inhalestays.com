@@ -614,6 +614,7 @@ export default function MessDetail() {
           propertyId={mess.id}
           propertyName={mess.name}
           whatsappChatEnabled={!!(mess as any).whatsapp_chat_enabled}
+          whatsappNumber={(mess as any).whatsapp_number || ''}
         />
       )}
     </ErrorBoundary>

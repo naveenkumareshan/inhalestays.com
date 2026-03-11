@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { MessageCircle } from 'lucide-react';
 import { whatsappLeadService } from '@/api/whatsappLeadService';
 
@@ -8,6 +8,7 @@ interface WhatsAppChatButtonProps {
   propertyId: string;
   propertyName: string;
   whatsappChatEnabled?: boolean;
+  whatsappNumber?: string;
 }
 
 export const WhatsAppChatButton: React.FC<WhatsAppChatButtonProps> = ({
@@ -16,29 +17,16 @@ export const WhatsAppChatButton: React.FC<WhatsAppChatButtonProps> = ({
   propertyId,
   propertyName,
   whatsappChatEnabled = false,
+  whatsappNumber,
 }) => {
-  const [visible, setVisible] = useState(false);
-  const [whatsappNumber, setWhatsappNumber] = useState('');
-
-  useEffect(() => {
-    if (!partnerUserId || !whatsappChatEnabled) return;
-    (async () => {
-      const partnerData = await whatsappLeadService.getPartnerWhatsapp(partnerUserId);
-      if (partnerData?.whatsapp_enabled && partnerData.whatsapp_number) {
-        setWhatsappNumber(partnerData.whatsapp_number);
-        setVisible(true);
-      }
-    })();
-  }, [partnerUserId, whatsappChatEnabled]);
-
-  if (!visible || !whatsappChatEnabled) return null;
+  if (!whatsappChatEnabled || !whatsappNumber) return null;
 
   const typeLabel = propertyType === 'cabin' ? 'reading room' : propertyType;
   const message = `Hi, I'm interested in ${propertyName} (${typeLabel}). Can you share more details?`;
   const cleanNumber = whatsappNumber.replace(/[^0-9]/g, '');
   const waUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
 
-  const handleClick = async () => {
+  const handleClick = () => {
     whatsappLeadService.trackClick(partnerUserId, propertyType, propertyId);
     window.open(waUrl, '_blank');
   };

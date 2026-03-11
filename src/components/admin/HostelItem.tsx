@@ -1,12 +1,13 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Edit, FileMinus, FilePlus, Trash2, Bed, Package } from 'lucide-react';
+import { Edit, FileMinus, FilePlus, Trash2, Bed, Package, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShareButton } from '@/components/ShareButton';
 import { generateHostelShareText } from '@/utils/shareUtils';
+import { WhatsAppPropertyDialog } from './WhatsAppPropertyDialog';
 
 interface HostelItemProps {
   hostel: any;
@@ -22,6 +23,7 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
   const { user } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
+  const [waDialogOpen, setWaDialogOpen] = useState(false);
 
   const getGenderBadgeStyle = (gender: string) => {
     switch (gender) {
@@ -151,7 +153,26 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
                 {!hostel.is_booking_active ? "▶ Enable" : "⏸ Pause"}
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-xs"
+              onClick={() => setWaDialogOpen(true)}
+              title="WhatsApp Chat Settings"
+            >
+              <MessageCircle className="h-3 w-3" style={{ color: '#25D366' }} />
+            </Button>
           </div>
+
+          <WhatsAppPropertyDialog
+            open={waDialogOpen}
+            onOpenChange={setWaDialogOpen}
+            propertyId={hostel.id}
+            propertyType="hostel"
+            propertyName={hostel.name}
+            initialNumber={hostel.whatsapp_number || ''}
+            initialEnabled={!!hostel.whatsapp_chat_enabled}
+          />
         </div>
       </CardContent>
     </Card>

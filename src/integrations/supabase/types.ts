@@ -480,6 +480,7 @@ export type Database = {
           slots_enabled: boolean
           state: string | null
           whatsapp_chat_enabled: boolean
+          whatsapp_number: string | null
           working_days: Json
         }
         Insert: {
@@ -529,6 +530,7 @@ export type Database = {
           slots_enabled?: boolean
           state?: string | null
           whatsapp_chat_enabled?: boolean
+          whatsapp_number?: string | null
           working_days?: Json
         }
         Update: {
@@ -578,6 +580,7 @@ export type Database = {
           slots_enabled?: boolean
           state?: string | null
           whatsapp_chat_enabled?: boolean
+          whatsapp_number?: string | null
           working_days?: Json
         }
         Relationships: []
@@ -1824,6 +1827,7 @@ export type Database = {
           updated_at: string
           vendor_id: string | null
           whatsapp_chat_enabled: boolean
+          whatsapp_number: string | null
         }
         Insert: {
           advance_applicable_durations?: Json
@@ -1873,6 +1877,7 @@ export type Database = {
           updated_at?: string
           vendor_id?: string | null
           whatsapp_chat_enabled?: boolean
+          whatsapp_number?: string | null
         }
         Update: {
           advance_applicable_durations?: Json
@@ -1922,6 +1927,7 @@ export type Database = {
           updated_at?: string
           vendor_id?: string | null
           whatsapp_chat_enabled?: boolean
+          whatsapp_number?: string | null
         }
         Relationships: [
           {
@@ -2492,6 +2498,7 @@ export type Database = {
           updated_at: string
           user_id: string
           whatsapp_chat_enabled: boolean
+          whatsapp_number: string | null
         }
         Insert: {
           average_rating?: number | null
@@ -2515,6 +2522,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           whatsapp_chat_enabled?: boolean
+          whatsapp_number?: string | null
         }
         Update: {
           average_rating?: number | null
@@ -2538,6 +2546,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           whatsapp_chat_enabled?: boolean
+          whatsapp_number?: string | null
         }
         Relationships: [
           {
