@@ -674,23 +674,21 @@ const Reconciliation: React.FC = () => {
               <Label className="text-xs">Bank Name</Label>
               {bankLoading ? (
                 <p className="text-xs text-muted-foreground">Loading banks...</p>
-              ) : bankOptions.length > 0 ? (
-                bankName === '__manual__' ? (
-                  <div className="flex gap-2">
-                    <Input className="h-9 text-xs flex-1" placeholder="Enter bank name" value="" onChange={e => setBankName(e.target.value)} autoFocus />
-                    <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={() => setBankName('')}>Back</Button>
-                  </div>
-                ) : (
-                <Select value={bankName} onValueChange={(v) => { if (v === '__manual__') { setBankName('__manual__'); } else { setBankName(v); } }}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select bank / account" /></SelectTrigger>
-                  <SelectContent>
-                    {bankOptions.map(b => (
-                      <SelectItem key={b.id} value={b.label} className="text-xs">{b.label}</SelectItem>
-                    ))}
-                    <SelectItem value="__manual__" className="text-xs text-muted-foreground">✏️ Enter manually</SelectItem>
-                  </SelectContent>
-                </Select>
-                )
+              ) : bankOptions.length > 0 && !manualBankEntry ? (
+                <div className="space-y-1">
+                  <Select value={bankName} onValueChange={(v) => {
+                    if (v === '__manual__') { setManualBankEntry(true); setBankName(''); }
+                    else { setBankName(v); }
+                  }}>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select bank / account" /></SelectTrigger>
+                    <SelectContent>
+                      {bankOptions.map(b => (
+                        <SelectItem key={b.id} value={b.label} className="text-xs">{b.label}</SelectItem>
+                      ))}
+                      <SelectItem value="__manual__" className="text-xs text-muted-foreground">✏️ Enter manually</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               ) : (
                 <Input className="h-9 text-xs" placeholder="Enter bank name" value={bankName} onChange={e => setBankName(e.target.value)} />
               )}
