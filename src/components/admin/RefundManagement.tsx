@@ -309,7 +309,16 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({ type, s
             <div className="grid grid-cols-4 items-center gap-4">
               <Label className="text-right">Receipt</Label>
               <div className="col-span-3 space-y-2">
-                <Input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploadingImage} />
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={uploadingImage} onClick={() => document.getElementById('refund-file-input')?.click()}>
+                    <Upload className="h-3.5 w-3.5" /> Gallery
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={uploadingImage} onClick={() => document.getElementById('refund-camera-input')?.click()}>
+                    <Camera className="h-3.5 w-3.5" /> Capture
+                  </Button>
+                </div>
+                <input id="refund-file-input" type="file" accept="image/*" onChange={handleImageUpload} disabled={uploadingImage} className="hidden" />
+                <input id="refund-camera-input" type="file" accept="image/*" capture="environment" onChange={handleImageUpload} disabled={uploadingImage} className="hidden" />
                 {uploadingImage && (
                   <div className="flex items-center text-sm text-muted-foreground">
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Uploading...
