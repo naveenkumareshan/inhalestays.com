@@ -67,12 +67,34 @@ const AdminEmployees: React.FC = () => {
     if (!passwordDialog || !newPassword) return;
     setResetLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
-        body: { userId: passwordDialog.employee_user_id, newPassword },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast({ title: "Success", description: "Password updated successfully" });
+      if (!passwordDialog.employee_user_id) {
+        // No auth account yet — create one via edge function
+        const { data, error } = await supabase.functions.invoke('admin-create-user', {
+          body: {
+            name: passwordDialog.name,
+            email: passwordDialog.email,
+            password: newPassword,
+            role: 'admin_employee',
+          },
+        });
+        if (error) throw new Error(error.message);
+        if (data?.error) throw new Error(data.error);
+        if (data?.userId) {
+          await supabase
+            .from('admin_employees')
+            .update({ employee_user_id: data.userId })
+            .eq('id', passwordDialog.id);
+        }
+        toast({ title: "Success", description: "Login account created successfully" });
+        fetchEmployees();
+      } else {
+        const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+          body: { userId: passwordDialog.employee_user_id, newPassword },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        toast({ title: "Success", description: "Password updated successfully" });
+      }
       setPasswordDialog(null);
       setNewPassword('');
     } catch (e: any) {
