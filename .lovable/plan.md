@@ -1,46 +1,71 @@
 
 
-# Scope Activity Log to Partner Properties + Enrich with Student & Property Details
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Problem
-1. All partners see **all** activity logs across the platform — should only see logs for their own properties
-2. Logs lack student info (name, phone, email), property name, floor, and seat details
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-## Approach
+## Changes
 
-Since `booking_activity_log` only stores `booking_id` and `booking_type`, we need to:
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-### 1. Database: Add `property_owner_id` column
-- Add `property_owner_id uuid` to `booking_activity_log` — populated at insert time
-- Update RLS: Partners/employees only see logs where `property_owner_id` matches via `is_partner_or_employee_of()`
-- Admins see all logs (via `has_role` check)
-- Backfill existing rows by joining through `bookings.cabin_id → cabins.created_by` and `hostel_bookings.hostel_id → hostels.created_by`
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-### 2. Update `logBookingActivity` service
-- Accept optional `propertyOwnerId` param
-- When not provided, look it up from the booking's cabin/hostel `created_by`
-- Store it in the new column on insert
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-### 3. Enrich `BookingActivityLog.tsx` display
-After fetching logs, do secondary lookups to enrich each row:
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-- **For cabin logs**: Join `bookings` → `profiles` (student), `cabins` (property name), `seats` (seat number, floor)
-- **For hostel logs**: Join `hostel_bookings` → `profiles` (student), `hostels` (property name), `hostel_beds`/`hostel_rooms` (bed/room/floor)
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-Add these columns to the table:
-- **Student Name** — from profiles
-- **Phone** — from profiles  
-- **Email** — from profiles
-- **Property** — cabin name or hostel name
-- **Floor & Seat/Bed** — from seats/hostel_beds
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-### 4. Partner scoping in fetch
-- Use `getEffectiveOwnerId()` to detect partner/employee
-- Check user roles — if admin/super_admin, fetch all; otherwise filter by `property_owner_id`
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-### Files Modified
-- `supabase/migrations/` — new migration for column + RLS + backfill
-- `src/api/bookingActivityLogService.ts` — add `propertyOwnerId` to insert
-- `src/pages/admin/BookingActivityLog.tsx` — partner scoping + enriched columns
-- Callers of `logBookingActivity` (vendorSeatsService, HostelBedMap, BookingUpdateDatesDialog) — pass `propertyOwnerId`
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

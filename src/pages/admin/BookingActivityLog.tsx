@@ -3,12 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { supabase } from '@/integrations/supabase/client';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { Search, Activity, XCircle, LogOut, ArrowRightLeft, CalendarIcon } from 'lucide-react';
 
 const PAGE_SIZE = 15;
@@ -76,6 +76,7 @@ export default function BookingActivityLog() {
   const [totalCount, setTotalCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [activityFilter, setActivityFilter] = useState('all');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     fetchLogs();
@@ -84,10 +85,25 @@ export default function BookingActivityLog() {
   const fetchLogs = async () => {
     try {
       setLoading(true);
+
+      // Determine role and scoping
+      const { userId, ownerId } = await getEffectiveOwnerId();
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+      const adminUser = roles?.some(r => r.role === 'admin' || r.role === 'super_admin') || false;
+      setIsAdmin(adminUser);
+
       let query = supabase
         .from('booking_activity_log' as any)
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
+
+      // Partner scoping — RLS handles it but we also filter explicitly
+      if (!adminUser) {
+        query = query.eq('property_owner_id', ownerId);
+      }
 
       if (activityFilter !== 'all') {
         query = query.eq('activity_type', activityFilter);
@@ -103,23 +119,8 @@ export default function BookingActivityLog() {
       const { data, error, count } = await query;
       if (error) throw error;
 
-      // Fetch performer names
-      const performerIds = [...new Set((data || []).map((l: any) => l.performed_by).filter(Boolean))];
-      let performerMap: Record<string, string> = {};
-      if (performerIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, name, email')
-          .in('id', performerIds);
-        (profiles || []).forEach((p: any) => {
-          performerMap[p.id] = p.name || p.email || 'Unknown';
-        });
-      }
-
-      const enriched = (data || []).map((l: any) => ({
-        ...l,
-        performerName: l.performed_by ? (performerMap[l.performed_by] || 'Unknown') : 'System',
-      }));
+      // Enrich logs with student, property, seat/bed details
+      const enriched = await enrichLogs(data || []);
 
       setLogs(enriched);
       setTotalCount(count || 0);
@@ -128,6 +129,128 @@ export default function BookingActivityLog() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const enrichLogs = async (rawLogs: any[]) => {
+    if (rawLogs.length === 0) return [];
+
+    // Separate by booking type
+    const cabinBookingIds = rawLogs.filter(l => l.booking_type === 'cabin').map(l => l.booking_id);
+    const hostelBookingIds = rawLogs.filter(l => l.booking_type === 'hostel').map(l => l.booking_id);
+
+    // Fetch cabin booking details
+    let cabinMap: Record<string, any> = {};
+    if (cabinBookingIds.length > 0) {
+      const { data: cabinBookings } = await supabase
+        .from('bookings')
+        .select('id, user_id, cabin_id, seat_id, seat_number')
+        .in('id', cabinBookingIds);
+      
+      const cabinIds = [...new Set((cabinBookings || []).map(b => b.cabin_id).filter(Boolean))];
+      const userIds = [...new Set((cabinBookings || []).map(b => b.user_id).filter(Boolean))];
+      const seatIds = [...new Set((cabinBookings || []).map(b => b.seat_id).filter(Boolean))];
+
+      const [cabinsRes, profilesRes, seatsRes] = await Promise.all([
+        cabinIds.length > 0 ? supabase.from('cabins').select('id, name').in('id', cabinIds) : { data: [] },
+        userIds.length > 0 ? supabase.from('profiles').select('id, name, email, phone').in('id', userIds) : { data: [] },
+        seatIds.length > 0 ? supabase.from('seats').select('id, number, floor').in('id', seatIds) : { data: [] },
+      ]);
+
+      const cabinsById = Object.fromEntries((cabinsRes.data || []).map(c => [c.id, c]));
+      const profilesById = Object.fromEntries((profilesRes.data || []).map(p => [p.id, p]));
+      const seatsById = Object.fromEntries((seatsRes.data || []).map(s => [s.id, s]));
+
+      (cabinBookings || []).forEach(b => {
+        const profile = profilesById[b.user_id] || {};
+        const cabin = cabinsById[b.cabin_id] || {};
+        const seat = seatsById[b.seat_id] || {};
+        cabinMap[b.id] = {
+          studentName: profile.name || '-',
+          studentPhone: profile.phone || '-',
+          studentEmail: profile.email || '-',
+          propertyName: cabin.name || '-',
+          floor: seat.floor ?? '-',
+          seatBed: b.seat_number || seat.number || '-',
+        };
+      });
+    }
+
+    // Fetch hostel booking details
+    let hostelMap: Record<string, any> = {};
+    if (hostelBookingIds.length > 0) {
+      const { data: hostelBookings } = await supabase
+        .from('hostel_bookings')
+        .select('id, user_id, hostel_id, bed_id, room_id')
+        .in('id', hostelBookingIds);
+
+      const hostelIds = [...new Set((hostelBookings || []).map(b => b.hostel_id).filter(Boolean))];
+      const userIds = [...new Set((hostelBookings || []).map(b => b.user_id).filter(Boolean))];
+      const bedIds = [...new Set((hostelBookings || []).map(b => b.bed_id).filter(Boolean))];
+      const roomIds = [...new Set((hostelBookings || []).map(b => b.room_id).filter(Boolean))];
+
+      const [hostelsRes, profilesRes, bedsRes, roomsRes] = await Promise.all([
+        hostelIds.length > 0 ? supabase.from('hostels').select('id, name').in('id', hostelIds) : { data: [] },
+        userIds.length > 0 ? supabase.from('profiles').select('id, name, email, phone').in('id', userIds) : { data: [] },
+        bedIds.length > 0 ? supabase.from('hostel_beds').select('id, bed_number, room_id').in('id', bedIds) : { data: [] },
+        roomIds.length > 0 ? supabase.from('hostel_rooms').select('id, room_number, floor_id').in('id', roomIds) : { data: [] },
+      ]);
+
+      const hostelsById = Object.fromEntries((hostelsRes.data || []).map(h => [h.id, h]));
+      const profilesById = Object.fromEntries((profilesRes.data || []).map(p => [p.id, p]));
+      const bedsById = Object.fromEntries((bedsRes.data || []).map(b => [b.id, b]));
+      const roomsById = Object.fromEntries((roomsRes.data || []).map(r => [r.id, r]));
+
+      // Fetch floor names if needed
+      const floorIds = [...new Set((roomsRes.data || []).map((r: any) => r.floor_id).filter(Boolean))];
+      let floorsById: Record<string, any> = {};
+      if (floorIds.length > 0) {
+        const { data: floors } = await supabase.from('hostel_floors').select('id, name').in('id', floorIds);
+        floorsById = Object.fromEntries((floors || []).map(f => [f.id, f]));
+      }
+
+      (hostelBookings || []).forEach(b => {
+        const profile = profilesById[b.user_id] || {};
+        const hostel = hostelsById[b.hostel_id] || {};
+        const bed = bedsById[b.bed_id] || {};
+        const room = roomsById[b.room_id] || {};
+        const floor = floorsById[(room as any).floor_id] || {};
+        hostelMap[b.id] = {
+          studentName: profile.name || '-',
+          studentPhone: profile.phone || '-',
+          studentEmail: profile.email || '-',
+          propertyName: hostel.name || '-',
+          floor: floor.name || '-',
+          seatBed: `Bed #${bed.bed_number || '-'}` + (room.room_number ? ` (Room ${room.room_number})` : ''),
+        };
+      });
+    }
+
+    // Fetch performer names
+    const performerIds = [...new Set(rawLogs.map(l => l.performed_by).filter(Boolean))];
+    let performerMap: Record<string, string> = {};
+    if (performerIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, name, email')
+        .in('id', performerIds);
+      (profiles || []).forEach((p: any) => {
+        performerMap[p.id] = p.name || p.email || 'Unknown';
+      });
+    }
+
+    return rawLogs.map(l => {
+      const info = l.booking_type === 'cabin' ? cabinMap[l.booking_id] : hostelMap[l.booking_id];
+      return {
+        ...l,
+        performerName: l.performed_by ? (performerMap[l.performed_by] || 'Unknown') : 'System',
+        studentName: info?.studentName || '-',
+        studentPhone: info?.studentPhone || '-',
+        studentEmail: info?.studentEmail || '-',
+        propertyName: info?.propertyName || '-',
+        floor: info?.floor || '-',
+        seatBed: info?.seatBed || '-',
+      };
+    });
   };
 
   return (
@@ -186,8 +309,8 @@ export default function BookingActivityLog() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      {['S.No.', 'Booking ID', 'Type', 'Activity', 'Details', 'Performed By', 'Date'].map(h => (
-                        <TableHead key={h} className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider py-2 px-3">{h}</TableHead>
+                      {['S.No.', 'Booking ID', 'Student Name', 'Phone', 'Email', 'Property', 'Floor / Seat', 'Type', 'Activity', 'Details', 'Performed By', 'Date'].map(h => (
+                        <TableHead key={h} className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider py-2 px-3 whitespace-nowrap">{h}</TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
@@ -196,6 +319,11 @@ export default function BookingActivityLog() {
                       <TableRow key={log.id} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
                         <TableCell className="py-1.5 px-3 text-[11px] text-muted-foreground">{getSerialNumber(idx, currentPage, pageSize)}</TableCell>
                         <TableCell className="py-1.5 px-3 font-mono text-[10px]">{log.serial_number || '-'}</TableCell>
+                        <TableCell className="py-1.5 px-3 text-[11px] font-medium whitespace-nowrap">{log.studentName}</TableCell>
+                        <TableCell className="py-1.5 px-3 text-[11px] whitespace-nowrap">{log.studentPhone}</TableCell>
+                        <TableCell className="py-1.5 px-3 text-[11px] max-w-[160px] truncate">{log.studentEmail}</TableCell>
+                        <TableCell className="py-1.5 px-3 text-[11px] whitespace-nowrap">{log.propertyName}</TableCell>
+                        <TableCell className="py-1.5 px-3 text-[11px] whitespace-nowrap">{log.floor !== '-' ? `${log.floor} / ` : ''}{log.seatBed}</TableCell>
                         <TableCell className="py-1.5 px-3">
                           <span className={`inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium capitalize border ${typeBadge(log.booking_type)}`}>
                             {log.booking_type === 'cabin' ? 'Reading Room' : 'Hostel'}
