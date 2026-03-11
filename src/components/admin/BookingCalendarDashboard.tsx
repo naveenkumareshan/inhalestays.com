@@ -41,7 +41,7 @@ const BOOKING_COLORS = [
   'bg-teal-500'
 ];
 
-export const BookingCalendarDashboard = () => {
+export const BookingCalendarDashboard = ({ partnerUserId }: { partnerUserId?: string }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [bookings, setBookings] = useState<BookingEvent[]>([]);
   const [cabins, setCabins] = useState<Cabin[]>([]);
