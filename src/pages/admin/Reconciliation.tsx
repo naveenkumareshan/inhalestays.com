@@ -91,6 +91,7 @@ const Reconciliation: React.FC = () => {
   const [bankName, setBankName] = useState('');
   const [bankOptions, setBankOptions] = useState<{ id: string; label: string }[]>([]);
   const [bankLoading, setBankLoading] = useState(false);
+  const [manualBankEntry, setManualBankEntry] = useState(false);
   const [bankNarration, setBankNarration] = useState('');
   const [calendarOpen, setCalendarOpen] = useState(false);
 
@@ -208,6 +209,7 @@ const Reconciliation: React.FC = () => {
     setApproveTarget(row);
     setCreditDate(new Date());
     setBankName('');
+    setManualBankEntry(false);
     setBankNarration('');
     setApproveDialogOpen(true);
     setBankLoading(true);
@@ -221,8 +223,9 @@ const Reconciliation: React.FC = () => {
         .order('display_order');
       
       // Only show bank_transfer entries as bank options for reconciliation
-      const bankEntries = (data || []).filter((m: any) => m.mode_type === 'bank_transfer');
-      setBankOptions(bankEntries.map((b: any) => ({ id: b.id, label: b.label })));
+      const allEntries = data || [];
+      const bankEntries = allEntries.filter((m: any) => m.mode_type === 'bank_transfer');
+      setBankOptions(allEntries.map((b: any) => ({ id: b.id, label: b.label })));
 
       // Auto-suggest linked bank if payment method is a UPI entry with linked_bank_id
       const rawMethod = row.raw_payment_method || '';
@@ -672,17 +675,28 @@ const Reconciliation: React.FC = () => {
               <Label className="text-xs">Bank Name</Label>
               {bankLoading ? (
                 <p className="text-xs text-muted-foreground">Loading banks...</p>
-              ) : bankOptions.length > 0 ? (
-                <Select value={bankName} onValueChange={setBankName}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select bank" /></SelectTrigger>
-                  <SelectContent>
-                    {bankOptions.map(b => (
-                      <SelectItem key={b.id} value={b.label} className="text-xs">{b.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              ) : bankOptions.length > 0 && !manualBankEntry ? (
+                <div className="space-y-1">
+                  <Select value={bankName} onValueChange={(v) => {
+                    if (v === '__manual__') { setManualBankEntry(true); setBankName(''); }
+                    else { setBankName(v); }
+                  }}>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select bank / account" /></SelectTrigger>
+                    <SelectContent>
+                      {bankOptions.map(b => (
+                        <SelectItem key={b.id} value={b.label} className="text-xs">{b.label}</SelectItem>
+                      ))}
+                      <SelectItem value="__manual__" className="text-xs text-muted-foreground">✏️ Enter manually</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               ) : (
-                <Input className="h-9 text-xs" placeholder="Enter bank name" value={bankName} onChange={e => setBankName(e.target.value)} />
+                <div className="flex gap-2">
+                  <Input className="h-9 text-xs flex-1" placeholder="Enter bank name" value={bankName} onChange={e => setBankName(e.target.value)} autoFocus />
+                  {bankOptions.length > 0 && (
+                    <Button variant="ghost" size="sm" className="h-9 text-xs shrink-0" onClick={() => { setManualBankEntry(false); setBankName(''); }}>← List</Button>
+                  )}
+                </div>
               )}
             </div>
 
