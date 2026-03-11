@@ -1,12 +1,13 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Edit, FileMinus, FilePlus, Trash2, Bed, Package } from 'lucide-react';
+import { Edit, FileMinus, FilePlus, Trash2, Bed, Package, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShareButton } from '@/components/ShareButton';
 import { generateHostelShareText } from '@/utils/shareUtils';
+import { WhatsAppPropertyDialog } from './WhatsAppPropertyDialog';
 
 interface HostelItemProps {
   hostel: any;
