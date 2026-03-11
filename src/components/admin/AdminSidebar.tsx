@@ -254,6 +254,13 @@ export function AdminSidebar() {
         permissions: ['view_hostel_bookings']
       },
       {
+        title: 'Expiring Bookings',
+        url: `${routePrefix}/hostel-expiring-bookings`,
+        icon: Clock,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_hostel_bookings']
+      },
+      {
         title: 'Hostel Receipts',
         url: `${routePrefix}/hostel-receipts`,
         icon: CreditCard,

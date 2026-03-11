@@ -538,6 +538,39 @@ export const adminBookingsService = {
     }
   },
 
+  getExpiringHostelBookings: async (daysThreshold: number = 7, partnerUserId?: string) => {
+    try {
+      const today = new Date();
+      const futureDate = new Date();
+      futureDate.setDate(today.getDate() + daysThreshold);
+
+      let partnerHostelIds: string[] | null = null;
+      if (partnerUserId) {
+        const { data: pHostels } = await supabase.from('hostels').select('id').eq('created_by', partnerUserId);
+        partnerHostelIds = (pHostels || []).map(h => h.id);
+        if (partnerHostelIds.length === 0) return { success: true, data: [] };
+      }
+
+      let query = supabase
+        .from('hostel_bookings')
+        .select('*, profiles!hostel_bookings_user_id_fkey(name, email, phone), hostels:hostel_id(name), hostel_beds:bed_id(bed_number), hostel_rooms:room_id(room_number, floor_id)')
+        .eq('status', 'confirmed')
+        .gte('end_date', today.toISOString().split('T')[0])
+        .lte('end_date', futureDate.toISOString().split('T')[0])
+        .order('end_date');
+
+      if (partnerHostelIds) {
+        query = query.in('hostel_id', partnerHostelIds);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      return { success: false, data: [] };
+    }
+  },
+
   getTopFillingRooms: async (limit: number = 10, partnerUserId?: string) => {
     try {
       let cabinQuery = supabase
