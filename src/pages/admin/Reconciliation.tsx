@@ -221,8 +221,9 @@ const Reconciliation: React.FC = () => {
         .order('display_order');
       
       // Only show bank_transfer entries as bank options for reconciliation
-      const bankEntries = (data || []).filter((m: any) => m.mode_type === 'bank_transfer');
-      setBankOptions(bankEntries.map((b: any) => ({ id: b.id, label: b.label })));
+      const allEntries = data || [];
+      const bankEntries = allEntries.filter((m: any) => m.mode_type === 'bank_transfer');
+      setBankOptions(allEntries.map((b: any) => ({ id: b.id, label: b.label })));
 
       // Auto-suggest linked bank if payment method is a UPI entry with linked_bank_id
       const rawMethod = row.raw_payment_method || '';
