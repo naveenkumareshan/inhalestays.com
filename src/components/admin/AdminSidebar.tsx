@@ -487,6 +487,12 @@ export function AdminSidebar() {
         icon: Users2,
         roles: ['admin'],
         url: '/admin/admin-employees'
+      },
+      {
+        title: 'Profile',
+        icon: User,
+        roles: ['admin'],
+        url: '/admin/profile'
       }
     );
   } else {
