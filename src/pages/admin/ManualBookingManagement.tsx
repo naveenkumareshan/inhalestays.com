@@ -21,6 +21,7 @@ import { formatTime } from '@/utils/timingUtils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
+import { bookingEmailService } from '@/api/bookingEmailService';
 
 // Define bookingType type to fix TypeScript errors
 type BookingType = 'cabin' | 'hostel';
@@ -74,6 +75,7 @@ const ManualBookingManagement: React.FC = () => {
   const [studentSearching, setStudentSearching] = useState(false);
   const [showStudentResults, setShowStudentResults] = useState(false);
   const [selectedStudentName, setSelectedStudentName] = useState('');
+  const [selectedStudentEmail, setSelectedStudentEmail] = useState('');
   const [showNewStudent, setShowNewStudent] = useState(false);
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentEmail, setNewStudentEmail] = useState('');
@@ -156,6 +158,7 @@ const ManualBookingManagement: React.FC = () => {
   const handleStudentSelect = (student: any) => {
     setSelectedUser(student.id);
     setSelectedStudentName(`${student.name} (${student.email})`);
+    setSelectedStudentEmail(student.email);
     setStudentQuery(student.name);
     setShowStudentResults(false);
     setStep('select-cabin');
@@ -171,6 +174,7 @@ const ManualBookingManagement: React.FC = () => {
     if (res.success && res.userId) {
       setSelectedUser(res.userId);
       setSelectedStudentName(`${newStudentName} (${newStudentEmail})`);
+      setSelectedStudentEmail(newStudentEmail);
       setStudentQuery(newStudentName);
       setShowNewStudent(false);
       setNewStudentName('');
@@ -493,6 +497,21 @@ useEffect(() => {
       const response = await adminManualBookingService.createManualCabinBooking(bookingData);
 
       if (response?.success) {
+        // Fire-and-forget email notification
+        const studentName = selectedStudentName.split(' (')[0];
+        bookingEmailService.triggerBookingConfirmation({
+          userEmail: selectedStudentEmail,
+          userName: studentName,
+          bookingId: response.booking_id || response.bookingId || '',
+          bookingType: 'cabin',
+          totalPrice: finalPrice,
+          startDate,
+          endDate,
+          location: selectedCabin?.name || '',
+          cabinName: selectedCabin?.name || '',
+          seatNumber: selectedSeat?.number?.toString() || '',
+        }).catch(err => console.error('Booking confirmation email failed:', err));
+
         toast({
           title: 'Booking Created',
           description: 'Booking created successfully.',
@@ -513,6 +532,7 @@ useEffect(() => {
 
   const resetForm = () => {
     setSelectedUser('');
+    setSelectedStudentEmail('');
     setSelectedCabin(null);
     setSelectedSeat(null);
     setSelectedSlot(null);
