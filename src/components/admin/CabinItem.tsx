@@ -34,6 +34,7 @@ interface CabinItemProps {
 export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBooking, onManageSeats }: CabinItemProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const [waDialogOpen, setWaDialogOpen] = useState(false);
 
   const getCategoryBadgeStyle = (category: string) => {
     switch (category) {
