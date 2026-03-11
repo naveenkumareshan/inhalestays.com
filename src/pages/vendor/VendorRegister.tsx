@@ -11,7 +11,8 @@ import { vendorRegistrationService } from '@/api/vendorRegistrationService';
 const STEPS = [
   { id: 1, title: 'Personal Information', description: 'Your contact details' },
   { id: 2, title: 'Business Details', description: 'Business information and documents' },
-  { id: 3, title: 'Address Information', description: 'Business address details' }
+  { id: 3, title: 'Address Information', description: 'Business address details' },
+  { id: 4, title: 'Bank Details', description: 'Payment and banking information' }
 ];
 
 const VendorRegister: React.FC = () => {
@@ -39,6 +40,13 @@ const VendorRegister: React.FC = () => {
       pincode: '',
       country: 'India'
     },
+    bankDetails: {
+      accountHolderName: '',
+      accountNumber: '',
+      bankName: '',
+      ifscCode: '',
+      upiId: ''
+    }
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -140,6 +148,20 @@ const VendorRegister: React.FC = () => {
         }
         break;
 
+      case 4:
+        if (!formData.bankDetails.accountHolderName.trim()) {
+          newErrors['bankDetails.accountHolderName'] = 'Account Holder Name is required';
+        }
+        if (!formData.bankDetails.accountNumber.trim()) {
+          newErrors['bankDetails.accountNumber'] = 'Account Number is required';
+        }
+        if (!formData.bankDetails.bankName.trim()) {
+          newErrors['bankDetails.bankName'] = 'Bank Name is required';
+        }
+        if (!formData.bankDetails.ifscCode.trim()) {
+          newErrors['bankDetails.ifscCode'] = 'IFSC Code is required';
+        }
+        break;
     }
 
     setErrors(newErrors);
@@ -183,6 +205,7 @@ const VendorRegister: React.FC = () => {
         businessType: formData.businessType,
         businessDetails: formData.businessDetails,
         address: formData.address,
+        bankDetails: formData.bankDetails,
         contactPerson: formData.contactPerson
       };
 
@@ -581,6 +604,108 @@ const VendorRegister: React.FC = () => {
                   disabled
                 />
               </div>
+            </div>
+          </div>
+        );
+
+      case 4:
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="accountHolderName">Account Holder Name</Label>
+                <Input
+                  id="accountHolderName"
+                  name="bankDetails.accountHolderName"
+                  type="text"
+                  placeholder="Enter account holder name"
+                  value={formData.bankDetails.accountHolderName}
+                  onChange={handleInputChange}
+                  className={errors['bankDetails.accountHolderName'] ? 'border-red-500' : ''}
+                  disabled={isLoading}
+                />
+                {errors['bankDetails.accountHolderName'] && (
+                  <div className="flex items-center gap-1 text-sm text-red-600">
+                    <AlertCircle className="h-4 w-4" />
+                    {errors['bankDetails.accountHolderName']}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="accountNumber">Account Number</Label>
+                <Input
+                  id="accountNumber"
+                  name="bankDetails.accountNumber"
+                  type="text"
+                  placeholder="Enter account number"
+                  value={formData.bankDetails.accountNumber}
+                  onChange={handleInputChange}
+                  className={errors['bankDetails.accountNumber'] ? 'border-red-500' : ''}
+                  disabled={isLoading}
+                />
+                {errors['bankDetails.accountNumber'] && (
+                  <div className="flex items-center gap-1 text-sm text-red-600">
+                    <AlertCircle className="h-4 w-4" />
+                    {errors['bankDetails.accountNumber']}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bankName">Bank Name</Label>
+                <Input
+                  id="bankName"
+                  name="bankDetails.bankName"
+                  type="text"
+                  placeholder="Enter bank name"
+                  value={formData.bankDetails.bankName}
+                  onChange={handleInputChange}
+                  className={errors['bankDetails.bankName'] ? 'border-red-500' : ''}
+                  disabled={isLoading}
+                />
+                {errors['bankDetails.bankName'] && (
+                  <div className="flex items-center gap-1 text-sm text-red-600">
+                    <AlertCircle className="h-4 w-4" />
+                    {errors['bankDetails.bankName']}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ifscCode">IFSC Code</Label>
+                <Input
+                  id="ifscCode"
+                  name="bankDetails.ifscCode"
+                  type="text"
+                  placeholder="Enter IFSC code"
+                  value={formData.bankDetails.ifscCode}
+                  onChange={handleInputChange}
+                  className={errors['bankDetails.ifscCode'] ? 'border-red-500' : ''}
+                  disabled={isLoading}
+                />
+                {errors['bankDetails.ifscCode'] && (
+                  <div className="flex items-center gap-1 text-sm text-red-600">
+                    <AlertCircle className="h-4 w-4" />
+                    {errors['bankDetails.ifscCode']}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="upiId">UPI ID (Optional)</Label>
+              <Input
+                id="upiId"
+                name="bankDetails.upiId"
+                type="text"
+                placeholder="Enter UPI ID"
+                value={formData.bankDetails.upiId}
+                onChange={handleInputChange}
+                disabled={isLoading}
+              />
             </div>
           </div>
         );
