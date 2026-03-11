@@ -21,7 +21,7 @@ interface VendorRegistrationData {
     pincode: string;
     country: string;
   };
-  bankDetails: {
+  bankDetails?: {
     accountHolderName: string;
     accountNumber: string;
     bankName: string;
