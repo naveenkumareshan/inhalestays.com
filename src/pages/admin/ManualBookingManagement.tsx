@@ -532,6 +532,7 @@ useEffect(() => {
 
   const resetForm = () => {
     setSelectedUser('');
+    setSelectedStudentEmail('');
     setSelectedCabin(null);
     setSelectedSeat(null);
     setSelectedSlot(null);
