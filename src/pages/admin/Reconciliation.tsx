@@ -209,6 +209,7 @@ const Reconciliation: React.FC = () => {
     setApproveTarget(row);
     setCreditDate(new Date());
     setBankName('');
+    setManualBankEntry(false);
     setBankNarration('');
     setApproveDialogOpen(true);
     setBankLoading(true);
