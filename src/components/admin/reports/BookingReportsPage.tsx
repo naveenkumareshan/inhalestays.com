@@ -139,7 +139,7 @@ const BookingReportsPage: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="calendar" className="space-y-4 mt-6">
-              <BookingCalendarDashboard />
+              <BookingCalendarDashboard partnerUserId={partnerUserId} />
             </TabsContent>
           </Tabs>
           

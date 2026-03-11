@@ -85,9 +85,13 @@ export const BookingCalendarDashboard = ({ partnerUserId }: { partnerUserId?: st
 
   const fetchCabins = async () => {
     try {
-      const response = await cabinsService.getAllCabins();
-        if (response.success && response.data) {
-        setCabins((response.data as any[]).map((c: any) => ({ _id: c.id || c._id, name: c.name, category: c.category })));
+      let query = supabase.from('cabins').select('id, name, category');
+      if (partnerUserId) {
+        query = query.eq('created_by', partnerUserId);
+      }
+      const { data, error } = await query;
+      if (!error && data) {
+        setCabins(data.map((c: any) => ({ _id: c.id, name: c.name, category: c.category })));
       }
     } catch (error) {
       console.error('Error fetching cabins:', error);
