@@ -75,6 +75,7 @@ const ManualBookingManagement: React.FC = () => {
   const [studentSearching, setStudentSearching] = useState(false);
   const [showStudentResults, setShowStudentResults] = useState(false);
   const [selectedStudentName, setSelectedStudentName] = useState('');
+  const [selectedStudentEmail, setSelectedStudentEmail] = useState('');
   const [showNewStudent, setShowNewStudent] = useState(false);
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentEmail, setNewStudentEmail] = useState('');
