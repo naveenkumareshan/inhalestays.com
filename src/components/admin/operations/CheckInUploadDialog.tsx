@@ -142,13 +142,28 @@ const CheckInUploadDialog = ({ open, onOpenChange, booking, module, onUploaded }
           {/* Upload input */}
           <div>
             <label className="text-xs font-medium text-muted-foreground">Add Files (Aadhar, forms, etc.)</label>
-            <div className="mt-1">
+            <div className="mt-1 flex gap-2">
+              <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                <Upload className="h-3 w-3" /> Gallery
+              </Button>
+              <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1" disabled={uploading} onClick={() => cameraRef.current?.click()}>
+                <Camera className="h-3 w-3" /> Capture
+              </Button>
               <input
                 ref={fileRef}
                 type="file"
                 multiple
                 onChange={handleUpload}
-                className="text-xs w-full file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-primary file:text-primary-foreground"
+                className="hidden"
+                disabled={uploading}
+              />
+              <input
+                ref={cameraRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleUpload}
+                className="hidden"
                 disabled={uploading}
               />
             </div>
