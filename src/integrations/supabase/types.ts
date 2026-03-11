@@ -202,6 +202,7 @@ export type Database = {
           details: Json | null
           id: string
           performed_by: string | null
+          property_owner_id: string | null
           serial_number: string | null
         }
         Insert: {
@@ -212,6 +213,7 @@ export type Database = {
           details?: Json | null
           id?: string
           performed_by?: string | null
+          property_owner_id?: string | null
           serial_number?: string | null
         }
         Update: {
@@ -222,6 +224,7 @@ export type Database = {
           details?: Json | null
           id?: string
           performed_by?: string | null
+          property_owner_id?: string | null
           serial_number?: string | null
         }
         Relationships: []
