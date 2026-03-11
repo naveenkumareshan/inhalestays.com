@@ -135,7 +135,26 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
                 {!cabin.isBookingActive ? "▶ Enable" : "⏸ Pause"}
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-xs"
+              onClick={() => setWaDialogOpen(true)}
+              title="WhatsApp Chat Settings"
+            >
+              <MessageCircle className="h-3 w-3" style={{ color: '#25D366' }} />
+            </Button>
           </div>
+
+          <WhatsAppPropertyDialog
+            open={waDialogOpen}
+            onOpenChange={setWaDialogOpen}
+            propertyId={cabin._id}
+            propertyType="cabin"
+            propertyName={cabin.name}
+            initialNumber={(cabin as any).whatsappNumber || ''}
+            initialEnabled={!!(cabin as any).whatsappChatEnabled}
+          />
         </div>
       </CardContent>
     </Card>

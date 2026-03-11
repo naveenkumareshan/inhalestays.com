@@ -1069,6 +1069,7 @@ const HostelRoomDetails = () => {
           propertyId={hostel.id}
           propertyName={hostel.name}
           whatsappChatEnabled={!!(hostel as any).whatsapp_chat_enabled}
+          whatsappNumber={(hostel as any).whatsapp_number || ''}
         />
       )}
       </div>
