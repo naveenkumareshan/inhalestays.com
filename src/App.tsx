@@ -282,6 +282,8 @@ function App() {
               <Route path="mess-receipts" element={<MessReceipts />} />
               <Route path="mess-attendance" element={<MessAttendance />} />
               <Route path="reconciliation" element={<Reconciliation />} />
+              <Route path="expiring-bookings" element={<ExpiringBookingsPage />} />
+              <Route path="hostel-expiring-bookings" element={<HostelExpiringBookingsPage />} />
               <Route path="banks" element={<BankManagement />} />
             </Route>
 
