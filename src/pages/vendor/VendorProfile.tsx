@@ -178,7 +178,7 @@ const VendorProfilePage: React.FC = () => {
       </Card>
       
       <VendorProfile />
-      <WhatsAppSettings />
+      
 
       <Card>
         <CardHeader>
