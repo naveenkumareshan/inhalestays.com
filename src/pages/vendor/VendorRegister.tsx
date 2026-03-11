@@ -140,20 +140,6 @@ const VendorRegister: React.FC = () => {
         }
         break;
 
-      case 4:
-        if (!formData.bankDetails.accountHolderName.trim()) {
-          newErrors['bankDetails.accountHolderName'] = 'Account Holder Name is required';
-        }
-        if (!formData.bankDetails.accountNumber.trim()) {
-          newErrors['bankDetails.accountNumber'] = 'Account Number is required';
-        }
-        if (!formData.bankDetails.bankName.trim()) {
-          newErrors['bankDetails.bankName'] = 'Bank Name is required';
-        }
-        if (!formData.bankDetails.ifscCode.trim()) {
-          newErrors['bankDetails.ifscCode'] = 'IFSC Code is required';
-        }
-        break;
     }
 
     setErrors(newErrors);
