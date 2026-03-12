@@ -76,7 +76,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed }: Mes
 
   const handleToggleActive = async (messId: string, isActive: boolean) => {
     try {
-      await supabase.from('mess_partners' as any).update({ is_active: isActive, ...(isActive ? {} : { is_booking_active: false }) }).eq('id', messId);
+      await supabase.from('mess_partners' as any).update({ is_active: isActive, ...(isActive ? {} : { is_booking_active: false, is_partner_visible: false }) }).eq('id', messId);
       toast({ title: "Success", description: `Mess ${isActive ? 'activated' : 'deactivated'} successfully` });
       fetchMesses();
     } catch { toast({ title: "Error", description: "Failed to update status", variant: "destructive" }); }
@@ -85,9 +85,17 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed }: Mes
   const handleToggleBooking = async (messId: string, isBookingActive: boolean) => {
     try {
       await supabase.from('mess_partners' as any).update({ is_booking_active: isBookingActive }).eq('id', messId);
-      toast({ title: "Success", description: `Booking ${isBookingActive ? 'enabled' : 'paused'} successfully` });
+      toast({ title: "Success", description: `Online booking ${isBookingActive ? 'enabled' : 'disabled'} successfully` });
       fetchMesses();
     } catch { toast({ title: "Error", description: "Failed to update booking status", variant: "destructive" }); }
+  };
+
+  const handleTogglePartnerVisible = async (messId: string, isVisible: boolean) => {
+    try {
+      await supabase.from('mess_partners' as any).update({ is_partner_visible: isVisible }).eq('id', messId);
+      toast({ title: "Success", description: `Mess ${isVisible ? 'shown' : 'hidden'} in partner views` });
+      fetchMesses();
+    } catch { toast({ title: "Error", description: "Failed to update visibility", variant: "destructive" }); }
   };
 
   const handleDeleteMess = async (messId: string) => {
