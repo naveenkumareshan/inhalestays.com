@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CalendarRange, Eye, Search, X, Download, ArrowUpDown } from 'lucide-react';
+import { CalendarRange, Eye, Search, X, Download, ArrowUpDown, RotateCcw } from 'lucide-react';
 import { adminBookingsService } from '@/api/adminBookingsService';
 import { format, differenceInDays } from 'date-fns';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
+import { BookingExtensionDialog } from '@/components/admin/BookingExtensionDialog';
 
 export default function ExpiringBookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -23,6 +24,8 @@ export default function ExpiringBookingsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [renewBooking, setRenewBooking] = useState<any>(null);
+  const [renewDialogOpen, setRenewDialogOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -74,6 +77,18 @@ export default function ExpiringBookingsPage() {
 
   const getDaysRemaining = (endDate: string) => Math.max(0, differenceInDays(new Date(endDate), new Date()));
   const getStatusColor = (days: number) => { if (days <= 2) return 'destructive'; if (days <= 5) return 'warning'; return 'secondary'; };
+
+  const handleRenew = (booking: any) => {
+    const seat = booking.seats as any;
+    setRenewBooking({
+      ...booking,
+      _id: booking.id,
+      endDate: booking.end_date,
+      seatId: { _id: booking.seat_id, price: seat?.price || 0 },
+      cabinId: { _id: booking.cabin_id },
+    });
+    setRenewDialogOpen(true);
+  };
 
   const handleExport = () => {
     const headers = ['S.No', 'Booking ID', 'Customer', 'Email', 'Phone', 'Room', 'Seat', 'Start Date', 'End Date', 'Days Left'];
@@ -136,7 +151,7 @@ export default function ExpiringBookingsPage() {
                       <TableHead className="text-[11px] font-medium uppercase tracking-wider">Start Date</TableHead>
                       <TableHead className="text-[11px] font-medium uppercase tracking-wider">End Date</TableHead>
                       <TableHead className="text-[11px] font-medium uppercase tracking-wider">Expires In</TableHead>
-                      <TableHead className="text-[11px] font-medium uppercase tracking-wider w-20">Actions</TableHead>
+                      <TableHead className="text-[11px] font-medium uppercase tracking-wider w-24">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -166,9 +181,14 @@ export default function ExpiringBookingsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => navigate(`${routePrefix}/bookings/${booking.id}/cabin`)}>
-                              <Eye className="h-3.5 w-3.5" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => navigate(`${routePrefix}/bookings/${booking.id}/cabin`)}>
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-primary hover:text-primary" onClick={() => handleRenew(booking)} title="Renew Booking">
+                                <RotateCcw className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -186,6 +206,25 @@ export default function ExpiringBookingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {renewBooking && (
+        <BookingExtensionDialog
+          open={renewDialogOpen}
+          onOpenChange={(open) => {
+            setRenewDialogOpen(open);
+            if (!open) setRenewBooking(null);
+          }}
+          bookingId={renewBooking.id}
+          booking={renewBooking}
+          bookingType="cabin"
+          currentEndDate={new Date(renewBooking.end_date)}
+          onExtensionComplete={() => {
+            setRenewDialogOpen(false);
+            setRenewBooking(null);
+            fetchData();
+          }}
+        />
+      )}
     </div>
   );
 }

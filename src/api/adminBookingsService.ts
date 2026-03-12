@@ -519,7 +519,7 @@ export const adminBookingsService = {
 
       let query = supabase
         .from('bookings')
-        .select('*, profiles!bookings_user_id_fkey(name, email, phone), cabins:cabin_id(name), seats:seat_id(number, floor)')
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone), cabins:cabin_id(name), seats:seat_id(number, floor, price)')
         .eq('payment_status', 'completed')
         .gte('end_date', today.toISOString().split('T')[0])
         .lte('end_date', futureDate.toISOString().split('T')[0])
@@ -553,7 +553,7 @@ export const adminBookingsService = {
 
       let query = supabase
         .from('hostel_bookings')
-        .select('*, profiles!hostel_bookings_user_id_fkey(name, email, phone), hostels:hostel_id(name), hostel_beds:bed_id(bed_number), hostel_rooms:room_id(room_number, floor_id)')
+        .select('*, profiles!hostel_bookings_user_id_fkey(name, email, phone), hostels:hostel_id(name), hostel_beds:bed_id(bed_number, price_override), hostel_rooms:room_id(room_number, floor_id)')
         .eq('status', 'confirmed')
         .gte('end_date', today.toISOString().split('T')[0])
         .lte('end_date', futureDate.toISOString().split('T')[0])
