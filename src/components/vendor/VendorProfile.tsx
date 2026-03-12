@@ -266,14 +266,7 @@ export const VendorProfile: React.FC = () => {
                 <p className="text-xs text-muted-foreground">ID: {profile.vendorId}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {getStatusBadge(profile.status)}
-              {properties.length > 0 && (
-                <Badge variant="outline" className="text-xs">
-                  <Home className="h-3 w-3 mr-1" />{properties.length} Properties
-                </Badge>
-              )}
-            </div>
+            {getStatusBadge(profile.status)}
           </div>
         </CardHeader>
       </Card>
