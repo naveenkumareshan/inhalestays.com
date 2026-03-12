@@ -188,6 +188,10 @@ const HostelDueManagement: React.FC = () => {
     if (!selectedDue || !collectAmount) return;
     const amt = parseFloat(collectAmount);
     if (amt <= 0) { toast({ title: 'Enter a valid amount', variant: 'destructive' }); return; }
+    if (collectMethod !== 'cash' && !collectTxnId.trim()) {
+      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+      return;
+    }
     setCollecting(true);
 
     const collectedByName = user?.name || user?.email || 'Admin';
