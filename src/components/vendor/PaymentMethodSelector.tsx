@@ -69,6 +69,7 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
           label: m.label,
           icon: TYPE_ICONS[m.mode_type] || <Building2 className="h-3 w-3" />,
           mode_type: m.mode_type,
+          details_image_url: m.details_image_url,
         })));
       }
       setLoading(false);
