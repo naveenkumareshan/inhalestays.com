@@ -8,6 +8,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ShareButton } from '@/components/ShareButton';
 import { generateHostelShareText } from '@/utils/shareUtils';
 import { WhatsAppPropertyDialog } from './WhatsAppPropertyDialog';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
+import { Badge } from '@/components/ui/badge';
+import { ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
 
 interface HostelItemProps {
   hostel: any;
