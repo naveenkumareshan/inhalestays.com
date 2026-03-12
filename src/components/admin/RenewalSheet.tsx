@@ -17,6 +17,7 @@ import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { downloadInvoice, InvoiceData } from '@/utils/invoiceGenerator';
 import { cn } from '@/lib/utils';
+import { bookingEmailService } from '@/api/bookingEmailService';
 
 interface RenewalBookingData {
   bookingId: string;
