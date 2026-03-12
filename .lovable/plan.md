@@ -1,71 +1,32 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Fix "Add Property" Buttons for Hostel, Laundry, Mess in Partner Manage Properties
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Root Cause
 
-## Changes
+In `ManageProperties.tsx`, tabs and their content are conditionally rendered based on `showAllTabs || hasHostels` (etc.). When a partner already has Reading Rooms but no Hostels, `showAllTabs` is `false` and `hasHostels` is `false`, so the Hostels tab + TabsContent is **never rendered**. Clicking "Add Hostel" sets `activeTab='hostels'` and `triggerNew=true`, but since the TabsContent doesn't exist in the DOM, nothing happens.
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+Same issue for Laundry and Mess tabs.
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+Additionally, `MessManagement` and `LaundryPartnerDashboard` don't accept `autoCreateNew`/`onTriggerConsumed` props, so even if the tab rendered, the auto-create trigger wouldn't fire.
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+## Fix
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### `src/pages/partner/ManageProperties.tsx`
+- Change tab visibility logic: always show a tab if it's the `activeTab` (i.e., `showAllTabs || hasX || activeTab === 'tabName'`). This ensures when "Add Property" switches to a new tab, that tab's content renders.
+- Pass `autoCreateNew` and `onTriggerConsumed` props to `MessManagement` (same pattern as HostelManagement and RoomManagement).
+- For Laundry: since it's a different flow (partner registration-based), navigate to laundry registration or show the dashboard. The "Add Laundry" can trigger a registration form within the dashboard. For now, ensure the tab at least renders so the partner sees the laundry dashboard where they can set up their service.
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+### `src/pages/admin/MessManagement.tsx`
+- Add `autoCreateNew` and `onTriggerConsumed` props (same pattern as `HostelManagement`).
+- Add a `useEffect` that calls `handleAddMess()` when `autoCreateNew` is true.
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### `src/pages/LaundryPartnerDashboard.tsx`
+- Add `autoCreateNew` and `onTriggerConsumed` props.
+- When `autoCreateNew` fires and no laundry partner record exists, trigger the registration/setup flow (or show a setup prompt).
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+## Files Modified
+- `src/pages/partner/ManageProperties.tsx` — fix tab visibility logic
+- `src/pages/admin/MessManagement.tsx` — add autoCreateNew prop support
+- `src/pages/LaundryPartnerDashboard.tsx` — add autoCreateNew prop support
 
