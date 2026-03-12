@@ -1,9 +1,13 @@
 import React, { lazy, Suspense, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building, Hotel, Plus, Shirt, Loader2, UtensilsCrossed } from 'lucide-react';
+import { Building, Hotel, Plus, Shirt, Loader2, UtensilsCrossed, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
 import { useAuth } from '@/hooks/use-auth';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -19,8 +23,35 @@ const MessManagement = lazy(() => import('@/pages/admin/MessManagement'));
 const ManageProperties: React.FC = () => {
   const { hasReadingRooms, hasHostels, hasLaundry, hasMess, loading } = usePartnerPropertyTypes();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [triggerNew, setTriggerNew] = useState(false);
+
+  // Check for active universal subscription
+  const { data: partner } = useQuery({
+    queryKey: ['partner-for-universal', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('partners').select('id').eq('user_id', user?.id).single();
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  const { data: universalSub } = useQuery({
+    queryKey: ['universal-sub-check', partner?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('property_subscriptions')
+        .select('id, status')
+        .eq('partner_id', partner!.id)
+        .eq('property_type', 'universal')
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!partner?.id,
+  });
 
   const hasAny = hasReadingRooms || hasHostels || hasLaundry || hasMess;
   const showAllTabs = !hasAny && !loading;
@@ -57,6 +88,23 @@ const ManageProperties: React.FC = () => {
           <Plus className="h-3 w-3" /> Add New Property
         </Button>
       </div>
+
+      {!universalSub && (
+        <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-accent/10">
+          <CardContent className="p-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Crown className="h-4 w-4 text-primary" />
+              <div>
+                <p className="text-xs font-semibold">Universal Package</p>
+                <p className="text-[10px] text-muted-foreground">One plan for all properties</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => navigate('/partner/my-subscriptions')}>
+              <Crown className="h-3 w-3" /> Subscribe
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {loading ? (
         <LoadingFallback />
