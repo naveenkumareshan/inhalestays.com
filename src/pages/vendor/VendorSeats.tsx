@@ -894,6 +894,9 @@ const VendorSeats: React.FC = () => {
           <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="sm" className="h-8 w-8 p-0 rounded-none" onClick={() => setViewMode('grid')}>
             <LayoutGrid className="h-3.5 w-3.5" />
           </Button>
+          <Button variant={viewMode === 'room' ? 'default' : 'ghost'} size="sm" className="h-8 w-8 p-0 rounded-none" onClick={() => setViewMode('room')} title="Room View">
+            <Building2 className="h-3.5 w-3.5" />
+          </Button>
           <Button variant={viewMode === 'table' ? 'default' : 'ghost'} size="sm" className="h-8 w-8 p-0 rounded-none" onClick={() => setViewMode('table')}>
             <List className="h-3.5 w-3.5" />
           </Button>
