@@ -1035,6 +1035,7 @@ const VendorSeats: React.FC = () => {
                       )}
                     >
                       <span className="text-xs font-bold leading-none">{seatLabel(seat)}</span>
+                      {seat.category && <span className="text-[9px] text-muted-foreground leading-tight truncate w-full">{seat.category}</span>}
                       <div className="flex items-center gap-0.5">
                         <span className="text-[9px] font-medium leading-tight">₹{seat.price}</span>
                         {canEditPrice && (
