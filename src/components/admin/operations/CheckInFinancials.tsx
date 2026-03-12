@@ -36,6 +36,7 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
   const [method, setMethod] = useState('cash');
   const [txnId, setTxnId] = useState('');
   const [notes, setNotes] = useState('');
+  const [proofUrl, setProofUrl] = useState('');
   const [collecting, setCollecting] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
