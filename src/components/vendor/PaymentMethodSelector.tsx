@@ -12,6 +12,7 @@ interface PaymentMode {
   label: string;
   icon?: React.ReactNode;
   mode_type: string;
+  details_image_url?: string | null;
 }
 
 interface PaymentMethodSelectorProps {
