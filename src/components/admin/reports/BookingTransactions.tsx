@@ -55,6 +55,7 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
         <div>
           <div className="font-medium text-sm">{row.original.userId?.name || 'N/A'}</div>
           <div className="text-xs text-muted-foreground">{row.original.userId?.email}</div>
+          {row.original.userId?.phone && <div className="text-xs text-muted-foreground">{row.original.userId.phone}</div>}
         </div>
       ),
     },
