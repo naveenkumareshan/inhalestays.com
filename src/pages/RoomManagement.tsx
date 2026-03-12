@@ -466,41 +466,14 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
                 </div>
                 
                 {/* Pagination Controls */}
-                {totalPages > 1 && (
-                  <div className="flex flex-col sm:flex-row justify-between items-center mt-8 gap-4">
-                    <div className="text-sm text-muted-foreground">
-                      Showing {startItem} to {endItem} of {totalItems} results
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className="flex items-center gap-1"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                        Previous
-                      </Button>
-                      
-                      <div className="flex items-center">
-                        {renderPaginationButtons()}
-                      </div>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className="flex items-center gap-1"
-                      >
-                        Next
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                <AdminTablePagination
+                  currentPage={currentPage}
+                  totalItems={totalItems}
+                  pageSize={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={handlePageSizeChange}
+                  pageSizeOptions={[9, 18, 36, 72]}
+                />
               </>
             )}
           </CardContent>

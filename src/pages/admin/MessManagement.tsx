@@ -221,20 +221,14 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed }: Mes
               ))}
             </div>
 
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between pt-2">
-                <p className="text-xs text-muted-foreground">
-                  Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} of {filtered.length}
-                </p>
-                <div className="flex gap-1">
-                  <Button size="sm" variant="outline" className="h-7 text-xs" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Prev</Button>
-                  {Array.from({ length: totalPages }, (_, i) => (
-                    <Button key={i + 1} size="sm" variant={currentPage === i + 1 ? "default" : "outline"} className="h-7 w-7 p-0 text-xs" onClick={() => setCurrentPage(i + 1)}>{i + 1}</Button>
-                  ))}
-                  <Button size="sm" variant="outline" className="h-7 text-xs" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
-                </div>
-              </div>
-            )}
+            <AdminTablePagination
+              currentPage={currentPage}
+              totalItems={filtered.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+              pageSizeOptions={[9, 18, 36, 72]}
+            />
           </>
         )}
 
