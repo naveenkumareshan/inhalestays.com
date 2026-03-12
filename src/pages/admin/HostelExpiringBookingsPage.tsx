@@ -79,15 +79,7 @@ export default function HostelExpiringBookingsPage() {
   const getStatusColor = (days: number) => { if (days <= 2) return 'destructive'; if (days <= 5) return 'warning'; return 'secondary'; };
 
   const handleRenew = (booking: any) => {
-    const bed = booking.hostel_beds as any;
-    setRenewBooking({
-      ...booking,
-      _id: booking.id,
-      endDate: booking.end_date,
-      seatId: { _id: booking.bed_id, price: bed?.price_override || booking.total_price || 0 },
-      cabinId: { _id: booking.hostel_id },
-    });
-    setRenewDialogOpen(true);
+    navigate(`${routePrefix}/hostel-bookings/${booking.id}`);
   };
 
   const handleExport = () => {
