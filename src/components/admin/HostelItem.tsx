@@ -12,6 +12,7 @@ import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { PropertySubscribeDialog } from './PropertySubscribeDialog';
 import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface HostelItemProps {
   hostel: any;
@@ -103,7 +104,7 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
           </div>
 
           {/* Content */}
-          <div className="p-4 flex-1 flex flex-col gap-2.5">
+          <div className="p-3 flex-1 flex flex-col gap-2">
             {/* Meta row */}
             <div className="flex items-center gap-1.5 flex-wrap">
               {renderSubscriptionBadge()}
@@ -112,10 +113,10 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
                   #{hostel.serial_number}
                 </span>
               )}
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${!hostel.is_booking_active ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${!hostel.is_booking_active ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
                 {!hostel.is_booking_active ? "● Online Off" : "● Online On"}
               </span>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${hostel.is_partner_visible === false ? "bg-muted text-muted-foreground border border-border" : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${hostel.is_partner_visible === false ? "bg-muted text-muted-foreground border border-border" : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
                 {hostel.is_partner_visible === false ? "● Hidden" : "● Visible"}
               </span>
             </div>
@@ -127,99 +128,123 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
             <p className="text-xs text-muted-foreground line-clamp-2 flex-1">{hostel.description}</p>
 
             {/* Stay type, price & deposit */}
-            <div className="flex justify-between items-center pt-0.5">
+            <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">{hostel.stay_type}</span>
               <div className="flex items-center gap-2">
                 {hostel.starting_price > 0 && (
                   <span className="font-bold text-sm text-foreground">₹{hostel.starting_price}<span className="text-xs font-normal text-muted-foreground">/mo</span></span>
                 )}
                 {hostel.security_deposit > 0 && (
-                  <span className="text-xs text-muted-foreground">₹{hostel.security_deposit} deposit</span>
+                  <span className="text-xs text-muted-foreground">₹{hostel.security_deposit} dep</span>
                 )}
               </div>
             </div>
 
             {/* Actions */}
-            <div className="border-t pt-3 mt-0.5 flex flex-wrap gap-1.5 items-center">
-              {(() => {
-                const shareData = generateHostelShareText({
-                  id: hostel.id,
-                  name: hostel.name,
-                  gender: hostel.gender,
-                  stay_type: hostel.stay_type,
-                  food_enabled: hostel.food_enabled,
-                  food_policy_type: hostel.food_policy_type,
-                  location: hostel.locality || hostel.location,
-                  serial_number: hostel.serial_number,
-                }, undefined, user?.id);
-                return (
-                  <ShareButton
-                    title={shareData.title}
-                    text={shareData.text}
-                    url={shareData.url}
-                    className="h-7 w-7 rounded-full bg-muted text-muted-foreground hover:bg-accent"
-                  />
-                );
-              })()}
-              {isAdmin && (
-                <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onEdit(hostel)}>
-                  <Edit className="h-3 w-3 mr-1" />Edit
-                </Button>
-              )}
-              {isAdmin && (
-                <Button size="sm" className="h-7 px-2 text-xs" onClick={() => navigate(`/admin/hostels/${hostel.serial_number || hostel.id}/beds`)}>
-                  <Bed className="h-3 w-3 mr-1" />Beds
-                </Button>
-              )}
-              {isAdmin && (
-                <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onManagePackages(hostel)}>
-                  <Package className="h-3 w-3 mr-1" />Packages
-                </Button>
-              )}
-              {isAdmin && onToggleActive && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className={`h-7 px-2 text-xs ${hostel.is_active ? "text-red-600 border-red-200 hover:bg-red-50" : "text-emerald-600 border-emerald-200 hover:bg-emerald-50"}`}
-                  onClick={() => onToggleActive(hostel.id, !hostel.is_active)}
-                >
-                  {hostel.is_active ? <><FileMinus className="h-3 w-3 mr-1" />Deactivate</> : <><FilePlus className="h-3 w-3 mr-1" />Activate</>}
-                </Button>
-              )}
-              {onToggleBooking && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!hostel.is_active}
-                  className={`h-7 px-2 text-xs ${!hostel.is_booking_active ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
-                  onClick={() => onToggleBooking(hostel.id, !hostel.is_booking_active)}
-                  title="Student online booking"
-                >
-                  {!hostel.is_booking_active ? <><Globe className="h-3 w-3 mr-1" />Online On</> : <><GlobeLock className="h-3 w-3 mr-1" />Online Off</>}
-                </Button>
-              )}
-              {onTogglePartnerVisible && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!hostel.is_active}
-                  className={`h-7 px-2 text-xs ${hostel.is_partner_visible === false ? "text-blue-600 border-blue-200 hover:bg-blue-50" : "text-muted-foreground border-border hover:bg-muted"}`}
-                  onClick={() => onTogglePartnerVisible(hostel.id, !(hostel.is_partner_visible !== false))}
-                  title="Partner-side visibility"
-                >
-                  {hostel.is_partner_visible === false ? <><Eye className="h-3 w-3 mr-1" />Show</> : <><EyeOff className="h-3 w-3 mr-1" />Hide</>}
-                </Button>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-xs"
-                onClick={() => setWaDialogOpen(true)}
-                title="WhatsApp Chat Settings"
-              >
-                <MessageCircle className="h-3 w-3" style={{ color: '#25D366' }} />
-              </Button>
-            </div>
+            <TooltipProvider delayDuration={300}>
+              <div className="border-t pt-2 mt-0.5 flex flex-wrap gap-1 items-center">
+                {(() => {
+                  const shareData = generateHostelShareText({
+                    id: hostel.id,
+                    name: hostel.name,
+                    gender: hostel.gender,
+                    stay_type: hostel.stay_type,
+                    food_enabled: hostel.food_enabled,
+                    food_policy_type: hostel.food_policy_type,
+                    location: hostel.locality || hostel.location,
+                    serial_number: hostel.serial_number,
+                  }, undefined, user?.id);
+                  return (
+                    <ShareButton
+                      title={shareData.title}
+                      text={shareData.text}
+                      url={shareData.url}
+                      className="h-7 w-7 rounded-full bg-muted text-muted-foreground hover:bg-accent"
+                    />
+                  );
+                })()}
+                {isAdmin && (
+                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onEdit(hostel)}>
+                    <Edit className="h-3 w-3 mr-1" />Edit
+                  </Button>
+                )}
+                {isAdmin && (
+                  <Button size="sm" className="h-7 px-2 text-xs" onClick={() => navigate(`/admin/hostels/${hostel.serial_number || hostel.id}/beds`)}>
+                    <Bed className="h-3 w-3 mr-1" />Beds
+                  </Button>
+                )}
+                {isAdmin && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onManagePackages(hostel)}>
+                        <Package className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Packages</TooltipContent>
+                  </Tooltip>
+                )}
+                {isAdmin && onToggleActive && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className={`h-7 w-7 ${hostel.is_active ? "text-red-600 border-red-200 hover:bg-red-50" : "text-emerald-600 border-emerald-200 hover:bg-emerald-50"}`}
+                        onClick={() => onToggleActive(hostel.id, !hostel.is_active)}
+                      >
+                        {hostel.is_active ? <FileMinus className="h-3.5 w-3.5" /> : <FilePlus className="h-3.5 w-3.5" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{hostel.is_active ? 'Deactivate' : 'Activate'}</TooltipContent>
+                  </Tooltip>
+                )}
+                {onToggleBooking && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        disabled={!hostel.is_active}
+                        className={`h-7 w-7 ${!hostel.is_booking_active ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
+                        onClick={() => onToggleBooking(hostel.id, !hostel.is_booking_active)}
+                      >
+                        {!hostel.is_booking_active ? <Globe className="h-3.5 w-3.5" /> : <GlobeLock className="h-3.5 w-3.5" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{!hostel.is_booking_active ? 'Turn Online On' : 'Turn Online Off'}</TooltipContent>
+                  </Tooltip>
+                )}
+                {onTogglePartnerVisible && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        disabled={!hostel.is_active}
+                        className={`h-7 w-7 ${hostel.is_partner_visible === false ? "text-blue-600 border-blue-200 hover:bg-blue-50" : "text-muted-foreground border-border hover:bg-muted"}`}
+                        onClick={() => onTogglePartnerVisible(hostel.id, !(hostel.is_partner_visible !== false))}
+                      >
+                        {hostel.is_partner_visible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{hostel.is_partner_visible === false ? 'Show to Partner' : 'Hide from Partner'}</TooltipContent>
+                  </Tooltip>
+                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7"
+                      onClick={() => setWaDialogOpen(true)}
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" style={{ color: '#25D366' }} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>WhatsApp Settings</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
 
             <WhatsAppPropertyDialog
               open={waDialogOpen}
