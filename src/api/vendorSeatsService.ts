@@ -647,6 +647,7 @@ export const vendorSeatsService = {
           collected_by_name: data.collectedByName || '',
           receipt_type: 'booking_payment',
           notes: data.isAdvanceBooking ? 'Advance payment' : '',
+          payment_proof_url: data.paymentProofUrl || null,
         } as any);
       } catch (e) {
         console.error('Receipt creation failed:', e);
