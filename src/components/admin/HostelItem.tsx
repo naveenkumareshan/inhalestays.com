@@ -97,6 +97,7 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
         <div className="p-4 flex-1 flex flex-col gap-2.5">
           {/* Meta row */}
           <div className="flex items-center gap-1.5 flex-wrap">
+            {renderSubscriptionBadge()}
             {hostel.serial_number && (
               <span className="bg-muted text-muted-foreground px-2 py-0.5 rounded-full text-xs font-mono">
                 #{hostel.serial_number}
