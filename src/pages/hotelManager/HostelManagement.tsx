@@ -12,8 +12,10 @@ import ErrorBoundary from '../../components/ErrorBoundary';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
+import { AdminTablePagination } from '@/components/admin/AdminTablePagination';
+import { Badge } from '@/components/ui/badge';
 
-const ITEMS_PER_PAGE = 9;
+const DEFAULT_PAGE_SIZE = 9;
 
 interface HostelManagementProps {
   autoCreateNew?: boolean;
@@ -30,6 +32,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
   const [isPackagesOpen, setIsPackagesOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -137,8 +140,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
     const q = searchQuery.toLowerCase();
     return h.name?.toLowerCase().includes(q) || h.serial_number?.toLowerCase().includes(q) || h.locality?.toLowerCase().includes(q);
   });
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   if (showEditor) {
     return (
@@ -158,7 +160,10 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight">Manage Hostels</h1>
+            <h1 className="text-lg font-semibold tracking-tight">
+              Manage Hostels
+              {filtered.length > 0 && <Badge variant="secondary" className="ml-2 text-xs font-normal">{filtered.length}</Badge>}
+            </h1>
             <p className="text-xs text-muted-foreground mt-0.5">View and manage all hostels and their rooms.</p>
           </div>
           {(user?.role === 'admin' || user?.role === 'vendor') && (
@@ -215,20 +220,14 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between pt-2">
-                <p className="text-xs text-muted-foreground">
-                  Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} of {filtered.length}
-                </p>
-                <div className="flex gap-1">
-                  <Button size="sm" variant="outline" className="h-7 text-xs" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Prev</Button>
-                  {Array.from({ length: totalPages }, (_, i) => (
-                    <Button key={i + 1} size="sm" variant={currentPage === i + 1 ? "default" : "outline"} className="h-7 w-7 p-0 text-xs" onClick={() => setCurrentPage(i + 1)}>{i + 1}</Button>
-                  ))}
-                  <Button size="sm" variant="outline" className="h-7 text-xs" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
-                </div>
-              </div>
-            )}
+            <AdminTablePagination
+              currentPage={currentPage}
+              totalItems={filtered.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+              pageSizeOptions={[9, 18, 36, 72]}
+            />
           </>
         )}
 

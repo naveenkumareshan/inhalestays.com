@@ -8,7 +8,9 @@ import { adminCabinsService } from '../api/adminCabinsService';
 import { CabinItem } from '@/components/admin/CabinItem';
 import { CabinEditor } from '@/components/admin/CabinEditor';
 import { useNavigate } from 'react-router-dom';
-import { Images, Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Images, Plus, Search } from 'lucide-react';
+import { AdminTablePagination } from '@/components/admin/AdminTablePagination';
+import { Badge } from '@/components/ui/badge';
 import { adminRoomsService } from '@/api/adminRoomsService';
 import { useAuth } from '@/contexts/AuthContext';
 import { vendorApprovalService } from '@/api/vendorApprovalService';
@@ -61,7 +63,7 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(9); // 3x3 grid
+  const [itemsPerPage, setItemsPerPage] = useState(9);
   const [totalItems, setTotalItems] = useState(0);
   
   const isAdmin = user?.role === 'admin';
@@ -374,41 +376,9 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
     cabin.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Pagination calculations
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const renderPaginationButtons = () => {
-    const buttons = [];
-    const maxVisiblePages = 5;
-    
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      buttons.push(
-        <Button
-          key={i}
-          variant={i === currentPage ? "default" : "outline"}
-          size="sm"
-          onClick={() => handlePageChange(i)}
-          className="mx-1"
-        >
-          {i}
-        </Button>
-      );
-    }
-
-    return buttons;
+  const handlePageSizeChange = (size: number) => {
+    setItemsPerPage(size);
+    setCurrentPage(1);
   };
   
   return (
@@ -416,7 +386,10 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight">Reading Room Management</h1>
+          <h1 className="text-lg font-semibold tracking-tight">
+            Reading Room Management
+            {totalItems > 0 && <Badge variant="secondary" className="ml-2 text-xs font-normal">{totalItems}</Badge>}
+          </h1>
           <p className="text-muted-foreground text-xs mt-0.5">
             Configure and manage your reading room inventory.
           </p>
@@ -493,41 +466,14 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
                 </div>
                 
                 {/* Pagination Controls */}
-                {totalPages > 1 && (
-                  <div className="flex flex-col sm:flex-row justify-between items-center mt-8 gap-4">
-                    <div className="text-sm text-muted-foreground">
-                      Showing {startItem} to {endItem} of {totalItems} results
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className="flex items-center gap-1"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                        Previous
-                      </Button>
-                      
-                      <div className="flex items-center">
-                        {renderPaginationButtons()}
-                      </div>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className="flex items-center gap-1"
-                      >
-                        Next
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                <AdminTablePagination
+                  currentPage={currentPage}
+                  totalItems={totalItems}
+                  pageSize={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={handlePageSizeChange}
+                  pageSizeOptions={[9, 18, 36, 72]}
+                />
               </>
             )}
           </CardContent>
