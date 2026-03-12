@@ -1,85 +1,71 @@
 
 
-# Monthly Billing Cycle for Hostels — Refined Plan
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Database Migrations
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-### Migration 1: Add billing columns to `hostels`
-```sql
-ALTER TABLE hostels ADD COLUMN billing_type text NOT NULL DEFAULT 'day_model';
-ALTER TABLE hostels ADD COLUMN payment_window_days integer NOT NULL DEFAULT 5;
-```
+## Changes
 
-### Migration 2: Add billing metadata to `hostel_dues`
-```sql
-ALTER TABLE hostel_dues ADD COLUMN billing_month date;
-ALTER TABLE hostel_dues ADD COLUMN is_prorated boolean NOT NULL DEFAULT false;
-ALTER TABLE hostel_dues ADD COLUMN auto_generated boolean NOT NULL DEFAULT false;
-CREATE UNIQUE INDEX idx_hostel_dues_booking_month ON hostel_dues (booking_id, billing_month) WHERE billing_month IS NOT NULL;
-```
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-### Migration 3: Enable pg_cron and pg_net extensions
-```sql
-CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA pg_catalog;
-CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
-```
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-### Cron job (via insert tool, not migration)
-Schedule daily cron calling the edge function at midnight.
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-## Edge Function: `generate-monthly-hostel-dues`
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-Runs daily. Logic:
-1. Query all hostels where `billing_type = 'monthly_cycle'`
-2. For each, get active bookings (`status = 'confirmed'`, `end_date >= first of current month`)
-3. For each booking, check if `hostel_dues` with `billing_month = first of current month` already exists for that `booking_id`
-4. If not, insert a new due:
-   - `due_amount` = monthly rent from `hostel_sharing_options.price_monthly`
-   - `due_date` = 1st of month + `payment_window_days`
-   - `billing_month` = first of current month (DATE)
-   - `auto_generated = true`
-5. Mark overdue: `UPDATE hostel_dues SET status = 'overdue' WHERE status = 'pending' AND paid_amount = 0 AND due_date < CURRENT_DATE AND billing_month IS NOT NULL`
-6. No duplicate generation thanks to the unique index
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-### Pro-rata calculation (actual days in month)
-```
-Days remaining = days_in_month - (join_day - 1)
-Pro-rated amount = monthly_rent × (days_remaining / days_in_month)
-```
-Uses `getDaysInMonth()` from date-fns for the actual month length.
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-## Frontend Changes
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-### `HostelEditor.tsx`
-Add Section 10 (or within Section 3 — Pricing):
-- Select: "Billing Type" — `Day Model` (default) | `Monthly Cycle`
-- When Monthly Cycle: show "Payment Window (days)" number input (default 5)
-- Wire `billing_type` and `payment_window_days` into hostel state and save
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-### `hostelBookingService.ts` — `createBooking`
-After booking is created, if the hostel has `billing_type = 'monthly_cycle'`:
-- Fetch hostel's `billing_type` and `payment_window_days`
-- Calculate pro-rated first month amount using actual days in month
-- Insert `hostel_dues` with `is_prorated = true`, `billing_month = first of join month`, `auto_generated = false`
-- Set `due_date` = join date (immediate payment for first month)
+**Reviews section**: Shown below the booking flow (not in a tab)
 
-### `HostelDueManagement.tsx`
-- Add `billing_month` column: show "Mar 2026" when present
-- Add `Auto` badge for `auto_generated = true` dues
-- Add `Prorated` badge for `is_prorated = true` dues
-- Add "Overdue" as a filter option in status dropdown
-- Update `getStatusBadge` to handle `status = 'overdue'` from DB
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
 
-### `supabase/config.toml`
-Add:
-```toml
-[functions.generate-monthly-hostel-dues]
-verify_jwt = false
-```
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
 
-## Files to Create/Modify
-- **Create**: `supabase/functions/generate-monthly-hostel-dues/index.ts`
-- **Modify**: `src/components/admin/HostelEditor.tsx` — billing type UI
-- **Modify**: `src/api/hostelBookingService.ts` — pro-rata on create
-- **Modify**: `src/pages/admin/HostelDueManagement.tsx` — new columns/badges/filter
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

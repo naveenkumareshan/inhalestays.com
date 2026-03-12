@@ -71,6 +71,8 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
     food_menu_image: existingHostel?.food_menu_image || '',
     show_food_price: existingHostel?.show_food_price ?? true,
     payment_proof_required: existingHostel?.payment_proof_required ?? false,
+    billing_type: existingHostel?.billing_type || 'day_model',
+    payment_window_days: existingHostel?.payment_window_days ?? 5,
   });
 
   const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
@@ -477,6 +479,35 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
             </CollapsibleContent>
           </Card>
         </Collapsible>
+
+        {/* Billing Cycle Configuration */}
+        <Card>
+          <CardContent className="px-4 py-4 space-y-3">
+            <div className="space-y-1">
+              <Label className="text-sm font-medium">Billing Type</Label>
+              <p className="text-xs text-muted-foreground">Choose how monthly fees are calculated and billed</p>
+            </div>
+            <Select value={hostel.billing_type} onValueChange={(val) => setHostel(prev => ({ ...prev, billing_type: val }))}>
+              <SelectTrigger className="max-w-[240px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="day_model">Day Model (Current)</SelectItem>
+                <SelectItem value="monthly_cycle">Monthly Cycle Billing</SelectItem>
+              </SelectContent>
+            </Select>
+            {hostel.billing_type === 'monthly_cycle' && (
+              <div className="border rounded-lg p-3 space-y-2 ml-2 border-l-2 border-primary/20">
+                <Label htmlFor="payment_window_days" className="text-xs font-medium">Payment Window (days)</Label>
+                <div className="flex items-center gap-2">
+                  <Input id="payment_window_days" name="payment_window_days" type="number" value={hostel.payment_window_days} onChange={handleNumberChange} className="max-w-[120px]" min={1} max={30} />
+                  <span className="text-xs text-muted-foreground">days after 1st</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Students must pay within this many days from the 1st of each month. After this, dues are marked as overdue.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Section 4: Booking Configuration */}
 

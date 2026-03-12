@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
+import { format, getDaysInMonth } from 'date-fns';
 
 export interface CreateHostelBookingData {
   hostel_id: string;
@@ -93,6 +93,52 @@ export const hostelBookingService = {
         due_amount: dueAmount,
         due_date: format(dueDate, 'yyyy-MM-dd'),
         status: 'pending',
+      } as any);
+    }
+
+    // Monthly cycle billing: create pro-rated first month due
+    const { data: hostelInfo } = await supabase
+      .from('hostels')
+      .select('billing_type, payment_window_days')
+      .eq('id', bookingData.hostel_id)
+      .single();
+
+    if (hostelInfo?.billing_type === 'monthly_cycle') {
+      // Get monthly rent from sharing option
+      const { data: sharingOption } = await supabase
+        .from('hostel_sharing_options')
+        .select('price_monthly')
+        .eq('id', bookingData.sharing_option_id)
+        .single();
+
+      const monthlyRent = Number(sharingOption?.price_monthly || 0);
+      const foodAmount = bookingData.food_opted ? Number(bookingData.food_amount || 0) : 0;
+      const totalMonthly = monthlyRent + foodAmount;
+
+      const startDate = new Date(bookingData.start_date);
+      const daysInMonth = getDaysInMonth(startDate);
+      const dayOfMonth = startDate.getDate();
+      const daysRemaining = daysInMonth - dayOfMonth + 1;
+      const proratedAmount = Math.round((totalMonthly * daysRemaining) / daysInMonth);
+
+      const firstOfMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+      const billingMonthStr = format(firstOfMonth, 'yyyy-MM-dd');
+
+      await supabase.from('hostel_dues').insert({
+        user_id: user.id,
+        hostel_id: bookingData.hostel_id,
+        room_id: bookingData.room_id,
+        bed_id: bookingData.bed_id,
+        booking_id: booking.id,
+        total_fee: proratedAmount,
+        advance_paid: 0,
+        due_amount: proratedAmount,
+        due_date: bookingData.start_date,
+        status: 'pending',
+        billing_month: billingMonthStr,
+        is_prorated: true,
+        auto_generated: false,
+        food_amount: bookingData.food_opted ? Math.round((foodAmount * daysRemaining) / daysInMonth) : 0,
       } as any);
     }
 

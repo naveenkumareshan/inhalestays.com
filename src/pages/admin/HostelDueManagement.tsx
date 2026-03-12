@@ -144,7 +144,7 @@ const HostelDueManagement: React.FC = () => {
     const remaining = Number(due.due_amount) - Number(due.paid_amount);
     if (due.status === 'paid' || remaining <= 0) return <Badge className="bg-emerald-500 text-white text-[10px]">Paid</Badge>;
     if (due.status === 'partially_paid') return <Badge className="bg-orange-500 text-white text-[10px]">Partial</Badge>;
-    if (due.due_date < today) return <Badge className="bg-red-500 text-white text-[10px]">Overdue</Badge>;
+    if (due.status === 'overdue' || due.due_date < today) return <Badge className="bg-red-500 text-white text-[10px]">Overdue</Badge>;
     return <Badge className="bg-amber-500 text-white text-[10px]">Pending</Badge>;
   };
 
@@ -293,6 +293,7 @@ const HostelDueManagement: React.FC = () => {
             <SelectContent>
               <SelectItem value="all" className="text-xs">All Status</SelectItem>
               <SelectItem value="pending" className="text-xs">Pending</SelectItem>
+              <SelectItem value="overdue" className="text-xs">Overdue</SelectItem>
               <SelectItem value="partially_paid" className="text-xs">Partially Paid</SelectItem>
               <SelectItem value="paid" className="text-xs">Paid</SelectItem>
             </SelectContent>
@@ -322,14 +323,15 @@ const HostelDueManagement: React.FC = () => {
                     <TableHead className="text-[10px]">Booking Date</TableHead>
                     <TableHead className="text-[10px]">Student</TableHead>
                     <TableHead className="text-[10px]">Hostel / Bed</TableHead>
-                    <TableHead className="text-[10px]">Booking</TableHead>
-                    <TableHead className="text-[10px] text-right">Total</TableHead>
-                    <TableHead className="text-[10px] text-right">Paid</TableHead>
-                    <TableHead className="text-[10px] text-right">Due</TableHead>
-                    <TableHead className="text-[10px]">Due Date</TableHead>
-                    <TableHead className="text-[10px]">Bed Valid</TableHead>
-                    <TableHead className="text-[10px]">Status</TableHead>
-                    <TableHead className="text-[10px]">Action</TableHead>
+                     <TableHead className="text-[10px]">Booking</TableHead>
+                     <TableHead className="text-[10px]">Billing Month</TableHead>
+                     <TableHead className="text-[10px] text-right">Total</TableHead>
+                     <TableHead className="text-[10px] text-right">Paid</TableHead>
+                     <TableHead className="text-[10px] text-right">Due</TableHead>
+                     <TableHead className="text-[10px]">Due Date</TableHead>
+                     <TableHead className="text-[10px]">Bed Valid</TableHead>
+                     <TableHead className="text-[10px]">Status</TableHead>
+                     <TableHead className="text-[10px]">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -351,10 +353,23 @@ const HostelDueManagement: React.FC = () => {
                           <div className="text-[11px]">{(due.hostels as any)?.name || ''}</div>
                           <div className="text-[10px] text-muted-foreground">Bed #{(due.hostel_beds as any)?.bed_number || ''}</div>
                         </TableCell>
-                        <TableCell className="py-2">
+                         <TableCell className="py-2">
                           <div className="text-[10px] text-muted-foreground">{(due.hostel_bookings as any)?.serial_number || '-'}</div>
-                        </TableCell>
-                        <TableCell className="py-2 text-right font-medium">₹{Number(due.total_fee).toLocaleString()}</TableCell>
+                         </TableCell>
+                         <TableCell className="py-2">
+                          {due.billing_month ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[11px]">{format(new Date(due.billing_month), 'MMM yyyy')}</span>
+                              <div className="flex gap-0.5">
+                                {due.auto_generated && <Badge variant="outline" className="text-[8px] h-4 px-1">Auto</Badge>}
+                                {due.is_prorated && <Badge variant="outline" className="text-[8px] h-4 px-1 border-amber-400 text-amber-600">Prorated</Badge>}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">-</span>
+                          )}
+                         </TableCell>
+                         <TableCell className="py-2 text-right font-medium">₹{Number(due.total_fee).toLocaleString()}</TableCell>
                         <TableCell className="py-2 text-right text-emerald-600">₹{(Number(due.advance_paid) + Number(due.paid_amount)).toLocaleString()}</TableCell>
                         <TableCell className="py-2 text-right text-red-600 font-medium">₹{Math.max(0, remaining).toLocaleString()}</TableCell>
                         <TableCell className="py-2">
