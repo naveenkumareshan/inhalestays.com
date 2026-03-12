@@ -129,6 +129,7 @@ const AdminBookings = () => {
           <span className="text-muted-foreground">Booked: </span>
           <span>{fmtDateTime(b.createdAt)}</span>
         </div>
+        {b.collected_by_name && <div><span className="text-muted-foreground">By: </span>{b.collected_by_name}</div>}
       </div>
       <div className="flex items-center justify-between pt-1 border-t">
         <div className="text-[11px]">
