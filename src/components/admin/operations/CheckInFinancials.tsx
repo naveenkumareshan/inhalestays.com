@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { HostelDuePaymentHistory } from '@/components/booking/HostelDuePaymentHistory';
+import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 
 type Module = 'reading_room' | 'hostel';
 
