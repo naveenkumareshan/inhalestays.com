@@ -1322,13 +1322,21 @@ const HostelBedMap: React.FC = () => {
                       key={bed.id}
                       onClick={() => handleBedClick(bed)}
                       className={cn(
-                        "relative border rounded cursor-pointer p-1.5 flex flex-col items-center justify-center text-center transition-all hover:shadow-md w-[76px] min-h-[64px] overflow-hidden",
+                        "relative border rounded cursor-pointer p-1.5 flex flex-col items-center justify-center text-center transition-all hover:shadow-md group w-[76px] min-h-[64px] overflow-hidden",
                         statusColors(bed.dateStatus)
                       )}
                     >
                       <span className="text-xs font-bold leading-none">B{bed.bed_number}</span>
+                      <span className="text-[9px] text-muted-foreground leading-tight truncate w-full">{bed.category || bed.roomCategory}</span>
                       <div className="flex items-center gap-0.5 mt-0.5">
                         <span className="text-[9px] font-medium">₹{bed.price}</span>
+                        <button
+                          className="h-3 w-3 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); setEditingBedId(bed.id); setEditPrice(String(bed.price)); }}
+                          title="Edit price"
+                        >
+                          <Edit className="h-2.5 w-2.5" />
+                        </button>
                       </div>
                       <div className="flex items-center gap-0.5 mt-0.5">
                         {statusIcon(bed.dateStatus)}
@@ -1340,6 +1348,18 @@ const HostelBedMap: React.FC = () => {
                       {bed.dateStatus === 'future_booked' && bed.allBookings?.[0]?.studentName && (
                         <div className="text-[7px] truncate w-full leading-none mt-0.5 font-medium opacity-60">{bed.allBookings[0].studentName}</div>
                       )}
+                      {/* Hover actions */}
+                      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 rounded">
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => openBlockDialog(bed, e)} title={bed.is_blocked ? 'Unblock' : 'Block'}>
+                          {bed.is_blocked ? <Unlock className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); setEditingBedId(bed.id); setEditPrice(String(bed.price)); }} title="Edit Price">
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); handleBedClick(bed); }} title="Details">
+                          <Info className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
