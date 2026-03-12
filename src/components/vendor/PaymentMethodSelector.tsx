@@ -47,6 +47,7 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
   const { user } = useAuth();
   const [modes, setModes] = useState<PaymentMode[]>([]);
   const [loading, setLoading] = useState(false);
+  const [viewImageUrl, setViewImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!partnerId) return;
