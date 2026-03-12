@@ -55,7 +55,7 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
     const fetchModes = async () => {
       const { data } = await supabase
         .from('partner_payment_modes')
-        .select('id, label, mode_type, assigned_employee_id')
+        .select('id, label, mode_type, assigned_employee_id, details_image_url')
         .eq('partner_user_id', partnerId)
         .eq('is_active', true)
         .neq('mode_type', 'online')
