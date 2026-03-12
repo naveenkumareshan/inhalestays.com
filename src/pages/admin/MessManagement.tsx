@@ -15,6 +15,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Trash2, Loader2 } from 'lucide-react';
+import { AdminTablePagination } from '@/components/admin/AdminTablePagination';
+import { Badge } from '@/components/ui/badge';
 
 const ITEMS_PER_PAGE = 9;
 const MEALS = ['breakfast', 'lunch', 'dinner'];
