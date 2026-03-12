@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useToast } from '@/hooks/use-toast';
 import { 
   User, Building, MapPin, CreditCard, FileText, Phone, Mail,
-  Calendar, CheckCircle, Clock, XCircle, AlertCircle, Upload, Trash2, FileIcon, Home, Plus
+  Calendar, CheckCircle, Clock, XCircle, AlertCircle, Upload, Trash2, FileIcon, Home
 } from 'lucide-react';
 import { vendorProfileService, VendorProfileData, VendorProfileUpdateData } from '@/api/vendorProfileService';
 import { supabase } from '@/integrations/supabase/client';
