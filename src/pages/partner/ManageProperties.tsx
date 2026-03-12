@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building, Hotel, Plus, Shirt, Loader2, UtensilsCrossed, Crown } from 'lucide-react';
+import { Building, Hotel, Plus, Shirt, Loader2, UtensilsCrossed, Crown, LayoutGrid } from 'lucide-react';
+import PlansComparisonDialog from '@/components/partner/PlansComparisonDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
@@ -26,6 +27,7 @@ const ManageProperties: React.FC = () => {
   const navigate = useNavigate();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [triggerNew, setTriggerNew] = useState(false);
+  const [showPlansDialog, setShowPlansDialog] = useState(false);
 
   // Check for active universal subscription
   const { data: partner } = useQuery({
@@ -84,9 +86,14 @@ const ManageProperties: React.FC = () => {
           <Building className="h-5 w-5 text-primary" />
           <h1 className="text-base font-semibold">Manage Properties</h1>
         </div>
-        <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => setShowAddDialog(true)}>
-          <Plus className="h-3 w-3" /> Add New Property
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => setShowPlansDialog(true)}>
+            <LayoutGrid className="h-3 w-3" /> View Plans
+          </Button>
+          <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => setShowAddDialog(true)}>
+            <Plus className="h-3 w-3" /> Add New Property
+          </Button>
+        </div>
       </div>
 
       {!universalSub && (
@@ -224,6 +231,8 @@ const ManageProperties: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <PlansComparisonDialog open={showPlansDialog} onOpenChange={setShowPlansDialog} />
     </div>
   );
 };
