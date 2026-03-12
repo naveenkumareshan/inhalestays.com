@@ -329,6 +329,46 @@ export default function MySubscriptions() {
     <div className="space-y-4">
       <h1 className="text-xl font-bold flex items-center gap-2"><Crown className="h-5 w-5" /> My Subscriptions</h1>
 
+      {/* Universal Package Banner */}
+      {!universalSub && (
+        <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-accent/10">
+          <CardContent className="p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Crown className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Universal Package</p>
+                <p className="text-xs text-muted-foreground">One plan for all your properties — Reading Rooms, Hostels & more</p>
+              </div>
+            </div>
+            <Button size="sm" className="text-xs gap-1 shrink-0" onClick={openUniversalSubscribe}>
+              <Crown className="h-3 w-3" /> Subscribe
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      {universalSub && (
+        <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-accent/10">
+          <CardContent className="p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Crown className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">
+                  {(universalSub as any).subscription_plans?.name || 'Universal'} Plan — All Properties
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Active until {new Date(universalSub.end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+            </div>
+            <Badge variant="default" className="text-[10px]">Active</Badge>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
