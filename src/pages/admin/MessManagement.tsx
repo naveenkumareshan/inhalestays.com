@@ -151,8 +151,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed }: Mes
     const q = searchQuery.toLowerCase();
     return m.name?.toLowerCase().includes(q) || m.serial_number?.toLowerCase().includes(q) || m.location?.toLowerCase().includes(q);
   });
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   if (showEditor) {
     return (
