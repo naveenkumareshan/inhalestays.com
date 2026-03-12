@@ -130,7 +130,7 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
                 {!cabin.isBookingActive ? "● Online Off" : "● Online On"}
               </span>
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${cabin.isPartnerVisible === false ? "bg-muted text-muted-foreground border border-border" : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
-                {cabin.isPartnerVisible === false ? "● Hidden" : "● Visible"}
+                {cabin.isPartnerVisible === false ? "● Emp Hidden" : "● Emp Visible"}
               </span>
             </div>
 
@@ -203,7 +203,7 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
                         {cabin.isPartnerVisible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>{cabin.isPartnerVisible === false ? 'Show to Partner' : 'Hide from Partner'}</TooltipContent>
+                    <TooltipContent>{cabin.isPartnerVisible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
                   </Tooltip>
                 )}
                 <Tooltip>

@@ -70,7 +70,7 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
               {!mess.is_booking_active ? "● Online Off" : "● Online On"}
             </span>
             <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${mess.is_partner_visible === false ? "bg-muted text-muted-foreground border border-border" : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
-              {mess.is_partner_visible === false ? "● Hidden" : "● Visible"}
+              {mess.is_partner_visible === false ? "● Emp Hidden" : "● Emp Visible"}
             </span>
           </div>
 
@@ -148,7 +148,7 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
                       {mess.is_partner_visible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>{mess.is_partner_visible === false ? 'Show to Partner' : 'Hide from Partner'}</TooltipContent>
+                  <TooltipContent>{mess.is_partner_visible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
                 </Tooltip>
               )}
             </div>

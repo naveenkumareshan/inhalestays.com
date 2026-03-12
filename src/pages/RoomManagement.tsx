@@ -356,7 +356,7 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
       
       toast({
         title: isVisible ? "Property Visible" : "Property Hidden",
-        description: `${roomToUpdate.name} is now ${isVisible ? 'visible' : 'hidden'} in partner views`
+        description: `${roomToUpdate.name} is now ${isVisible ? 'visible' : 'hidden'} from employees`
       });
       fetchCabins();
     } catch (error) {

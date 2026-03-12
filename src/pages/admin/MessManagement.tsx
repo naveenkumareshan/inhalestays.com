@@ -96,7 +96,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed }: Mes
   const handleTogglePartnerVisible = async (messId: string, isVisible: boolean) => {
     try {
       await supabase.from('mess_partners' as any).update({ is_partner_visible: isVisible }).eq('id', messId);
-      toast({ title: "Success", description: `Mess ${isVisible ? 'shown' : 'hidden'} in partner views` });
+      toast({ title: "Success", description: `Mess ${isVisible ? 'shown' : 'hidden'} from employees` });
       fetchMesses();
     } catch { toast({ title: "Error", description: "Failed to update visibility", variant: "destructive" }); }
   };

@@ -104,7 +104,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
   const handleTogglePartnerVisible = async (hostelId: string, isVisible: boolean) => {
     try {
       await hostelService.toggleHostelPartnerVisible(hostelId, isVisible);
-      toast({ title: "Success", description: `Hostel ${isVisible ? 'shown' : 'hidden'} in partner views` });
+      toast({ title: "Success", description: `Hostel ${isVisible ? 'shown' : 'hidden'} from employees` });
       fetchHostels();
     } catch (error) {
       toast({ title: "Error", description: "Failed to update visibility", variant: "destructive" });
