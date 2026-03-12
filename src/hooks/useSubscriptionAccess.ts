@@ -69,7 +69,7 @@ export function useSubscriptionAccess(propertyId?: string, propertyType?: 'hoste
 
       const { data, error } = await supabase
         .from('property_subscriptions')
-        .select('*, subscription_plans(*)')
+        .select('*, subscription_plans!property_subscriptions_plan_id_fkey(*)')
         .eq('partner_id', partnerId)
         .eq('property_type', 'universal')
         .eq('status', 'active')
