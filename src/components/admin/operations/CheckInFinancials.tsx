@@ -176,6 +176,10 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
             </div>
           )}
 
+          {method !== 'cash' && (
+            <PaymentProofUpload value={proofUrl} onChange={setProofUrl} />
+          )}
+
           <div>
             <Label className="text-xs">Notes (optional)</Label>
             <Textarea className="text-xs h-16" value={notes} onChange={e => setNotes(e.target.value)} />

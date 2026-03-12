@@ -966,6 +966,7 @@ export const vendorSeatsService = {
           collected_by_name: profile?.name || '',
           receipt_type: 'due_collection',
           notes: notes || '',
+          payment_proof_url: paymentProofUrl || null,
         } as any);
       } catch (e) {
         console.error('Receipt creation failed:', e);

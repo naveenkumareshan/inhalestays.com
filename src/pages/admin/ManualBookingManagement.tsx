@@ -486,6 +486,7 @@ useEffect(() => {
       receipt_no,
       paymentStatus,
       paymentMethod,
+      paymentProofUrl,
       notes,
       months,
       durationCount,

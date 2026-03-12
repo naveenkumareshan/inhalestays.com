@@ -684,6 +684,7 @@ const VendorSeats: React.FC = () => {
       collectedBy: user?.id,
       collectedByName: collectedByName,
       transactionId: transactionId,
+      paymentProofUrl: paymentProofUrl,
       isAdvanceBooking: isAdvanceBooking && !!advanceComputed,
       advancePaid: isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : undefined,
       dueDate: isAdvanceBooking && advanceComputed ? format(advanceComputed.proportionalEndDate, 'yyyy-MM-dd') : undefined,
