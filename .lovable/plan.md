@@ -1,71 +1,27 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Fix PGRST201 FK Ambiguity Across All Files
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Problem
+Four files still use `subscription_plans(...)` without specifying the foreign key, causing a 300 error (PGRST201) because `property_subscriptions` has two FKs to `subscription_plans` (`plan_id` and `previous_plan_id`).
 
-## Changes
+The network logs confirm the error is happening right now on the subscription plans page.
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+## Fix
+Add `!property_subscriptions_plan_id_fkey` to every ambiguous join:
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### 1. `src/hooks/useSubscriptionAccess.ts` (2 occurrences)
+- Line 38: `subscription_plans(*)` → `subscription_plans!property_subscriptions_plan_id_fkey(*)`
+- Line 72: `subscription_plans(*)` → `subscription_plans!property_subscriptions_plan_id_fkey(*)`
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### 2. `src/pages/admin/SubscriptionPlans.tsx` (1 occurrence)
+- Line 76: `subscription_plans(name)` → `subscription_plans!property_subscriptions_plan_id_fkey(name)`
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### 3. `src/components/admin/PropertySubscribeDialog.tsx` (1 occurrence)
+- Line 70: `subscription_plans(display_order)` → `subscription_plans!property_subscriptions_plan_id_fkey(display_order)`
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+### 4. `supabase/functions/subscription-create-order/index.ts` (1 occurrence)
+- Line 104: `subscription_plans(display_order)` → `subscription_plans!property_subscriptions_plan_id_fkey(display_order)`
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+All are single-line fixes replacing the join hint. No logic changes needed.
 
