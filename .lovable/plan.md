@@ -1,32 +1,71 @@
 
 
-# Add "Room/Flat View" Mode to Hostel Bed Map
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## What
-Add a third view mode alongside the existing Grid and Table views. This "Room View" groups beds by their room/flat, displaying a room header followed by inline bed cards — making it easy to see which beds belong to which flat.
-
-```text
-┌─────────────────────────────────────────────────┐
-│ Flat 101                                         │
-│ [B1 Avail] [B2 Booked/Name] [B3 Avail] [B4 ..]  │
-├─────────────────────────────────────────────────┤
-│ Flat 102                                         │
-│ [B1 Avail] [B2 Future/Name] [B3 Avail]           │
-└─────────────────────────────────────────────────┘
-```
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
 ## Changes
 
-### `src/pages/admin/HostelBedMap.tsx`
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-1. **Type**: Change `ViewMode` from `'grid' | 'table'` to `'grid' | 'table' | 'room'`
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-2. **View toggle buttons** (~line 1215-1222): Add a third button with `Building2` icon for the room view
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-3. **Room View rendering** (after grid view, before table view ~line 1289): Add a new `viewMode === 'room'` block that:
-   - Groups `filteredBeds` by `roomNumber` (preserving sort order)
-   - For each room group, renders a header row with the room name + bed count
-   - Below the header, renders bed cards in a horizontal flex-wrap layout
-   - Each bed card shows: bed number, status color, price, status icon, and student name (same as grid cards but slightly more compact)
-   - Clicking a bed card triggers the same `handleBedClick`
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
+
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
+
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

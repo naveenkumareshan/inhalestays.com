@@ -37,7 +37,7 @@ import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesD
 import { Textarea } from '@/components/ui/textarea';
 import { bookingEmailService } from '@/api/bookingEmailService';
 
-type ViewMode = 'grid' | 'table';
+type ViewMode = 'grid' | 'table' | 'room';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked';
 
 interface HostelBed {
@@ -1213,10 +1213,13 @@ const HostelBedMap: React.FC = () => {
         </div>
 
         <div className="flex items-center border rounded-md overflow-hidden ml-auto">
-          <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="sm" className="h-8 w-8 p-0 rounded-none" onClick={() => setViewMode('grid')}>
+          <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="sm" className="h-8 w-8 p-0 rounded-none" onClick={() => setViewMode('grid')} title="Grid View">
             <LayoutGrid className="h-3.5 w-3.5" />
           </Button>
-          <Button variant={viewMode === 'table' ? 'default' : 'ghost'} size="sm" className="h-8 w-8 p-0 rounded-none" onClick={() => setViewMode('table')}>
+          <Button variant={viewMode === 'room' ? 'default' : 'ghost'} size="sm" className="h-8 w-8 p-0 rounded-none" onClick={() => setViewMode('room')} title="Room / Flat View">
+            <Building2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant={viewMode === 'table' ? 'default' : 'ghost'} size="sm" className="h-8 w-8 p-0 rounded-none" onClick={() => setViewMode('table')} title="Table View">
             <List className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -1287,6 +1290,67 @@ const HostelBedMap: React.FC = () => {
           ))}
         </div>
       )}
+
+      {/* ──── Room / Flat View ──── */}
+      {viewMode === 'room' && (() => {
+        // Group filtered beds by room
+        const roomGroups: { roomNumber: string; roomCategory: string; hostelName: string; beds: HostelBed[] }[] = [];
+        const roomMap = new Map<string, number>();
+        filteredBeds.forEach(bed => {
+          const key = `${bed.hostelId}::${bed.room_id}`;
+          if (roomMap.has(key)) {
+            roomGroups[roomMap.get(key)!].beds.push(bed);
+          } else {
+            roomMap.set(key, roomGroups.length);
+            roomGroups.push({ roomNumber: bed.roomNumber, roomCategory: bed.roomCategory, hostelName: bed.hostelName, beds: [bed] });
+          }
+        });
+        return (
+          <div className="space-y-2">
+            {roomGroups.map((group, gi) => (
+              <div key={gi} className="border rounded-md overflow-hidden">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 border-b">
+                  <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-semibold">{group.roomNumber}</span>
+                  <Badge variant="outline" className="text-[9px] px-1 py-0">{group.roomCategory}</Badge>
+                  {selectedHostelId === 'all' && <span className="text-[9px] text-muted-foreground">{group.hostelName}</span>}
+                  <span className="text-[9px] text-muted-foreground ml-auto">{group.beds.length} beds</span>
+                </div>
+                <div className="flex flex-wrap gap-1 p-2">
+                  {group.beds.map(bed => (
+                    <div
+                      key={bed.id}
+                      onClick={() => handleBedClick(bed)}
+                      className={cn(
+                        "relative border rounded cursor-pointer p-1.5 flex flex-col items-center justify-center text-center transition-all hover:shadow-md min-w-[68px] min-h-[64px]",
+                        statusColors(bed.dateStatus)
+                      )}
+                    >
+                      <span className="text-xs font-bold leading-none">B{bed.bed_number}</span>
+                      <div className="flex items-center gap-0.5 mt-0.5">
+                        <span className="text-[9px] font-medium">₹{bed.price}</span>
+                      </div>
+                      <div className="flex items-center gap-0.5 mt-0.5">
+                        {statusIcon(bed.dateStatus)}
+                        <span className="text-[8px]">{statusLabel(bed.dateStatus)}</span>
+                      </div>
+                      {(bed.dateStatus === 'booked' || bed.dateStatus === 'expiring_soon') && bed.currentBooking?.studentName && (
+                        <div className="text-[7px] truncate w-full leading-none mt-0.5 font-medium opacity-80">{bed.currentBooking.studentName}</div>
+                      )}
+                      {bed.dateStatus === 'future_booked' && bed.allBookings?.[0]?.studentName && (
+                        <div className="text-[7px] truncate w-full leading-none mt-0.5 font-medium opacity-60">{bed.allBookings[0].studentName}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {roomGroups.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground text-sm">No beds match filters</div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ──── Table View ──── */}
       {viewMode === 'table' && (
