@@ -323,14 +323,15 @@ const HostelDueManagement: React.FC = () => {
                     <TableHead className="text-[10px]">Booking Date</TableHead>
                     <TableHead className="text-[10px]">Student</TableHead>
                     <TableHead className="text-[10px]">Hostel / Bed</TableHead>
-                    <TableHead className="text-[10px]">Booking</TableHead>
-                    <TableHead className="text-[10px] text-right">Total</TableHead>
-                    <TableHead className="text-[10px] text-right">Paid</TableHead>
-                    <TableHead className="text-[10px] text-right">Due</TableHead>
-                    <TableHead className="text-[10px]">Due Date</TableHead>
-                    <TableHead className="text-[10px]">Bed Valid</TableHead>
-                    <TableHead className="text-[10px]">Status</TableHead>
-                    <TableHead className="text-[10px]">Action</TableHead>
+                     <TableHead className="text-[10px]">Booking</TableHead>
+                     <TableHead className="text-[10px]">Billing Month</TableHead>
+                     <TableHead className="text-[10px] text-right">Total</TableHead>
+                     <TableHead className="text-[10px] text-right">Paid</TableHead>
+                     <TableHead className="text-[10px] text-right">Due</TableHead>
+                     <TableHead className="text-[10px]">Due Date</TableHead>
+                     <TableHead className="text-[10px]">Bed Valid</TableHead>
+                     <TableHead className="text-[10px]">Status</TableHead>
+                     <TableHead className="text-[10px]">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
