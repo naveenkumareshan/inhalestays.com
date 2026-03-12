@@ -1,76 +1,71 @@
 
 
-# Split Booking Toggle into "Online Booking" + "Partner Visibility" for All Properties
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Problem
-Currently there's a single `is_booking_active` toggle on property cards, which is confusing. Partners need two separate controls:
-1. **Student Online Booking** (on/off) — controls whether students can book online
-2. **Partner-side Visibility** (on/off) — controls whether the property appears in partner's seat map, bed map, and operational views
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-## Database Changes
-Add a new column `is_partner_visible` (boolean, default true) to three tables:
-- `cabins`
-- `hostels`
-- `mess_partners`
+## Changes
 
-This column controls whether the property appears in partner operational views (seat maps, bed maps). The existing `is_booking_active` column will be relabeled as "Online Booking" (student-side).
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-```sql
-ALTER TABLE public.cabins ADD COLUMN is_partner_visible boolean NOT NULL DEFAULT true;
-ALTER TABLE public.hostels ADD COLUMN is_partner_visible boolean NOT NULL DEFAULT true;
-ALTER TABLE public.mess_partners ADD COLUMN is_partner_visible boolean NOT NULL DEFAULT true;
-```
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-## UI Changes — Property Cards
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-### CabinItem, HostelItem, MessItem
-Replace the single "Booking On/Off" badge and button with two indicators and two toggle buttons:
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-**Badges (meta row):**
-- `● Online On` / `● Online Off` (green/red) — based on `is_booking_active`
-- `● Visible` / `● Hidden` (blue/gray) — based on `is_partner_visible`
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-**Buttons (actions row):**
-- "Online On/Off" button — toggles `is_booking_active` (student online booking)
-- "Show/Hide" button — toggles `is_partner_visible` (partner operational visibility)
-- Both available to admin and partner roles
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-### Logic: When deactivating a property (`is_active = false`), also set both `is_booking_active = false` AND `is_partner_visible = false`.
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-## Service Layer Changes
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-### `src/api/adminRoomsService.ts`
-- `toggleRoomActive`: When deactivating, also set `is_partner_visible: false`
-- Add `togglePartnerVisible(id, isVisible)` method
+**Reviews section**: Shown below the booking flow (not in a tab)
 
-### `src/api/hostelService.ts`
-- `toggleHostelActive`: When deactivating, also set `is_partner_visible: false`
-- Add `toggleHostelPartnerVisible(id, isVisible)` method
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
 
-### `src/pages/admin/MessManagement.tsx`
-- `handleToggleActive`: When deactivating, also set `is_partner_visible: false`
-- Add `handleTogglePartnerVisible` handler
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
 
-## Management Pages
+## File Summary
 
-### `src/pages/RoomManagement.tsx`
-- Map `is_partner_visible` to cabin data
-- Add `onTogglePartnerVisible` handler calling new service method
-- Pass to CabinItem
-
-### Hostel management (via `hostelService`)
-- Same pattern
-
-### `src/pages/admin/MessManagement.tsx`
-- Add toggle handler for `is_partner_visible`
-
-## Files Modified
-- **Migration**: Add `is_partner_visible` column to 3 tables
-- `src/components/admin/CabinItem.tsx` — dual badges + dual toggle buttons
-- `src/components/admin/HostelItem.tsx` — dual badges + dual toggle buttons
-- `src/components/admin/MessItem.tsx` — dual badges + dual toggle buttons
-- `src/api/adminRoomsService.ts` — add `togglePartnerVisible`, update `toggleRoomActive`
-- `src/api/hostelService.ts` — add `toggleHostelPartnerVisible`, update `toggleHostelActive`
-- `src/pages/RoomManagement.tsx` — map new field, add handler, pass prop
-- `src/pages/admin/MessManagement.tsx` — add handler, pass prop
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

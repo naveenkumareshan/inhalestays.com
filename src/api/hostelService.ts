@@ -277,7 +277,10 @@ export const hostelService = {
 
   toggleHostelActive: async (hostelId: string, isActive: boolean) => {
     const updateData: any = { is_active: isActive };
-    if (!isActive) updateData.is_booking_active = false;
+    if (!isActive) {
+      updateData.is_booking_active = false;
+      updateData.is_partner_visible = false;
+    }
     const { data, error } = await supabase
       .from('hostels')
       .update(updateData)
@@ -292,6 +295,17 @@ export const hostelService = {
     const { data, error } = await supabase
       .from('hostels')
       .update({ is_booking_active: isBookingActive })
+      .eq('id', hostelId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  toggleHostelPartnerVisible: async (hostelId: string, isVisible: boolean) => {
+    const { data, error } = await supabase
+      .from('hostels')
+      .update({ is_partner_visible: isVisible })
       .eq('id', hostelId)
       .select()
       .single();

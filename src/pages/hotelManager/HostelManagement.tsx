@@ -98,6 +98,16 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
     }
   };
 
+  const handleTogglePartnerVisible = async (hostelId: string, isVisible: boolean) => {
+    try {
+      await hostelService.toggleHostelPartnerVisible(hostelId, isVisible);
+      toast({ title: "Success", description: `Hostel ${isVisible ? 'shown' : 'hidden'} in partner views` });
+      fetchHostels();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update visibility", variant: "destructive" });
+    }
+  };
+
   const handleManageBeds = (hostelId: string) => {
     const hostel = hostels.find(h => h.id === hostelId);
     navigate(`/admin/hostels/${hostel?.serial_number || hostelId}/rooms`);
@@ -199,6 +209,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
                   onManagePackages={handleManagePackages}
                   onToggleActive={handleToggleActive}
                   onToggleBooking={handleToggleBooking}
+                  onTogglePartnerVisible={handleTogglePartnerVisible}
                 />
               ))}
             </div>

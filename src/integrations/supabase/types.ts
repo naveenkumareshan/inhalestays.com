@@ -462,6 +462,7 @@ export type Database = {
           is_active: boolean | null
           is_approved: boolean
           is_booking_active: boolean
+          is_partner_visible: boolean
           layout_image: string | null
           locker_available: boolean
           locker_mandatory: boolean
@@ -512,6 +513,7 @@ export type Database = {
           is_active?: boolean | null
           is_approved?: boolean
           is_booking_active?: boolean
+          is_partner_visible?: boolean
           layout_image?: string | null
           locker_available?: boolean
           locker_mandatory?: boolean
@@ -562,6 +564,7 @@ export type Database = {
           is_active?: boolean | null
           is_approved?: boolean
           is_booking_active?: boolean
+          is_partner_visible?: boolean
           layout_image?: string | null
           locker_available?: boolean
           locker_mandatory?: boolean
@@ -1810,6 +1813,7 @@ export type Database = {
           is_active: boolean
           is_approved: boolean
           is_booking_active: boolean
+          is_partner_visible: boolean
           locality: string | null
           location: string | null
           logo_image: string | null
@@ -1860,6 +1864,7 @@ export type Database = {
           is_active?: boolean
           is_approved?: boolean
           is_booking_active?: boolean
+          is_partner_visible?: boolean
           locality?: string | null
           location?: string | null
           logo_image?: string | null
@@ -1910,6 +1915,7 @@ export type Database = {
           is_active?: boolean
           is_approved?: boolean
           is_booking_active?: boolean
+          is_partner_visible?: boolean
           locality?: string | null
           location?: string | null
           logo_image?: string | null
@@ -2488,6 +2494,7 @@ export type Database = {
           is_active: boolean
           is_approved: boolean
           is_booking_active: boolean
+          is_partner_visible: boolean
           location: string
           logo_image: string | null
           name: string
@@ -2512,6 +2519,7 @@ export type Database = {
           is_active?: boolean
           is_approved?: boolean
           is_booking_active?: boolean
+          is_partner_visible?: boolean
           location?: string
           logo_image?: string | null
           name: string
@@ -2536,6 +2544,7 @@ export type Database = {
           is_active?: boolean
           is_approved?: boolean
           is_booking_active?: boolean
+          is_partner_visible?: boolean
           location?: string
           logo_image?: string | null
           name?: string

@@ -123,6 +123,7 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
           images: cabin.images || [],
           isActive: cabin.is_active !== false,
           isBookingActive: cabin.is_booking_active !== false,
+          isPartnerVisible: cabin.is_partner_visible !== false,
         }));
         
         setCabins(processedCabins);
@@ -343,6 +344,29 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
     }
   };
 
+  const onTogglePartnerVisible = async (roomId: string, isVisible: boolean) => {
+    try {
+      const roomToUpdate = cabins.find(room => room._id === roomId);
+      if (!roomToUpdate || !roomToUpdate._id) return;
+      
+      const response = await adminRoomsService.togglePartnerVisible(roomToUpdate._id, isVisible);
+      if (!response.success) throw new Error(response.message);
+      
+      toast({
+        title: isVisible ? "Property Visible" : "Property Hidden",
+        description: `${roomToUpdate.name} is now ${isVisible ? 'visible' : 'hidden'} in partner views`
+      });
+      fetchCabins();
+    } catch (error) {
+      console.error('Error toggling partner visibility:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update visibility",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Filter cabins based on search query (client-side for current page)
   const filteredCabins = cabins.filter(cabin => 
     cabin.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -460,6 +484,7 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
                       cabin={cabin}
                       onToggleActive={handleToggleActive}
                       onToggleBooking={onToggleBooking}
+                      onTogglePartnerVisible={onTogglePartnerVisible}
                       onEdit={() => handleEditCabin(cabin)}
                       onDelete={() => handleDeleteCabin(cabin._id)}
                       onManageSeats={() => handleManageSeats(cabin._id)}

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Edit, FileMinus, FilePlus, Trash2, Bed, Package, MessageCircle, CreditCard } from 'lucide-react';
+import { Edit, FileMinus, FilePlus, Bed, Package, MessageCircle, CreditCard, Eye, EyeOff, Globe, GlobeLock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShareButton } from '@/components/ShareButton';
 import { generateHostelShareText } from '@/utils/shareUtils';
@@ -21,10 +21,11 @@ interface HostelItemProps {
   onManagePackages: (hostel: any) => void;
   onToggleActive?: (hostelId: string, isActive: boolean) => void;
   onToggleBooking?: (hostelId: string, isBookingActive: boolean) => void;
+  onTogglePartnerVisible?: (hostelId: string, isVisible: boolean) => void;
   partnerId?: string;
 }
 
-export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking, partnerId }: HostelItemProps) {
+export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, partnerId }: HostelItemProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
@@ -112,7 +113,10 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
                 </span>
               )}
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${!hostel.is_booking_active ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
-                {!hostel.is_booking_active ? "● Booking Off" : "● Booking On"}
+                {!hostel.is_booking_active ? "● Online Off" : "● Online On"}
+              </span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${hostel.is_partner_visible === false ? "bg-muted text-muted-foreground border border-border" : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
+                {hostel.is_partner_visible === false ? "● Hidden" : "● Visible"}
               </span>
             </div>
 
@@ -189,8 +193,21 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
                   disabled={!hostel.is_active}
                   className={`h-7 px-2 text-xs ${!hostel.is_booking_active ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
                   onClick={() => onToggleBooking(hostel.id, !hostel.is_booking_active)}
+                  title="Student online booking"
                 >
-                  {!hostel.is_booking_active ? "▶ Enable" : "⏸ Pause"}
+                  {!hostel.is_booking_active ? <><Globe className="h-3 w-3 mr-1" />Online On</> : <><GlobeLock className="h-3 w-3 mr-1" />Online Off</>}
+                </Button>
+              )}
+              {onTogglePartnerVisible && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!hostel.is_active}
+                  className={`h-7 px-2 text-xs ${hostel.is_partner_visible === false ? "text-blue-600 border-blue-200 hover:bg-blue-50" : "text-muted-foreground border-border hover:bg-muted"}`}
+                  onClick={() => onTogglePartnerVisible(hostel.id, !(hostel.is_partner_visible !== false))}
+                  title="Partner-side visibility"
+                >
+                  {hostel.is_partner_visible === false ? <><Eye className="h-3 w-3 mr-1" />Show</> : <><EyeOff className="h-3 w-3 mr-1" />Hide</>}
                 </Button>
               )}
               <Button
