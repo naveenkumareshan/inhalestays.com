@@ -73,6 +73,20 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
       const res = await vendorSeatsService.collectDuePayment(due.id, amt, method, txnId, notes, proofUrl);
       if (res.success) {
         toast({ title: 'Payment collected successfully' });
+
+        // Fire-and-forget due collection receipt email
+        if (due.profiles?.email) {
+          bookingEmailService.sendDueCollectionReceipt({
+            email: due.profiles.email,
+            studentName: due.profiles.name || 'Student',
+            propertyName: 'Reading Room',
+            amount: amt,
+            paymentMethod: method,
+            transactionId: txnId || undefined,
+            collectedByName: user?.name || user?.email || 'Admin',
+          }).catch(err => console.error('Due receipt email failed:', err));
+        }
+
         onOpenChange(false);
         onSuccess();
       } else {
