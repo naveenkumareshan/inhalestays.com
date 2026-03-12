@@ -1931,7 +1931,7 @@ const HostelBedMap: React.FC = () => {
                           <ArrowLeft className="h-3 w-3 mr-1" /> Back
                         </Button>
                         <Button className="flex-1 h-9 text-xs"
-                          disabled={creatingBooking || ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim())}
+                          disabled={creatingBooking || (paymentMethod !== 'cash' && !transactionId.trim())}
                           onClick={handleCreateBooking}>
                           {creatingBooking ? 'Creating...' : `Confirm · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : (computedTotal + (collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0))}`}
                         </Button>

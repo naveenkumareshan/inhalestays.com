@@ -457,9 +457,9 @@ const HostelDueManagement: React.FC = () => {
                 />
               </div>
 
-              {(collectMethod === 'upi' || collectMethod === 'bank_transfer' || collectMethod.startsWith('custom_')) && (
+              {collectMethod !== 'cash' && (
                 <div>
-                  <Label className="text-xs">Transaction ID</Label>
+                  <Label className="text-xs">Transaction ID *</Label>
                   <Input className="h-8 text-xs" value={collectTxnId} onChange={e => setCollectTxnId(e.target.value)} />
                 </div>
               )}

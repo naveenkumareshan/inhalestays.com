@@ -57,6 +57,10 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
     if (!due || !amount) return;
     const amt = parseFloat(amount);
     if (amt <= 0) { toast({ title: 'Enter a valid amount', variant: 'destructive' }); return; }
+    if (method !== 'cash' && !txnId.trim()) {
+      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+      return;
+    }
 
     // Duplicate transaction ID check for non-cash methods
     if (method !== 'cash' && txnId && txnId.trim()) {

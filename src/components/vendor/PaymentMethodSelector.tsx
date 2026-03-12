@@ -182,9 +182,9 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
   );
 };
 
-/** Check if a payment method value requires a transaction ID */
+/** Check if a payment method value requires a transaction ID — all non-cash methods */
 export const requiresTransactionId = (method: string) =>
-  method === 'upi' || method === 'bank_transfer' || method.startsWith('custom_');
+  !!method && method !== 'cash';
 
 /** Check if a payment method is not cash (for payment proof display) */
 export const isNonCashMethod = (method: string) => method !== 'cash';

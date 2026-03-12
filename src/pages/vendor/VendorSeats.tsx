@@ -2022,9 +2022,9 @@ const VendorSeats: React.FC = () => {
                                       </div>
                                     </RadioGroup>
                                   </div>
-                                  {(dueCollectMethod === 'upi' || dueCollectMethod === 'bank_transfer') && (
+                                  {dueCollectMethod !== 'cash' && (
                                     <div>
-                                      <Label className="text-[10px]">Transaction ID</Label>
+                                      <Label className="text-[10px]">Transaction ID *</Label>
                                       <Input className="h-7 text-xs" value={dueCollectTxnId} onChange={e => setDueCollectTxnId(e.target.value)} />
                                     </div>
                                   )}

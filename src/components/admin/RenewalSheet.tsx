@@ -445,7 +445,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
                   </Button>
                   <Button
                     className="flex-1 h-9 text-xs"
-                    disabled={creating || ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim())}
+                    disabled={creating || (paymentMethod !== 'cash' && !transactionId.trim())}
                     onClick={handleCreateBooking}
                   >
                     {creating ? 'Creating...' : `Confirm · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}`}
