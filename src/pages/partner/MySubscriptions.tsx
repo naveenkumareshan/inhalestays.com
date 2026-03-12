@@ -56,6 +56,7 @@ export default function MySubscriptions() {
 
   // View details dialog
   const [detailSub, setDetailSub] = useState<any>(null);
+  const [showPlansDialog, setShowPlansDialog] = useState(false);
 
   // Filters
   const [typeFilter, setTypeFilter] = useState('all');

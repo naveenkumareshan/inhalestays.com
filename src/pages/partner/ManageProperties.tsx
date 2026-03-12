@@ -231,6 +231,8 @@ const ManageProperties: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <PlansComparisonDialog open={showPlansDialog} onOpenChange={setShowPlansDialog} />
     </div>
   );
 };
