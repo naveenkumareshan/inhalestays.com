@@ -207,7 +207,10 @@ export default function AdminHostelBookings() {
                             <TableCell className="py-1 px-2 text-[10px] whitespace-nowrap">
                               Room {b.hostel_rooms?.room_number || '-'} / Bed #{b.hostel_beds?.bed_number || '-'}
                             </TableCell>
-                            <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">{fmtDateTime(b.created_at)}</TableCell>
+                            <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">
+                              {fmtDateTime(b.created_at)}
+                              {b.collected_by_name && <div className="text-[10px] text-muted-foreground">By: {b.collected_by_name}</div>}
+                            </TableCell>
                             <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">
                               <div>{fmtDate(b.start_date)} – {fmtDate(b.end_date)}</div>
                               <div className="text-[10px] text-muted-foreground capitalize">{durationLabel(b)}</div>

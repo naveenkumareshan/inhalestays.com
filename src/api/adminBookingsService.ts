@@ -147,8 +147,9 @@ export const adminBookingsService = {
           seatCategory: seat?.category || '',
           slotName: slot?.name || (b.slot_id ? '' : 'Full Day'),
           bookingDuration: b.booking_duration || '',
-          totalPaid,
+        totalPaid,
           duePending: Math.max(duePending, 0),
+          collected_by_name: b.collected_by_name || '',
         };
       });
 

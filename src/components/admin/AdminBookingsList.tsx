@@ -489,6 +489,7 @@ const AdminBookingsList = () => {
                     
                      <TableCell>
                           {formatDate(new Date(booking.createdAt), "dd MMM yyyy h:mm:ss a")}
+                          {(booking as any).collected_by_name && <div className="text-[10px] text-muted-foreground">By: {(booking as any).collected_by_name}</div>}
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
