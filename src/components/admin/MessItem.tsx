@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Edit, FileMinus, FilePlus, Trash2, Package } from 'lucide-react';
+import { Edit, FileMinus, FilePlus, Package, Eye, EyeOff, Globe, GlobeLock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShareButton } from '@/components/ShareButton';
 import { getImageUrl } from '@/lib/utils';
@@ -13,6 +13,7 @@ interface MessItemProps {
   onManagePackages: (mess: any) => void;
   onToggleActive?: (messId: string, isActive: boolean) => void;
   onToggleBooking?: (messId: string, isBookingActive: boolean) => void;
+  onTogglePartnerVisible?: (messId: string, isVisible: boolean) => void;
 }
 
 const FOOD_BADGES: Record<string, { label: string; cls: string }> = {
@@ -21,7 +22,7 @@ const FOOD_BADGES: Record<string, { label: string; cls: string }> = {
   both: { label: '🟡 Both', cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
 };
 
-export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleActive, onToggleBooking }: MessItemProps) {
+export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible }: MessItemProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const badge = FOOD_BADGES[mess.food_type] || FOOD_BADGES.both;
@@ -65,7 +66,10 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
               </span>
             )}
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${!mess.is_booking_active ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
-              {!mess.is_booking_active ? "● Booking Off" : "● Booking On"}
+              {!mess.is_booking_active ? "● Online Off" : "● Online On"}
+            </span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${mess.is_partner_visible === false ? "bg-muted text-muted-foreground border border-border" : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
+              {mess.is_partner_visible === false ? "● Hidden" : "● Visible"}
             </span>
           </div>
 
@@ -110,8 +114,21 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
                 disabled={!mess.is_active}
                 className={`h-7 px-2 text-xs ${!mess.is_booking_active ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
                 onClick={() => onToggleBooking(mess.id, !mess.is_booking_active)}
+                title="Student online booking"
               >
-                {!mess.is_booking_active ? "▶ Enable" : "⏸ Pause"}
+                {!mess.is_booking_active ? <><Globe className="h-3 w-3 mr-1" />Online On</> : <><GlobeLock className="h-3 w-3 mr-1" />Online Off</>}
+              </Button>
+            )}
+            {onTogglePartnerVisible && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!mess.is_active}
+                className={`h-7 px-2 text-xs ${mess.is_partner_visible === false ? "text-blue-600 border-blue-200 hover:bg-blue-50" : "text-muted-foreground border-border hover:bg-muted"}`}
+                onClick={() => onTogglePartnerVisible(mess.id, !(mess.is_partner_visible !== false))}
+                title="Partner-side visibility"
+              >
+                {mess.is_partner_visible === false ? <><Eye className="h-3 w-3 mr-1" />Show</> : <><EyeOff className="h-3 w-3 mr-1" />Hide</>}
               </Button>
             )}
           </div>
