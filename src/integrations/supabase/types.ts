@@ -2817,6 +2817,7 @@ export type Database = {
         Row: {
           assigned_employee_id: string | null
           created_at: string
+          details_image_url: string | null
           display_order: number
           id: string
           is_active: boolean
@@ -2828,6 +2829,7 @@ export type Database = {
         Insert: {
           assigned_employee_id?: string | null
           created_at?: string
+          details_image_url?: string | null
           display_order?: number
           id?: string
           is_active?: boolean
@@ -2839,6 +2841,7 @@ export type Database = {
         Update: {
           assigned_employee_id?: string | null
           created_at?: string
+          details_image_url?: string | null
           display_order?: number
           id?: string
           is_active?: boolean
