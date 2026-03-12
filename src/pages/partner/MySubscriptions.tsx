@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
-import { Crown, Building, Hotel, Check, ArrowRight, CreditCard, Calendar, Loader2, Tag, X, MoreVertical, Search, RefreshCw, FileText, TrendingUp, XCircle, Eye, Download, IndianRupee } from 'lucide-react';
+import { Crown, Building, Hotel, Check, ArrowRight, CreditCard, Calendar, Loader2, Tag, X, MoreVertical, Search, RefreshCw, FileText, TrendingUp, XCircle, Eye, Download, IndianRupee, LayoutGrid } from 'lucide-react';
+import PlansComparisonDialog from '@/components/partner/PlansComparisonDialog';
 import { couponService } from '@/api/couponService';
 import { formatCurrency } from '@/utils/currency';
 
