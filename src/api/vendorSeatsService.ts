@@ -122,6 +122,7 @@ export interface PartnerBookingData {
   advancePaid?: number;
   dueDate?: string;
   slotId?: string;
+  paymentProofUrl?: string;
 }
 
 export interface BlockHistoryEntry {
