@@ -220,6 +220,7 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
           bookingId: t.bookingId,
           customerName: t.userId?.name || 'N/A',
           email: t.userId?.email || '',
+          phone: t.userId?.phone || '',
           property: t.cabinId?.name || 'N/A',
           seat: t.seatId?.number || '',
           amount: t.totalPrice || 0,

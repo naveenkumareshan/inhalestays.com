@@ -143,10 +143,10 @@ export function ExpiringBookings({ partnerUserId }: { partnerUserId?: string }) 
                             {booking.userId.email}
                           </div>
                         )}
-                        {booking.userId?.phoneNumber && (
+                        {booking.userId?.phone && (
                           <div className="text-xs text-muted-foreground flex items-center mt-1">
                             <Phone className="h-3 w-3 mr-1" />
-                            {booking.userId.phoneNumber}
+                            {booking.userId.phone}
                           </div>
                         )}
                       </TableCell>

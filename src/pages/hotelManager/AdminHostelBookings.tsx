@@ -200,8 +200,9 @@ export default function AdminHostelBookings() {
                             <TableCell className="py-1 px-2 text-[11px] text-muted-foreground">{getSerialNumber(idx, currentPage, pageSize)}</TableCell>
                             <TableCell className="py-1 px-2 font-mono text-[10px]">{b.serial_number || '-'}</TableCell>
                             <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">
-                              <span className="font-medium">{b.profiles?.name || 'N/A'}</span>
-                              {b.profiles?.email && <span className="text-muted-foreground ml-1 max-w-[140px] truncate inline-block align-bottom">({b.profiles.email})</span>}
+                              <div className="font-medium">{b.profiles?.name || 'N/A'}</div>
+                              {b.profiles?.email && <div className="text-[10px] text-muted-foreground truncate max-w-[160px]">{b.profiles.email}</div>}
+                              {b.profiles?.phone && <div className="text-[10px] text-muted-foreground">{b.profiles.phone}</div>}
                             </TableCell>
                             <TableCell className="py-1 px-2 text-[11px]">{b.hostels?.name || '-'}</TableCell>
                             <TableCell className="py-1 px-2 text-[10px] whitespace-nowrap">
