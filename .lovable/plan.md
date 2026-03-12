@@ -1,32 +1,71 @@
 
 
-# Fix Timezone Bug — All Times Showing UTC Instead of IST
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Problem
-All booking timestamps across the app use `timeZone: 'UTC'` when formatting times, which causes a **5 hour 30 minute offset**. A booking made at 7:00 PM IST displays as 1:30 PM. This affects every page where "Booked On" or timestamp columns appear.
-
-**Root cause**: `fmtDateTime` and `fmtDate` helpers explicitly pass `timeZone: 'UTC'` to `toLocaleDateString` / `toLocaleTimeString`. The `date-fns` `format()` calls are fine (they use browser local time), but the custom `fmtDate`/`fmtDateTime` functions force UTC.
-
-**Note**: Using `timeZone: 'UTC'` is correct for **date-only** fields like `start_date` / `end_date` (which are stored as dates without time, and UTC prevents date shifting). But for **timestamp** fields like `created_at`, it must use IST.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
 ## Changes
 
-### 1. `src/pages/AdminBookings.tsx` — Reading room bookings list
-- `fmtDateTime`: Change `timeZone: 'UTC'` to `timeZone: 'Asia/Kolkata'` (used for `created_at` / "Booked On")
-- `fmtDate`: Keep `timeZone: 'UTC'` (used for `start_date` / `end_date` date-only fields)
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-### 2. `src/pages/hotelManager/AdminHostelBookings.tsx` — Hostel bookings list
-- `fmtDateTime`: Change `timeZone: 'UTC'` to `timeZone: 'Asia/Kolkata'` (used for `created_at`)
-- `fmtDate`: Keep `timeZone: 'UTC'` (date-only fields)
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-### 3. `src/pages/admin/BookingActivityLog.tsx` — Activity log
-- `fmtDateTime`: Already uses no explicit timezone (browser default) — no change needed, already correct.
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-### 4. `src/utils/currency.ts` — `formatDate` helper
-- Keep `timeZone: 'UTC'` — this is only used for date-only booking period display, which is correct.
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-### 5. No changes needed for `date-fns` `format()` calls
-- These already use the browser's local timezone, which will be IST for Indian users. All 14 files using `format(new Date(...), ...)` are already correct.
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-**Summary**: Two files need a one-line change each — switching `timeZone: 'UTC'` to `timeZone: 'Asia/Kolkata'` only in the `fmtDateTime` function (timestamp display), while leaving `fmtDate` (date-only display) untouched.
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
+
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 
