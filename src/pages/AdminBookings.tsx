@@ -211,7 +211,10 @@ const AdminBookings = () => {
                           {b.roomNumber || (b.cabinId?.name && b.seatId?.number ? `${b.cabinId.name} / S${b.seatId.number}` : "-")}
                         </TableCell>
                         <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">{b.slotName || "-"}</TableCell>
-                        <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">{fmtDateTime(b.createdAt)}</TableCell>
+                        <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">
+                          {fmtDateTime(b.createdAt)}
+                          {b.collected_by_name && <div className="text-[10px] text-muted-foreground">By: {b.collected_by_name}</div>}
+                        </TableCell>
                         <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">
                           <div>{fmtRange(b.startDate, b.endDate)}</div>
                           {b.bookingDuration && <div className="text-[10px] text-muted-foreground capitalize">{b.durationCount ? `${b.durationCount} ` : ''}{b.bookingDuration}</div>}
