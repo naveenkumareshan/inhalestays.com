@@ -293,6 +293,7 @@ const HostelDueManagement: React.FC = () => {
             <SelectContent>
               <SelectItem value="all" className="text-xs">All Status</SelectItem>
               <SelectItem value="pending" className="text-xs">Pending</SelectItem>
+              <SelectItem value="overdue" className="text-xs">Overdue</SelectItem>
               <SelectItem value="partially_paid" className="text-xs">Partially Paid</SelectItem>
               <SelectItem value="paid" className="text-xs">Paid</SelectItem>
             </SelectContent>
