@@ -949,6 +949,7 @@ const HostelBedMap: React.FC = () => {
       transaction_id: transactionId,
       collected_by: user?.id,
       collected_by_name: collectedByName,
+      payment_proof_url: paymentProofUrl || null,
     }).select('id, serial_number').single();
 
     if (!error && newBooking) {
