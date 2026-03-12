@@ -35,6 +35,7 @@ import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesDialog';
 import { Textarea } from '@/components/ui/textarea';
+import { bookingEmailService } from '@/api/bookingEmailService';
 
 type ViewMode = 'grid' | 'table';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked';
@@ -1028,6 +1029,31 @@ const HostelBedMap: React.FC = () => {
       setBookingSuccess(true);
       setBookingStep('details');
       toast({ title: 'Booking created successfully' });
+
+      // Fire-and-forget receipt email
+      if (selectedStudent?.email) {
+        bookingEmailService.sendHostelReceipt({
+          email: selectedStudent.email,
+          studentName: selectedStudent.name,
+          serialNumber: newBooking.serial_number || 'N/A',
+          hostelName: selectedBed.hostelName,
+          bedNumber: selectedBed.bed_number,
+          roomNumber: selectedBed.roomNumber,
+          startDate: format(bookingStartDate, 'yyyy-MM-dd'),
+          endDate: format(computedEndDate, 'yyyy-MM-dd'),
+          duration: `${selectedDuration.count} ${selectedDuration.type}`,
+          bedAmount: parseFloat(bookingPrice) || 0,
+          discountAmount: parseFloat(discountAmount) || 0,
+          securityDeposit: secDepAmt,
+          totalAmount: total,
+          paymentMethod,
+          transactionId,
+          collectedByName,
+          advancePaid: remaining > 0 ? advanceAmt : undefined,
+          remainingDue: remaining > 0 ? remaining : undefined,
+        }).catch(err => console.error('Hostel receipt email failed:', err));
+      }
+
       fetchBeds();
     } else {
       toast({ title: 'Error', description: error?.message || 'Failed to create booking', variant: 'destructive' });

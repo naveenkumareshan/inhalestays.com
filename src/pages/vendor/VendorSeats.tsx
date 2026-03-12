@@ -42,6 +42,7 @@ import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesDialog';
+import { bookingEmailService } from '@/api/bookingEmailService';
 
 type ViewMode = 'grid' | 'table';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked';
@@ -722,6 +723,29 @@ const VendorSeats: React.FC = () => {
       setBookingSuccess(true);
       setBookingStep('details');
       toast({ title: paymentMethod === 'send_link' ? 'Payment link sent' : 'Booking created successfully' });
+
+      // Fire-and-forget receipt email
+      if (selectedStudent.email) {
+        bookingEmailService.sendReadingRoomReceipt({
+          email: selectedStudent.email,
+          studentName: selectedStudent.name,
+          serialNumber: res.serialNumber || 'N/A',
+          cabinName: cabins.find(c => c._id === selectedSeat.cabinId)?.name || '',
+          seatNumber: selectedSeat.number,
+          startDate: format(bookingStartDate, 'yyyy-MM-dd'),
+          endDate: format(computedEndDate, 'yyyy-MM-dd'),
+          duration: selectedDuration.type === 'monthly' ? `${selectedDuration.count} Month(s)` : selectedDuration.type === 'weekly' ? `${selectedDuration.count} Week(s)` : `${selectedDuration.count} Day(s)`,
+          seatAmount: parseFloat(bookingPrice) || 0,
+          discountAmount: parseFloat(discountAmount) || 0,
+          lockerPrice: lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0,
+          totalAmount: computedTotal,
+          paymentMethod,
+          transactionId,
+          collectedByName,
+          advancePaid: isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : undefined,
+          remainingDue: isAdvanceBooking && advanceComputed ? (computedTotal - advanceComputed.advanceAmount) : undefined,
+        }).catch(err => console.error('Receipt email failed:', err));
+      }
       await fetchSeats();
       // Close sheet so the refreshed grid is visible
       setSheetOpen(false);

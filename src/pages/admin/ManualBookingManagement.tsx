@@ -500,18 +500,23 @@ useEffect(() => {
       if (response?.success) {
         // Fire-and-forget email notification
         const studentName = selectedStudentName.split(' (')[0];
-        bookingEmailService.triggerBookingConfirmation({
-          userEmail: selectedStudentEmail,
-          userName: studentName,
-          bookingId: response.booking_id || response.bookingId || '',
-          bookingType: 'cabin',
-          totalPrice: finalPrice,
+        bookingEmailService.sendReadingRoomReceipt({
+          email: selectedStudentEmail,
+          studentName: studentName,
+          serialNumber: response.serial_number || response.serialNumber || '',
+          cabinName: selectedCabin?.name || '',
+          seatNumber: selectedSeat?.number || 0,
           startDate,
           endDate,
-          location: selectedCabin?.name || '',
-          cabinName: selectedCabin?.name || '',
-          seatNumber: selectedSeat?.number?.toString() || '',
-        }).catch(err => console.error('Booking confirmation email failed:', err));
+          duration: `${durationCount} ${bookingDuration}`,
+          seatAmount: finalPrice,
+          discountAmount: 0,
+          lockerPrice: 0,
+          totalAmount: finalPrice,
+          paymentMethod: paymentMethod,
+          transactionId: transaction_id || '',
+          collectedByName: 'Admin',
+        }).catch(err => console.error('Booking receipt email failed:', err));
 
         toast({
           title: 'Booking Created',

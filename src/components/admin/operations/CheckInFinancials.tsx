@@ -19,6 +19,7 @@ import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { HostelDuePaymentHistory } from '@/components/booking/HostelDuePaymentHistory';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
+import { bookingEmailService } from '@/api/bookingEmailService';
 
 type Module = 'reading_room' | 'hostel';
 
@@ -72,6 +73,20 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
       const res = await vendorSeatsService.collectDuePayment(due.id, amt, method, txnId, notes, proofUrl);
       if (res.success) {
         toast({ title: 'Payment collected successfully' });
+
+        // Fire-and-forget due collection receipt email
+        if (due.profiles?.email) {
+          bookingEmailService.sendDueCollectionReceipt({
+            email: due.profiles.email,
+            studentName: due.profiles.name || 'Student',
+            propertyName: 'Reading Room',
+            amount: amt,
+            paymentMethod: method,
+            transactionId: txnId || undefined,
+            collectedByName: user?.name || user?.email || 'Admin',
+          }).catch(err => console.error('Due receipt email failed:', err));
+        }
+
         onOpenChange(false);
         onSuccess();
       } else {
@@ -125,6 +140,19 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
           payment_status: 'completed',
           remaining_amount: 0,
         }).eq('id', due.booking_id);
+      }
+
+      // Fire-and-forget due collection receipt email
+      if (due.profiles?.email) {
+        bookingEmailService.sendDueCollectionReceipt({
+          email: due.profiles.email,
+          studentName: due.profiles.name || 'Student',
+          propertyName: 'Hostel',
+          amount: amt,
+          paymentMethod: method,
+          transactionId: txnId || undefined,
+          collectedByName: collectedByName,
+        }).catch(err => console.error('Hostel due receipt email failed:', err));
       }
 
       toast({ title: 'Payment collected successfully' });

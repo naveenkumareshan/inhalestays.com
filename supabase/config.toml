@@ -33,3 +33,6 @@ verify_jwt = false
 
 [functions.create-student]
 verify_jwt = false
+
+[functions.send-booking-receipt]
+verify_jwt = false

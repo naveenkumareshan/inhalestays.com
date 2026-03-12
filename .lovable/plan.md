@@ -1,56 +1,71 @@
 
 
-# Fix: Booking Receipt Emails Not Being Sent
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Problem
-The current email system (`bookingEmailService` → `jobProcessingService` → `axios`) tries to call an old Node.js backend at `localhost:5000/api` which doesn't exist. This means **no booking receipt emails are ever sent** — the calls silently fail.
-
-Additionally, most booking flows (VendorSeats, HostelBedMap, RenewalSheet, CheckInFinancials due collection) don't even attempt to send emails.
-
-## Prerequisite: Email Domain Setup
-This project has a custom domain (`inhalestays.com`) but **no email domain is configured yet**. Before emails can be sent, you need to set up your sender domain. This is a one-time setup.
-
-<lov-actions>
-<lov-open-email-setup>Set up email domain</lov-open-email-setup>
-</lov-actions>
-
-**Once the email domain is configured**, I'll implement the following:
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
 ## Changes
 
-### 1. Create `send-booking-receipt` Edge Function
-- New edge function at `supabase/functions/send-booking-receipt/index.ts`
-- Uses Lovable's transactional email system to send receipt emails
-- Accepts booking details (student name/email, seat/bed info, dates, amounts, payment method, serial number)
-- Sends a branded HTML email receipt with all booking/payment details
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-### 2. Replace Old Email Service
-- Rewrite `src/api/bookingEmailService.ts` to call the new edge function via `supabase.functions.invoke('send-booking-receipt', ...)` instead of the dead axios/job API
-- Keep the same interface so existing callers don't break
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-### 3. Add Email Triggers to All Booking Flows
-Currently only `ManualBookingManagement` calls the email service. Add fire-and-forget email calls to:
-- **VendorSeats** — after `createPartnerBooking` succeeds (reading room bookings)
-- **HostelBedMap** — after hostel booking creation succeeds
-- **RenewalSheet** — after renewal booking succeeds
-- **Due collection flows** — after due payment is collected (receipt email for payment received)
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-### 4. Email Content
-Each receipt email will include:
-- Receipt serial number
-- Student name
-- Property name, seat/bed number
-- Booking period (start → end date)
-- Price breakdown (seat amount, discount, total)
-- Amount paid, payment method
-- Collected by name
-- Due balance (if advance payment)
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-## Files Modified
-- **New**: `supabase/functions/send-booking-receipt/index.ts`
-- **Rewrite**: `src/api/bookingEmailService.ts` — use edge function instead of axios
-- **Edit**: `src/pages/vendor/VendorSeats.tsx` — add email trigger after booking
-- **Edit**: `src/pages/admin/HostelBedMap.tsx` — add email trigger after booking + due collection
-- **Edit**: `src/components/admin/RenewalSheet.tsx` — add email trigger after renewal
-- **Edit**: `src/components/admin/operations/CheckInFinancials.tsx` — add email trigger after due collection
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
+
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
+
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 
