@@ -20,6 +20,7 @@ interface HostelItemProps {
   onManagePackages: (hostel: any) => void;
   onToggleActive?: (hostelId: string, isActive: boolean) => void;
   onToggleBooking?: (hostelId: string, isBookingActive: boolean) => void;
+  partnerId?: string;
 }
 
 export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking }: HostelItemProps) {
