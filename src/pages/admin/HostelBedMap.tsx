@@ -981,6 +981,7 @@ const HostelBedMap: React.FC = () => {
         receipt_type: 'booking_payment',
         collected_by: user?.id,
         collected_by_name: collectedByName,
+        payment_proof_url: paymentProofUrl || null,
       });
 
       // Create hostel_dues entry if advance booking (partial payment)
