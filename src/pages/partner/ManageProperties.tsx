@@ -23,8 +23,35 @@ const MessManagement = lazy(() => import('@/pages/admin/MessManagement'));
 const ManageProperties: React.FC = () => {
   const { hasReadingRooms, hasHostels, hasLaundry, hasMess, loading } = usePartnerPropertyTypes();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [triggerNew, setTriggerNew] = useState(false);
+
+  // Check for active universal subscription
+  const { data: partner } = useQuery({
+    queryKey: ['partner-for-universal', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('partners').select('id').eq('user_id', user?.id).single();
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  const { data: universalSub } = useQuery({
+    queryKey: ['universal-sub-check', partner?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('property_subscriptions')
+        .select('id, status')
+        .eq('partner_id', partner!.id)
+        .eq('property_type', 'universal')
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!partner?.id,
+  });
 
   const hasAny = hasReadingRooms || hasHostels || hasLaundry || hasMess;
   const showAllTabs = !hasAny && !loading;
