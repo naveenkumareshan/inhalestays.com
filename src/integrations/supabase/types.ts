@@ -1272,7 +1272,9 @@ export type Database = {
       hostel_dues: {
         Row: {
           advance_paid: number
+          auto_generated: boolean
           bed_id: string | null
+          billing_month: string | null
           booking_id: string | null
           created_at: string
           due_amount: number
@@ -1280,6 +1282,7 @@ export type Database = {
           food_amount: number
           hostel_id: string
           id: string
+          is_prorated: boolean
           paid_amount: number
           proportional_end_date: string | null
           room_id: string | null
@@ -1291,7 +1294,9 @@ export type Database = {
         }
         Insert: {
           advance_paid?: number
+          auto_generated?: boolean
           bed_id?: string | null
+          billing_month?: string | null
           booking_id?: string | null
           created_at?: string
           due_amount?: number
@@ -1299,6 +1304,7 @@ export type Database = {
           food_amount?: number
           hostel_id: string
           id?: string
+          is_prorated?: boolean
           paid_amount?: number
           proportional_end_date?: string | null
           room_id?: string | null
@@ -1310,7 +1316,9 @@ export type Database = {
         }
         Update: {
           advance_paid?: number
+          auto_generated?: boolean
           bed_id?: string | null
+          billing_month?: string | null
           booking_id?: string | null
           created_at?: string
           due_amount?: number
@@ -1318,6 +1326,7 @@ export type Database = {
           food_amount?: number
           hostel_id?: string
           id?: string
+          is_prorated?: boolean
           paid_amount?: number
           proportional_end_date?: string | null
           room_id?: string | null
