@@ -217,6 +217,7 @@ export const BookingExtensionDialog = ({
         newEndDate: format(newEndDate, 'yyyy-MM-dd'),
         additionalAmount: calculateAdditionalAmount(),
         paymentMethod,
+        paymentProofUrl: paymentProofUrl || undefined,
         notes: appliedCoupon ? `${notes}\nCoupon Applied: ${appliedCoupon.code} (₹${getDiscountAmount()} discount)` : notes
       };
 
