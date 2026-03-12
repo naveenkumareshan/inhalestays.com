@@ -107,6 +107,7 @@ const AdminBookings = () => {
         <div className="min-w-0">
           <p className="font-medium text-xs truncate">{b.userId?.name || "N/A"}</p>
           <p className="text-[10px] text-muted-foreground truncate">{b.userId?.email || ""}</p>
+          {b.userId?.phone && <p className="text-[10px] text-muted-foreground truncate">{b.userId.phone}</p>}
         </div>
         <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium capitalize ${badgeCls(b.status || "pending")}`}>
           {b.status || "pending"}
