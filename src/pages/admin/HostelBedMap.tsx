@@ -1213,10 +1213,13 @@ const HostelBedMap: React.FC = () => {
         </div>
 
         <div className="flex items-center border rounded-md overflow-hidden ml-auto">
-          <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="sm" className="h-8 w-8 p-0 rounded-none" onClick={() => setViewMode('grid')}>
+          <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="sm" className="h-8 w-8 p-0 rounded-none" onClick={() => setViewMode('grid')} title="Grid View">
             <LayoutGrid className="h-3.5 w-3.5" />
           </Button>
-          <Button variant={viewMode === 'table' ? 'default' : 'ghost'} size="sm" className="h-8 w-8 p-0 rounded-none" onClick={() => setViewMode('table')}>
+          <Button variant={viewMode === 'room' ? 'default' : 'ghost'} size="sm" className="h-8 w-8 p-0 rounded-none" onClick={() => setViewMode('room')} title="Room / Flat View">
+            <Building2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant={viewMode === 'table' ? 'default' : 'ghost'} size="sm" className="h-8 w-8 p-0 rounded-none" onClick={() => setViewMode('table')} title="Table View">
             <List className="h-3.5 w-3.5" />
           </Button>
         </div>
