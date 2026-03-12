@@ -18,7 +18,7 @@ import { Trash2, Loader2 } from 'lucide-react';
 import { AdminTablePagination } from '@/components/admin/AdminTablePagination';
 import { Badge } from '@/components/ui/badge';
 
-const ITEMS_PER_PAGE = 9;
+const DEFAULT_PAGE_SIZE = 9;
 const MEALS = ['breakfast', 'lunch', 'dinner'];
 const MEAL_LABELS: Record<string, string> = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
 
