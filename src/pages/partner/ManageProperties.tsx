@@ -63,25 +63,25 @@ const ManageProperties: React.FC = () => {
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
           <TabsList className="h-8">
-            {(showAllTabs || hasReadingRooms) && (
+            {(showAllTabs || hasReadingRooms || activeTab === 'rooms') && (
               <TabsTrigger value="rooms" className="text-xs gap-1.5">
                 <Building className="h-3.5 w-3.5" />
                 Reading Rooms
               </TabsTrigger>
             )}
-            {(showAllTabs || hasHostels) && (
+            {(showAllTabs || hasHostels || activeTab === 'hostels') && (
               <TabsTrigger value="hostels" className="text-xs gap-1.5">
                 <Hotel className="h-3.5 w-3.5" />
                 Hostels
               </TabsTrigger>
             )}
-            {(showAllTabs || hasLaundry) && (
+            {(showAllTabs || hasLaundry || activeTab === 'laundry') && (
               <TabsTrigger value="laundry" className="text-xs gap-1.5">
                 <Shirt className="h-3.5 w-3.5" />
                 Laundry
               </TabsTrigger>
             )}
-            {(showAllTabs || hasMess) && (
+            {(showAllTabs || hasMess || activeTab === 'mess') && (
               <TabsTrigger value="mess" className="text-xs gap-1.5">
                 <UtensilsCrossed className="h-3.5 w-3.5" />
                 Mess
@@ -89,7 +89,7 @@ const ManageProperties: React.FC = () => {
             )}
           </TabsList>
 
-          {(showAllTabs || hasReadingRooms) && (
+          {(showAllTabs || hasReadingRooms || activeTab === 'rooms') && (
             <TabsContent value="rooms">
               <Suspense fallback={<LoadingFallback />}>
                 <RoomManagement autoCreateNew={activeTab === 'rooms' && triggerNew} onTriggerConsumed={handleTriggerConsumed} />
@@ -97,7 +97,7 @@ const ManageProperties: React.FC = () => {
             </TabsContent>
           )}
 
-          {(showAllTabs || hasHostels) && (
+          {(showAllTabs || hasHostels || activeTab === 'hostels') && (
             <TabsContent value="hostels">
               <Suspense fallback={<LoadingFallback />}>
                 <HostelManagement autoCreateNew={activeTab === 'hostels' && triggerNew} onTriggerConsumed={handleTriggerConsumed} />
@@ -105,18 +105,18 @@ const ManageProperties: React.FC = () => {
             </TabsContent>
           )}
 
-          {(showAllTabs || hasLaundry) && (
+          {(showAllTabs || hasLaundry || activeTab === 'laundry') && (
             <TabsContent value="laundry">
               <Suspense fallback={<LoadingFallback />}>
-                <LaundryPartnerDashboard />
+                <LaundryPartnerDashboard autoCreateNew={activeTab === 'laundry' && triggerNew} onTriggerConsumed={handleTriggerConsumed} />
               </Suspense>
             </TabsContent>
           )}
 
-          {(showAllTabs || hasMess) && (
+          {(showAllTabs || hasMess || activeTab === 'mess') && (
             <TabsContent value="mess">
               <Suspense fallback={<LoadingFallback />}>
-                <MessManagement />
+                <MessManagement autoCreateNew={activeTab === 'mess' && triggerNew} onTriggerConsumed={handleTriggerConsumed} />
               </Suspense>
             </TabsContent>
           )}

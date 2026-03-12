@@ -36,6 +36,14 @@ const LaundryPartnerDashboard: React.FC<LaundryPartnerDashboardProps> = ({ autoC
 
   useEffect(() => { load(); }, []);
 
+  // Auto-create: show setup prompt when triggered with no orders
+  useEffect(() => {
+    if (autoCreateNew) {
+      onTriggerConsumed?.();
+      // The dashboard will render and show the empty state with setup options
+    }
+  }, [autoCreateNew]);
+
   const verifyOtp = async (orderId: string, type: 'pickup' | 'delivery') => {
     const otp = otpInputs[`${orderId}_${type}`];
     if (!otp || otp.length !== 4) {

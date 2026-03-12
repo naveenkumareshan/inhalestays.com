@@ -43,6 +43,14 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed }: Mes
 
   useEffect(() => { fetchMesses(); }, []);
 
+  // Auto-create new when triggered from parent
+  useEffect(() => {
+    if (autoCreateNew) {
+      handleAddMess();
+      onTriggerConsumed?.();
+    }
+  }, [autoCreateNew]);
+
   const fetchMesses = async () => {
     try {
       setLoading(true);
