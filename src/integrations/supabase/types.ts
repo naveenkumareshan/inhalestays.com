@@ -1792,6 +1792,7 @@ export type Database = {
           amenities: string[] | null
           area_id: string | null
           average_rating: number
+          billing_type: string
           cancellation_window_hours: number
           city_id: string | null
           commission_percentage: number
@@ -1820,6 +1821,7 @@ export type Database = {
           max_advance_booking_days: number
           name: string
           payment_proof_required: boolean | null
+          payment_window_days: number
           refund_policy: string | null
           review_count: number
           security_deposit: number
@@ -1843,6 +1845,7 @@ export type Database = {
           amenities?: string[] | null
           area_id?: string | null
           average_rating?: number
+          billing_type?: string
           cancellation_window_hours?: number
           city_id?: string | null
           commission_percentage?: number
@@ -1871,6 +1874,7 @@ export type Database = {
           max_advance_booking_days?: number
           name: string
           payment_proof_required?: boolean | null
+          payment_window_days?: number
           refund_policy?: string | null
           review_count?: number
           security_deposit?: number
@@ -1894,6 +1898,7 @@ export type Database = {
           amenities?: string[] | null
           area_id?: string | null
           average_rating?: number
+          billing_type?: string
           cancellation_window_hours?: number
           city_id?: string | null
           commission_percentage?: number
@@ -1922,6 +1927,7 @@ export type Database = {
           max_advance_booking_days?: number
           name?: string
           payment_proof_required?: boolean | null
+          payment_window_days?: number
           refund_policy?: string | null
           review_count?: number
           security_deposit?: number
