@@ -604,6 +604,10 @@ const HostelBedMap: React.FC = () => {
     if (!dueCollectAmount || !selectedBed) return;
     const amt = parseFloat(dueCollectAmount);
     if (amt <= 0) { toast({ title: 'Enter valid amount', variant: 'destructive' }); return; }
+    if (dueCollectMethod !== 'cash' && !dueCollectTxnId.trim()) {
+      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+      return;
+    }
     setCollectingDue(true);
     const collectedByName = user?.name || user?.email || 'Admin';
     // Create receipt
