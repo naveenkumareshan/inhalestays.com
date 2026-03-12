@@ -200,6 +200,27 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
       setLastInvoiceData(invoiceData);
       setSuccess(true);
       toast({ title: 'Booking renewed successfully' });
+
+      // Fire-and-forget renewal receipt email
+      if (booking.studentEmail) {
+        bookingEmailService.sendRenewalReceipt({
+          email: booking.studentEmail,
+          studentName: booking.studentName,
+          serialNumber: res.serialNumber || 'N/A',
+          cabinName: booking.cabinName,
+          seatNumber: booking.seatNumber,
+          startDate: format(startDate, 'yyyy-MM-dd'),
+          endDate: format(endDate, 'yyyy-MM-dd'),
+          duration: durationType === 'monthly' ? `${durationCount} Month(s)` : durationType === 'weekly' ? `${durationCount} Week(s)` : `${durationCount} Day(s)`,
+          seatAmount: parseFloat(bookingPrice) || 0,
+          discountAmount: parseFloat(discountAmount) || 0,
+          totalAmount: computedTotal,
+          paymentMethod,
+          transactionId,
+          collectedByName,
+        }).catch(err => console.error('Renewal receipt email failed:', err));
+      }
+
       onComplete();
       onOpenChange(false);
     } else {

@@ -142,6 +142,19 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
         }).eq('id', due.booking_id);
       }
 
+      // Fire-and-forget due collection receipt email
+      if (due.profiles?.email) {
+        bookingEmailService.sendDueCollectionReceipt({
+          email: due.profiles.email,
+          studentName: due.profiles.name || 'Student',
+          propertyName: 'Hostel',
+          amount: amt,
+          paymentMethod: method,
+          transactionId: txnId || undefined,
+          collectedByName: collectedByName,
+        }).catch(err => console.error('Hostel due receipt email failed:', err));
+      }
+
       toast({ title: 'Payment collected successfully' });
       onOpenChange(false);
       onSuccess();
