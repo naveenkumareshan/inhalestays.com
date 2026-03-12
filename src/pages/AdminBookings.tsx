@@ -17,6 +17,8 @@ import { BookingFilters } from "@/types/BookingTypes";
 import { Eye, Search, Filter, BookOpen } from "lucide-react";
 import { AdminTablePagination, getSerialNumber } from "@/components/admin/AdminTablePagination";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/contexts/AuthContext";
+import { getEffectiveOwnerId } from "@/utils/getEffectiveOwnerId";
 
 type BookingStatus = "pending" | "completed" | "failed";
 
@@ -53,8 +55,17 @@ const AdminBookings = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const isMobile = useIsMobile();
   const routePrefix = location.pathname.startsWith('/admin') ? '/admin' : '/partner';
+  const isPartner = user?.role === 'vendor' || user?.role === 'vendor_employee';
+  const [partnerUserId, setPartnerUserId] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (isPartner) {
+      getEffectiveOwnerId().then(({ ownerId }) => setPartnerUserId(ownerId));
+    }
+  }, [isPartner]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -64,14 +75,14 @@ const AdminBookings = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [status, setStatus] = useState<BookingStatus | "">("");
 
-  useEffect(() => { fetchBookings(); }, [currentPage, pageSize, searchQuery, status]);
+  useEffect(() => { fetchBookings(); }, [currentPage, pageSize, searchQuery, status, partnerUserId]);
 
   const fetchBookings = async () => {
     try {
       setLoading(true);
       const filters: BookingFilters = { page: currentPage, limit: pageSize, search: searchQuery };
       if (status) filters.status = status as BookingStatus;
-      const response = await adminBookingsService.getAllBookings(filters);
+      const response = await adminBookingsService.getAllBookings(filters, partnerUserId);
       if (response.success) {
         setBookings(response.data || []);
         const count = response.count || 0;
