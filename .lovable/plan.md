@@ -1,71 +1,42 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Replace Old Renewal Dialog with Seat Map Renewal Flow in Expiring Bookings
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Problem
+The expiring bookings page uses `BookingExtensionDialog` which is an old API-based flow with a different UI. The user wants the exact same renewal process that exists in the VendorSeats seat map — same UI, same booking creation flow via `vendorSeatsService.createPartnerBooking`.
+
+## Approach
+Create a new standalone `RenewalSheet` component that extracts the renewal booking form from VendorSeats into a reusable Sheet/Dialog. This component will:
+- Accept booking data (student info, seat info, cabin info, end date) as props
+- Lock the student (no search/create)
+- Force `isRenewMode` = true (no locker, start date = day after current end)
+- Include all the same features: duration type pills, duration count, price calculation, discount, partial payment, payment method selector, payment proof, transaction ID, two-step confirm flow
+- Use `vendorSeatsService.createPartnerBooking` for submission (same as seat map)
 
 ## Changes
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### 1. New Component: `src/components/admin/RenewalSheet.tsx`
+- A Sheet component that replicates the VendorSeats renewal booking form
+- Props: `open`, `onOpenChange`, `booking` (with student, seat, cabin data), `onComplete`
+- Includes: duration type selection (daily/weekly/monthly from cabin's allowed durations), duration count input, start/end date display, price calculation, discount fields, partial payment toggle, PaymentMethodSelector, PaymentProofUpload, transaction ID, two-step (details → confirm) flow
+- Calls `vendorSeatsService.createPartnerBooking` with `isRenewMode`-equivalent data (lockerIncluded=false)
+- Shows success view with invoice download option
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### 2. Update `src/pages/admin/ExpiringBookingsPage.tsx`
+- Remove `BookingExtensionDialog` import and usage
+- Import and use the new `RenewalSheet` component
+- Map expiring booking row data to the props the RenewalSheet expects (student name/phone/email, seat ID/price/number, cabin ID/name, end date)
+- Fetch cabin's `allowed_durations` alongside existing query data
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### 3. Update `src/api/adminBookingsService.ts`
+- Add `allowed_durations` to the cabin select in `getExpiringBookings` query so renewal knows which duration types are allowed
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### 4. Delete old `BookingExtensionDialog` if no longer used anywhere
+- Check all imports — if only used in expiring bookings, remove it entirely
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
-
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+## Files Modified
+- **New**: `src/components/admin/RenewalSheet.tsx`
+- **Edit**: `src/pages/admin/ExpiringBookingsPage.tsx` — swap dialog for RenewalSheet
+- **Edit**: `src/api/adminBookingsService.ts` — add `allowed_durations` to cabin select
+- **Possible delete**: `src/components/admin/BookingExtensionDialog.tsx` (if unused elsewhere)
 
