@@ -75,7 +75,7 @@ const AdminBookings = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [status, setStatus] = useState<BookingStatus | "">("");
 
-  useEffect(() => { fetchBookings(); }, [currentPage, pageSize, searchQuery, status]);
+  useEffect(() => { fetchBookings(); }, [currentPage, pageSize, searchQuery, status, partnerUserId]);
 
   const fetchBookings = async () => {
     try {
