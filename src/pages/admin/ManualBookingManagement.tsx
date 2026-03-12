@@ -508,13 +508,13 @@ useEffect(() => {
           seatNumber: selectedSeat?.number || 0,
           startDate,
           endDate,
-          duration: `${durationCount} ${durationType}`,
+          duration: `${durationCount} ${bookingDuration}`,
           seatAmount: finalPrice,
           discountAmount: 0,
           lockerPrice: 0,
           totalAmount: finalPrice,
           paymentMethod: paymentMethod,
-          transactionId: transactionId || '',
+          transactionId: transaction_id || '',
           collectedByName: 'Admin',
         }).catch(err => console.error('Booking receipt email failed:', err));
 
