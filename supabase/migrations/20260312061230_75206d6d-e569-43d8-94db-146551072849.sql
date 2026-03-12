@@ -1,0 +1,1 @@
+ALTER TABLE public.partner_payment_modes ADD COLUMN IF NOT EXISTS details_image_url text;
