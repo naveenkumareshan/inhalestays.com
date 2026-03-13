@@ -530,7 +530,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
         duration_count: String(selectedDuration.count),
         slot_id: selectedSlot?.id === 'full_day' ? undefined : selectedSlot?.id,
         total_price: totalPrice,
-        payment_status: useAdvancePayment ? "advance_paid" : "pending",
+        payment_status: "pending",
         locker_included: effectiveLockerIncluded,
         locker_price: effectiveLockerPrice,
         customer_name: customerName.trim(),

@@ -314,6 +314,34 @@ Deno.serve(async (req) => {
       }
     }
 
+    // For reading room bookings, detect advance payment by comparing Razorpay order amount vs total_price
+    if (!isHostel && !isLaundry) {
+      try {
+        const RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
+        const orderRes = await fetch(`https://api.razorpay.com/v1/orders/${razorpay_order_id}`, {
+          headers: {
+            Authorization: "Basic " + btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`),
+          },
+        });
+        const orderData = await orderRes.json();
+        const paidAmountPaise = orderData.amount_paid || orderData.amount || 0;
+        const paidAmount = paidAmountPaise / 100;
+
+        const { data: bookingCheck } = await adminClient
+          .from("bookings")
+          .select("total_price")
+          .eq("id", bookingId)
+          .single();
+
+        if (bookingCheck && paidAmount > 0 && paidAmount < (bookingCheck.total_price || 0)) {
+          updateData.payment_status = "advance_paid";
+        }
+      } catch (e) {
+        console.error("Error checking advance for reading room:", e);
+        // Default to completed if check fails
+      }
+    }
+
     const { error: updateError } = await adminClient
       .from(tableName)
       .update(updateData)
