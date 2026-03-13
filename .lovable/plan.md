@@ -1,71 +1,43 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Fix: Bookings Created Without Successful Payment
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Problem
+
+Both reading room and hostel booking flows create a booking record in the database **before** payment is completed. If the student dismisses the Razorpay payment modal or payment fails, the booking remains in `pending` status indefinitely, blocking the seat/bed for other students.
+
+### Specific bugs found:
+
+1. **Reading Room (`RazorpayCheckout.tsx`)**: The `ondismiss` callback only shows a toast message and sets loading to false. It does NOT cancel the pending booking. The booking stays forever with `payment_status: 'pending'`, and `get_conflicting_seat_bookings` treats it as a valid booking (only excludes `cancelled`/`failed`).
+
+2. **Hostel — `HostelRoomDetails.tsx`**: No `ondismiss` handler at all on the Razorpay modal. If the student closes the payment popup, the booking stays in `pending`/`confirmed` status and the DB trigger has already marked the bed as unavailable.
+
+3. **Hostel — `HostelBooking.tsx`**: This flow correctly cancels on dismiss — no fix needed here.
 
 ## Changes
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### 1. `src/components/payment/RazorpayCheckout.tsx` — Add booking cancellation on dismiss
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+The `RazorpayCheckout` component is used for reading room payments. Add an `onDismiss` callback prop so the parent can handle cancellation. Also, import `bookingsService` and cancel the booking automatically when the modal is dismissed.
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+- Add new optional prop: `onDismiss?: () => void`
+- In `ondismiss` handler: call `onDismiss()` if provided
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### 2. `src/components/seats/SeatBookingForm.tsx` — Cancel booking on payment dismiss
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+- Pass `onDismiss` callback to `RazorpayCheckout` that cancels the pending booking
+- Call `bookingsService.cancelBooking(bookingId)` or update status to `cancelled`
+- Reset the `bookingCreated` state so the student can try again
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### 3. `src/pages/HostelRoomDetails.tsx` — Add ondismiss handler to Razorpay modal
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+- Add `ondismiss` to the `rzpOptions.modal` that calls `hostelBookingService.cancelBooking(booking.id, 'Payment cancelled by user')`
+- This matches the pattern already used in `HostelBooking.tsx`
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+### 4. `src/api/bookingsService.ts` — Add cancelBooking method
 
-**Reviews section**: Shown below the booking flow (not in a tab)
+- Add a `cancelBooking` method that updates `payment_status` to `cancelled` for the given booking ID
+- This is needed for reading room bookings (hostel already has `cancelBooking`)
 
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+**4 files, focused fixes. No database changes needed — the existing `get_conflicting_seat_bookings` already excludes `cancelled`/`failed` statuses, and the hostel bed trigger already releases beds when status changes away from `confirmed`/`pending`.**
 
