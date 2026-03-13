@@ -1,71 +1,51 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Partner Native App — Separate Build from Same Codebase
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Overview
+Create a partner-specific mobile app ("InhaleStays Partner") that builds from the same codebase but ships as a separate APK/IPA with its own app ID, bottom navigation, and partner-focused layout. The partner routes (`/partner/*`) already exist — they just need a mobile-optimized wrapper.
 
-## Changes
+## What Gets Built
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### 1. Partner Mobile Layout (`src/components/partner/PartnerMobileLayout.tsx`)
+- Same structure as `MobileAppLayout` — full-screen with bottom nav and safe-area padding
+- Uses a new `PartnerBottomNav` instead of the student one
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### 2. Partner Bottom Navigation (`src/components/partner/PartnerBottomNav.tsx`)
+- 5 tabs: **Dashboard**, **Bookings**, **Properties**, **Earnings**, **Profile**
+- Routes to `/partner/dashboard`, `/partner/bookings`, `/partner/manage-properties`, `/partner/earnings`, `/partner/profile`
+- Same visual style as student bottom nav (active indicator bar, icons, etc.)
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### 3. Route Changes in `App.tsx`
+- Wrap `/partner` routes inside the new `PartnerMobileLayout` (replacing `AdminLayout`) when accessed on mobile
+- Keep desktop sidebar layout for large screens using a responsive wrapper that switches between `AdminLayout` and `PartnerMobileLayout` based on viewport
+- Partner login/register/onboard routes stay outside the layout (same as student auth pages)
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### 4. Capacitor Config for Partner App
+- Create `capacitor.partner.config.ts` with:
+  - `appId: 'com.inhalestays.partner'`
+  - `appName: 'InhaleStays Partner'`
+  - Server URL pointing to `/partner/login` as entry
+- User builds the partner app by running: `npx cap sync --config capacitor.partner.config.ts`
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+### 5. Partner Splash & Assets
+- Reuse the existing splash logo and icons (can be customized later)
+- Entry point for partner app opens `/partner/login` instead of `/`
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+## Files to Create/Modify
+1. **Create** `src/components/partner/PartnerBottomNav.tsx`
+2. **Create** `src/components/partner/PartnerMobileLayout.tsx`
+3. **Create** `capacitor.partner.config.ts`
+4. **Modify** `src/App.tsx` — wrap partner routes in responsive layout switcher
+5. **Modify** `src/components/AdminLayout.tsx` — detect mobile + partner role to show mobile layout
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+## Build Instructions for User
+After implementation, to build the partner app separately:
+1. Export to GitHub, pull locally
+2. `npm install && npm run build`
+3. `npx cap add android --config capacitor.partner.config.ts`
+4. `npx cap sync --config capacitor.partner.config.ts`
+5. `npx cap run android --config capacitor.partner.config.ts`
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+The student app continues using the existing `capacitor.config.ts`.
 
