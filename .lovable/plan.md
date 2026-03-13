@@ -1,55 +1,71 @@
 
 
-# Customizable Partner Bottom Navigation
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Concept
-Let partners choose which 4 menu items appear in their bottom nav bar (the 5th slot is always "More"). Their preferences are saved to the database and persist across sessions/devices.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-## How It Works
-- **Default**: Dashboard, Bookings, Properties, Earnings (current setup)
-- **Customization**: In the "More" menu, add an "Edit Navigation" button. Tapping it enters an edit mode where the partner can pick any 4 items from the full feature list to pin to their bottom nav
-- **Storage**: Save the selected nav items per user in a `partner_nav_preferences` table
-- **Fallback**: If no preference is saved, use the current defaults
+## Changes
 
-## Database
-New table `partner_nav_preferences`:
-- `id` (uuid, PK)
-- `user_id` (uuid, not null, unique)
-- `nav_items` (jsonb) — array of `{ key, label, url, icon }` (max 4)
-- `created_at`, `updated_at`
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-RLS: Users can only read/write their own row.
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-## Files
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-### 1. Create `src/components/partner/PartnerNavCustomizer.tsx`
-- A dialog/sheet that shows all available menu items in a grid
-- Partner taps to select up to 4 items — selected items show a checkmark/badge with order number
-- "Save" button persists to database
-- "Reset to Default" option
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-### 2. Create `src/hooks/usePartnerNavPreferences.ts`
-- Fetches the partner's saved nav items from `partner_nav_preferences`
-- Returns the 4 pinned items (or defaults if none saved)
-- Provides a `savePreferences` function
-- Caches with React Query
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-### 3. Modify `src/components/partner/PartnerBottomNav.tsx`
-- Instead of hardcoded `tabs`, use items from `usePartnerNavPreferences`
-- Map saved icon names back to Lucide components via a lookup table
-- "More" tab remains fixed as the 5th slot
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-### 4. Modify `src/components/partner/PartnerMoreMenu.tsx`
-- Add "Customize Navigation" button at the top of the sheet
-- Opens `PartnerNavCustomizer`
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-### 5. Database migration
-- Create `partner_nav_preferences` table with RLS policies
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-## UX Flow
-1. Partner opens "More" menu → taps "Customize Nav Bar"
-2. Sees all available features in a grid with current 4 highlighted
-3. Taps to toggle items (max 4). Order = selection order
-4. Saves → bottom nav updates immediately
-5. Next login, preferences load from DB
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

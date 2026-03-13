@@ -1,0 +1,33 @@
+import {
+  LayoutDashboard, BookOpen, Building2, Wallet, ClipboardCheck,
+  MapIcon, Clock, CreditCard, Bed, Calendar, Users, TicketPlus,
+  Users2, MessageSquare, Building, BarChart2, Star, Shirt,
+  UtensilsCrossed, Megaphone, Crown, User, Activity, MoreHorizontal,
+} from 'lucide-react';
+
+export const ICON_MAP: Record<string, React.ComponentType<any>> = {
+  LayoutDashboard,
+  BookOpen,
+  Building2,
+  Wallet,
+  ClipboardCheck,
+  MapIcon,
+  Clock,
+  CreditCard,
+  Bed,
+  Calendar,
+  Users,
+  TicketPlus,
+  Users2,
+  MessageSquare,
+  Building,
+  BarChart2,
+  Star,
+  Shirt,
+  UtensilsCrossed,
+  Megaphone,
+  Crown,
+  User,
+  Activity,
+  MoreHorizontal,
+};

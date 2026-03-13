@@ -1,18 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePartnerEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
+import { usePartnerNavPreferences } from '@/hooks/usePartnerNavPreferences';
 import { cn } from '@/lib/utils';
 import {
   User, MapIcon, Wallet, Calendar, CreditCard, Activity, Clock,
   Bed, ClipboardCheck, Users, Plus, TicketPlus, Building, Star,
   BarChart2, Users2, MessageSquare, Megaphone, Crown, Shirt,
-  UtensilsCrossed, LogOut, Settings,
+  UtensilsCrossed, LogOut, Settings, Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import PartnerNavCustomizer from './PartnerNavCustomizer';
 
 interface MoreMenuProps {
   open: boolean;
@@ -38,6 +40,8 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
   const { user, logout } = useAuth();
   const { hasPermission } = usePartnerEmployeePermissions();
   const { hasReadingRooms, hasHostels, hasLaundry, hasMess } = usePartnerPropertyTypes();
+  const { pinnedItems, savePreferences, isSaving } = usePartnerNavPreferences();
+  const [customizerOpen, setCustomizerOpen] = useState(false);
 
   const isVendor = user?.role === 'vendor';
   const prefix = '/partner';
@@ -156,13 +160,28 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl p-0">
-        <SheetHeader className="px-5 pt-5 pb-3 border-b">
-          <SheetTitle className="text-base font-semibold">All Features</SheetTitle>
-        </SheetHeader>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl p-0">
+          <SheetHeader className="px-5 pt-5 pb-3 border-b">
+            <SheetTitle className="text-base font-semibold">All Features</SheetTitle>
+          </SheetHeader>
         <ScrollArea className="h-[calc(85vh-70px)]">
           <div className="px-4 py-3 space-y-5">
+            {/* Customize Nav Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-center gap-2"
+              onClick={() => {
+                onOpenChange(false);
+                setTimeout(() => setCustomizerOpen(true), 300);
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+              Customize Nav Bar
+            </Button>
+
             {sections.map((section) => {
               if (!section.show) return null;
 
@@ -221,6 +240,15 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
         </ScrollArea>
       </SheetContent>
     </Sheet>
+
+    <PartnerNavCustomizer
+      open={customizerOpen}
+      onOpenChange={setCustomizerOpen}
+      currentItems={pinnedItems}
+      onSave={savePreferences}
+      isSaving={isSaving}
+    />
+    </>
   );
 };
 

@@ -1,50 +1,17 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, Building2, Wallet, MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import PartnerMoreMenu from './PartnerMoreMenu';
-
-const tabs = [
-  {
-    label: 'Dashboard',
-    icon: LayoutDashboard,
-    to: '/partner/dashboard',
-    isActive: (p: string) => p === '/partner' || p === '/partner/dashboard',
-  },
-  {
-    label: 'Bookings',
-    icon: BookOpen,
-    to: '/partner/bookings',
-    isActive: (p: string) => p.startsWith('/partner/bookings') || p.startsWith('/partner/hostel-bookings'),
-  },
-  {
-    label: 'Properties',
-    icon: Building2,
-    to: '/partner/manage-properties',
-    isActive: (p: string) =>
-      p.startsWith('/partner/manage-properties') ||
-      p.startsWith('/partner/rooms') ||
-      p.startsWith('/partner/hostels') ||
-      p.startsWith('/partner/cabins'),
-  },
-  {
-    label: 'Earnings',
-    icon: Wallet,
-    to: '/partner/earnings',
-    isActive: (p: string) =>
-      p.startsWith('/partner/earnings') ||
-      p.startsWith('/partner/vendorpayouts') ||
-      p.startsWith('/partner/receipts') ||
-      p.startsWith('/partner/reconciliation'),
-  },
-];
+import { usePartnerNavPreferences } from '@/hooks/usePartnerNavPreferences';
+import { ICON_MAP } from './partnerIconMap';
 
 export const PartnerBottomNav: React.FC = () => {
   const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
+  const { pinnedItems } = usePartnerNavPreferences();
 
-  // Check if current page is one of the "more" pages (not covered by main tabs)
-  const isMoreActive = !tabs.some(tab => tab.isActive(pathname)) && pathname.startsWith('/partner');
+  const isMoreActive = !pinnedItems.some(t => pathname === t.url || pathname.startsWith(t.url + '/')) && pathname.startsWith('/partner');
 
   return (
     <>
@@ -53,12 +20,13 @@ export const PartnerBottomNav: React.FC = () => {
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="flex items-stretch max-w-lg mx-auto">
-          {tabs.map((tab) => {
-            const active = tab.isActive(pathname);
+          {pinnedItems.map((tab) => {
+            const active = pathname === tab.url || pathname.startsWith(tab.url + '/');
+            const IconComp = ICON_MAP[tab.icon];
             return (
               <Link
-                key={tab.label}
-                to={tab.to}
+                key={tab.key}
+                to={tab.url}
                 className={cn(
                   'flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[56px] relative transition-all duration-200 overflow-hidden',
                   active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
@@ -71,10 +39,7 @@ export const PartnerBottomNav: React.FC = () => {
                   'w-full flex flex-col items-center gap-0.5 px-0.5 py-1 rounded-xl transition-all duration-200 overflow-hidden',
                   active && 'bg-primary/10'
                 )}>
-                  <tab.icon
-                    className="w-5 h-5"
-                    strokeWidth={active ? 2.5 : 1.75}
-                  />
+                  {IconComp && <IconComp className="w-5 h-5" strokeWidth={active ? 2.5 : 1.75} />}
                   <span className={cn('text-[9px] leading-tight whitespace-nowrap', active ? 'font-semibold' : 'font-medium')}>
                     {tab.label}
                   </span>
@@ -98,10 +63,7 @@ export const PartnerBottomNav: React.FC = () => {
               'w-full flex flex-col items-center gap-0.5 px-0.5 py-1 rounded-xl transition-all duration-200 overflow-hidden',
               (isMoreActive || moreOpen) && 'bg-primary/10'
             )}>
-              <MoreHorizontal
-                className="w-5 h-5"
-                strokeWidth={isMoreActive || moreOpen ? 2.5 : 1.75}
-              />
+              <MoreHorizontal className="w-5 h-5" strokeWidth={isMoreActive || moreOpen ? 2.5 : 1.75} />
               <span className={cn('text-[9px] leading-tight whitespace-nowrap', isMoreActive || moreOpen ? 'font-semibold' : 'font-medium')}>
                 More
               </span>
