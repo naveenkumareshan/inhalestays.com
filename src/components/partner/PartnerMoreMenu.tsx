@@ -240,6 +240,15 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
         </ScrollArea>
       </SheetContent>
     </Sheet>
+
+    <PartnerNavCustomizer
+      open={customizerOpen}
+      onOpenChange={setCustomizerOpen}
+      currentItems={pinnedItems}
+      onSave={savePreferences}
+      isSaving={isSaving}
+    />
+    </>
   );
 };
 
