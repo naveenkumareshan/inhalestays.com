@@ -379,6 +379,17 @@ const HostelRoomDetails = () => {
             toast({ title: "Verification Failed", description: "Please contact support", variant: "destructive" });
           }
         },
+        modal: {
+          ondismiss: async () => {
+            try {
+              await hostelBookingService.cancelBooking(booking.id, 'Payment cancelled by user');
+            } catch (e) { console.error('Failed to cancel booking on dismiss:', e); }
+            setIsProcessing(false);
+            toast({ title: "Payment Cancelled", description: "Your booking has been cancelled.", variant: "destructive" });
+          },
+          animation: false,
+          backdropclose: false,
+        },
       };
       const rzp = new (window as any).Razorpay(rzpOptions);
       rzp.open();

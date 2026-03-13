@@ -16,6 +16,7 @@ export interface RazorpayCheckoutProps {
   onSuccess: (response: any) => void;
   onError?: (error: any) => void;
   onFailure?: (error: any) => void;  // Add backward compatibility
+  onDismiss?: () => void;  // Called when user dismisses payment modal
   buttonText?: string;
   buttonVariant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
   buttonDisabled?: boolean;
@@ -35,6 +36,7 @@ export function RazorpayCheckout({
   onSuccess,
   onError,
   onFailure,
+  onDismiss,
   buttonText = "Pay Now",
   buttonVariant = "default",
   buttonDisabled = false,
@@ -192,6 +194,7 @@ export function RazorpayCheckout({
           ondismiss: () => {
             setIsLoading(false);
             toast({ title: "Payment Cancelled", description: "You cancelled the payment", variant: "destructive" });
+            if (onDismiss) onDismiss();
           },
           animation: false,
           backdropclose: false,

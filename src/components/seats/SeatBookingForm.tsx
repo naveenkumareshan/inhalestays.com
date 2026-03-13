@@ -1061,6 +1061,21 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                           handlePaymentError(error);
                           navigate('/student/bookings');
                         }}
+                        onDismiss={async () => {
+                          const id = bookingIdRef.current || bookingId;
+                          if (id) {
+                            try {
+                              await bookingsService.cancelBooking(id);
+                            } catch (e) {
+                              console.error('Failed to cancel booking on dismiss:', e);
+                            }
+                          }
+                          setBookingCreated(false);
+                          setBookingId("");
+                          bookingIdRef.current = "";
+                          setBookingCreatedAt(null);
+                          hideSeatSelection("", false);
+                        }}
                         buttonText={useAdvancePayment && advanceAmount < totalPrice ? `Pay ₹${advanceAmount.toFixed(0)} Advance` : "Pay Now"}
                         buttonVariant="default"
                         className="flex-1 h-11 rounded-xl shadow-md text-sm font-semibold"
