@@ -44,103 +44,22 @@ export const hostelBookingService = {
     }
 
 
-    const paymentStatus = bookingData.advance_amount && bookingData.advance_amount > 0 && bookingData.advance_amount < bookingData.total_price
-      ? 'advance_paid'
-      : bookingData.razorpay_payment_id ? 'completed' : 'pending';
-
+    // Always create booking as pending — confirmation happens after payment verification
     const { data: booking, error } = await supabase
       .from('hostel_bookings')
       .insert({
         ...bookingData,
         user_id: user.id,
-        payment_status: paymentStatus,
-        status: paymentStatus === 'pending' ? 'pending' : 'confirmed',
+        payment_status: 'pending',
+        status: 'pending',
       })
       .select()
       .single();
     if (error) throw error;
 
-    // Bed availability is now handled by database trigger (trg_sync_hostel_bed_availability)
-
-    // Create receipt if payment was made
-    if (paymentStatus !== 'pending') {
-      const receiptAmount = bookingData.advance_amount || bookingData.total_price;
-      await supabase.from('hostel_receipts').insert({
-        booking_id: booking.id,
-        user_id: user.id,
-        hostel_id: bookingData.hostel_id,
-        amount: receiptAmount,
-        payment_method: bookingData.payment_method || 'online',
-        transaction_id: bookingData.transaction_id || bookingData.razorpay_payment_id || '',
-        receipt_type: 'booking_payment',
-        collected_by_name: 'InhaleStays.com',
-      });
-    }
-
-    // Create hostel_dues entry when advance_paid
-    if (paymentStatus === 'advance_paid') {
-      const dueDate = new Date(bookingData.end_date);
-      dueDate.setDate(dueDate.getDate() - 3); // Due 3 days before end
-      const dueAmount = bookingData.total_price - (bookingData.advance_amount || 0);
-      await supabase.from('hostel_dues').insert({
-        user_id: user.id,
-        hostel_id: bookingData.hostel_id,
-        room_id: bookingData.room_id,
-        bed_id: bookingData.bed_id,
-        booking_id: booking.id,
-        total_fee: bookingData.total_price,
-        advance_paid: bookingData.advance_amount || 0,
-        due_amount: dueAmount,
-        due_date: format(dueDate, 'yyyy-MM-dd'),
-        status: 'pending',
-      } as any);
-    }
-
-    // Monthly cycle billing: create pro-rated first month due
-    const { data: hostelInfo } = await supabase
-      .from('hostels')
-      .select('billing_type, payment_window_days')
-      .eq('id', bookingData.hostel_id)
-      .single();
-
-    if (hostelInfo?.billing_type === 'monthly_cycle') {
-      // Get monthly rent from sharing option
-      const { data: sharingOption } = await supabase
-        .from('hostel_sharing_options')
-        .select('price_monthly')
-        .eq('id', bookingData.sharing_option_id)
-        .single();
-
-      const monthlyRent = Number(sharingOption?.price_monthly || 0);
-      const foodAmount = bookingData.food_opted ? Number(bookingData.food_amount || 0) : 0;
-      const totalMonthly = monthlyRent + foodAmount;
-
-      const startDate = new Date(bookingData.start_date);
-      const daysInMonth = getDaysInMonth(startDate);
-      const dayOfMonth = startDate.getDate();
-      const daysRemaining = daysInMonth - dayOfMonth + 1;
-      const proratedAmount = Math.round((totalMonthly * daysRemaining) / daysInMonth);
-
-      const firstOfMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-      const billingMonthStr = format(firstOfMonth, 'yyyy-MM-dd');
-
-      await supabase.from('hostel_dues').insert({
-        user_id: user.id,
-        hostel_id: bookingData.hostel_id,
-        room_id: bookingData.room_id,
-        bed_id: bookingData.bed_id,
-        booking_id: booking.id,
-        total_fee: proratedAmount,
-        advance_paid: 0,
-        due_amount: proratedAmount,
-        due_date: bookingData.start_date,
-        status: 'pending',
-        billing_month: billingMonthStr,
-        is_prorated: true,
-        auto_generated: false,
-        food_amount: bookingData.food_opted ? Math.round((foodAmount * daysRemaining) / daysInMonth) : 0,
-      } as any);
-    }
+    // Bed availability is handled by database trigger (trg_sync_hostel_bed_availability)
+    // Receipts, dues, and status updates are handled by razorpay-verify-payment edge function
+    // after successful payment verification
 
     return booking;
   },

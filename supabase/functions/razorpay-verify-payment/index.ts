@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { format, getDaysInMonth } from "https://esm.sh/date-fns@2.30.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -73,12 +74,90 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Helper: create hostel dues entry for advance_paid bookings
+    async function createHostelAdvanceDues(bookingId: string, booking: any) {
+      const dueDate = new Date(booking.end_date);
+      dueDate.setDate(dueDate.getDate() - 3);
+      const dueAmount = booking.total_price - (booking.advance_amount || 0);
+      await adminClient.from('hostel_dues').insert({
+        user_id: booking.user_id,
+        hostel_id: booking.hostel_id,
+        room_id: booking.room_id,
+        bed_id: booking.bed_id,
+        booking_id: bookingId,
+        total_fee: booking.total_price,
+        advance_paid: booking.advance_amount || 0,
+        due_amount: dueAmount,
+        due_date: format(dueDate, 'yyyy-MM-dd'),
+        status: 'pending',
+      });
+    }
+
+    // Helper: create monthly cycle pro-rated dues
+    async function createMonthlyCycleDues(bookingId: string, booking: any) {
+      const { data: hostelInfo } = await adminClient
+        .from('hostels')
+        .select('billing_type, payment_window_days')
+        .eq('id', booking.hostel_id)
+        .single();
+
+      if (hostelInfo?.billing_type !== 'monthly_cycle') return;
+
+      const { data: sharingOption } = await adminClient
+        .from('hostel_sharing_options')
+        .select('price_monthly')
+        .eq('id', booking.sharing_option_id)
+        .single();
+
+      const monthlyRent = Number(sharingOption?.price_monthly || 0);
+      const foodAmount = booking.food_opted ? Number(booking.food_amount || 0) : 0;
+      const totalMonthly = monthlyRent + foodAmount;
+
+      const startDate = new Date(booking.start_date);
+      const daysInMonth = getDaysInMonth(startDate);
+      const dayOfMonth = startDate.getDate();
+      const daysRemaining = daysInMonth - dayOfMonth + 1;
+      const proratedAmount = Math.round((totalMonthly * daysRemaining) / daysInMonth);
+
+      const firstOfMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+      const billingMonthStr = format(firstOfMonth, 'yyyy-MM-dd');
+
+      await adminClient.from('hostel_dues').insert({
+        user_id: booking.user_id,
+        hostel_id: booking.hostel_id,
+        room_id: booking.room_id,
+        bed_id: booking.bed_id,
+        booking_id: bookingId,
+        total_fee: proratedAmount,
+        advance_paid: 0,
+        due_amount: proratedAmount,
+        due_date: booking.start_date,
+        status: 'pending',
+        billing_month: billingMonthStr,
+        is_prorated: true,
+        auto_generated: false,
+        food_amount: booking.food_opted ? Math.round((foodAmount * daysRemaining) / daysInMonth) : 0,
+      });
+    }
+
     // Test mode: skip signature verification, directly confirm booking
     if (testMode) {
       const testTxnId = `test_pay_${Date.now()}`;
       const updateData: Record<string, any> = { payment_status: "completed" };
       if (isHostel || isLaundry) {
         updateData.status = "confirmed";
+      }
+
+      // For hostel test mode, check advance
+      if (isHostel) {
+        const { data: hBooking } = await adminClient
+          .from("hostel_bookings")
+          .select("advance_amount, total_price")
+          .eq("id", bookingId)
+          .single();
+        if (hBooking && hBooking.advance_amount > 0 && hBooking.advance_amount < hBooking.total_price) {
+          updateData.payment_status = "advance_paid";
+        }
       }
 
       const { error: updateError } = await adminClient
@@ -117,11 +196,11 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Create hostel receipt in test mode
+      // Create hostel receipt + dues in test mode
       if (isHostel) {
         const { data: booking } = await adminClient
           .from("hostel_bookings")
-          .select("hostel_id, user_id, advance_amount, total_price")
+          .select("hostel_id, user_id, advance_amount, total_price, room_id, bed_id, sharing_option_id, start_date, end_date, food_opted, food_amount")
           .eq("id", bookingId)
           .single();
 
@@ -136,6 +215,14 @@ Deno.serve(async (req) => {
             receipt_type: "booking_payment",
             collected_by_name: "InhaleStays.com",
           });
+
+          // Create dues if advance_paid
+          if (updateData.payment_status === "advance_paid") {
+            await createHostelAdvanceDues(bookingId, booking);
+          }
+
+          // Create monthly cycle dues
+          await createMonthlyCycleDues(bookingId, booking);
         }
       }
 
@@ -241,11 +328,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create hostel receipt on successful payment (with duplicate check)
+    // Create hostel receipt + dues on successful payment
     if (isHostel) {
       const { data: booking } = await adminClient
         .from("hostel_bookings")
-        .select("hostel_id, user_id, advance_amount, total_price")
+        .select("hostel_id, user_id, advance_amount, total_price, room_id, bed_id, sharing_option_id, start_date, end_date, food_opted, food_amount")
         .eq("id", bookingId)
         .single();
 
@@ -260,6 +347,14 @@ Deno.serve(async (req) => {
           receipt_type: "booking_payment",
           collected_by_name: "InhaleStays.com",
         });
+
+        // Create dues if advance_paid
+        if (updateData.payment_status === "advance_paid") {
+          await createHostelAdvanceDues(bookingId, booking);
+        }
+
+        // Create monthly cycle dues
+        await createMonthlyCycleDues(bookingId, booking);
       }
     }
 
