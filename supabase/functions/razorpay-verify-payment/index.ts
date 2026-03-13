@@ -314,6 +314,34 @@ Deno.serve(async (req) => {
       }
     }
 
+    // For reading room bookings, detect advance payment by comparing Razorpay order amount vs total_price
+    if (!isHostel && !isLaundry) {
+      try {
+        const RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
+        const orderRes = await fetch(`https://api.razorpay.com/v1/orders/${razorpay_order_id}`, {
+          headers: {
+            Authorization: "Basic " + btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`),
+          },
+        });
+        const orderData = await orderRes.json();
+        const paidAmountPaise = orderData.amount_paid || orderData.amount || 0;
+        const paidAmount = paidAmountPaise / 100;
+
+        const { data: bookingCheck } = await adminClient
+          .from("bookings")
+          .select("total_price")
+          .eq("id", bookingId)
+          .single();
+
+        if (bookingCheck && paidAmount > 0 && paidAmount < (bookingCheck.total_price || 0)) {
+          updateData.payment_status = "advance_paid";
+        }
+      } catch (e) {
+        console.error("Error checking advance for reading room:", e);
+        // Default to completed if check fails
+      }
+    }
+
     const { error: updateError } = await adminClient
       .from(tableName)
       .update(updateData)
@@ -389,12 +417,29 @@ Deno.serve(async (req) => {
         .single();
 
       if (booking) {
+        // For advance payments, get actual paid amount from Razorpay order
+        let receiptAmount = booking.total_price;
+        if (updateData.payment_status === "advance_paid") {
+          try {
+            const RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
+            const orderRes = await fetch(`https://api.razorpay.com/v1/orders/${razorpay_order_id}`, {
+              headers: {
+                Authorization: "Basic " + btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`),
+              },
+            });
+            const orderData = await orderRes.json();
+            receiptAmount = (orderData.amount_paid || orderData.amount || 0) / 100;
+          } catch (e) {
+            console.error("Error fetching order amount for receipt:", e);
+          }
+        }
+
         await insertReceiptIfNotExists("receipts", "booking_id", bookingId, razorpay_payment_id, {
           booking_id: bookingId,
           user_id: booking.user_id,
           cabin_id: booking.cabin_id,
           seat_id: booking.seat_id,
-          amount: booking.total_price,
+          amount: receiptAmount,
           payment_method: "online",
           transaction_id: razorpay_payment_id,
           receipt_type: "booking_payment",
