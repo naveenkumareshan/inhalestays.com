@@ -2915,6 +2915,30 @@ export type Database = {
           },
         ]
       }
+      partner_nav_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          nav_items: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nav_items?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nav_items?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       partner_payment_modes: {
         Row: {
           assigned_employee_id: string | null
