@@ -1,71 +1,42 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Fix: Hostel Booking Created Without Payment
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Problem
+`hostelBookingService.createBooking()` determines `payment_status` and `status` based on `advance_amount` being passed in the request — before Razorpay payment actually completes. This causes:
+1. Booking marked `confirmed` / `advance_paid` immediately
+2. Receipt created for ₹2,400 without actual payment
+3. Bed marked unavailable
+4. If user closes browser (not Razorpay modal dismiss), the `ondismiss` handler never fires, leaving a ghost booking
 
-## Changes
+## Immediate Data Fix
+Run a migration to fix the specific booking and delete the false receipt:
+- Set booking `e77057fe-...` to `status = 'cancelled'`, `payment_status = 'cancelled'`
+- Delete the false receipt `IS-HRCPT-2026-00040`
+- Bed availability will be restored by the `sync_hostel_bed_availability` trigger
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+## Code Fix
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### 1. `src/api/hostelBookingService.ts` — `createBooking()`
+- Always create booking with `payment_status: 'pending'` and `status: 'pending'`
+- Remove the receipt creation logic (receipts should only be created after verified payment)
+- Remove the hostel_dues creation for advance_paid (should happen post-payment)
+- Keep the monthly_cycle pro-rated due creation only if `billing_type === 'monthly_cycle'` and payment is verified
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### 2. `src/pages/HostelBooking.tsx` — payment handler
+- In `razorpayOptions.handler` (successful payment callback): after `verifyPayment` succeeds, the edge function already handles status updates and receipt creation
+- No changes needed here — the verify edge function handles confirmation
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### 3. `supabase/functions/razorpay-verify-payment/index.ts`
+- For hostel bookings: after signature verification, update `payment_status` to `advance_paid` or `completed` based on advance_amount vs total_price
+- Create the receipt record
+- Create hostel_dues entry if advance_paid
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+## Files Changed
+1. **Migration SQL** — fix corrupted booking data
+2. **`src/api/hostelBookingService.ts`** — createBooking always creates as pending, no receipt/dues creation
+3. **`supabase/functions/razorpay-verify-payment/index.ts`** — handle hostel receipt + dues creation post-verification
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+## Summary
+Bookings will always start as `pending`. Only after Razorpay payment is verified by the edge function will the booking be confirmed, receipt generated, and dues created. This eliminates ghost confirmed bookings from incomplete payments.
 
