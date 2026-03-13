@@ -160,11 +160,12 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl p-0">
-        <SheetHeader className="px-5 pt-5 pb-3 border-b">
-          <SheetTitle className="text-base font-semibold">All Features</SheetTitle>
-        </SheetHeader>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl p-0">
+          <SheetHeader className="px-5 pt-5 pb-3 border-b">
+            <SheetTitle className="text-base font-semibold">All Features</SheetTitle>
+          </SheetHeader>
         <ScrollArea className="h-[calc(85vh-70px)]">
           <div className="px-4 py-3 space-y-5">
             {/* Customize Nav Button */}
