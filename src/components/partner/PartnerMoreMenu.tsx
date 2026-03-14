@@ -223,8 +223,20 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
               );
             })}
 
-            {/* Sign Out */}
-            <div className="pt-2 pb-4">
+            {/* Customize Nav + Sign Out */}
+            <div className="pt-2 pb-4 space-y-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  onOpenChange(false);
+                  setTimeout(() => setCustomizerOpen(true), 300);
+                }}
+              >
+                <Settings className="h-3.5 w-3.5" />
+                Customize Nav Bar
+              </Button>
               <Button
                 variant="ghost"
                 className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
