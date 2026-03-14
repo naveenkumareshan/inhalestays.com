@@ -23,7 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { addDays, addMonths, subDays, format } from 'date-fns';
 import { updateMessSubscription, createMessReceipt, getMessPackages } from '@/api/messService';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
-import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
+import { PaymentMethodSelector, requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { cn } from '@/lib/utils';
