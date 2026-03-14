@@ -20,6 +20,7 @@ import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 const DueManagement: React.FC = () => {
   const [dues, setDues] = useState<any[]>([]);
