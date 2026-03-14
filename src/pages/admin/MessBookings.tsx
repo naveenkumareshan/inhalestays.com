@@ -315,7 +315,7 @@ export default function MessBookings() {
 
   const handleStudentSelect = (s: any) => {
     setSelectedUserId(s.id);
-    setSelectedStudentName(`${s.name} (${s.email})`);
+    setSelectedStudentName(s.name);
     setStudentQuery(s.name);
     setShowResults(false);
   };
