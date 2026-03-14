@@ -36,6 +36,7 @@ const AdminBookingDetail = () => {
   const [loading, setLoading] = useState(true);
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [dueData, setDueData] = useState<any>(null);
+  const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
 
   const { toast } = useToast();
   const navigate = useNavigate();
