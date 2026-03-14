@@ -23,6 +23,10 @@ const PartnerEarnings: React.FC = () => {
   const [statementLoading, setStatementLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [settPage, setSettPage] = useState(1);
+  const [settPageSize, setSettPageSize] = useState(10);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerPageSize, setLedgerPageSize] = useState(10);
 
   useEffect(() => {
     const init = async () => {
