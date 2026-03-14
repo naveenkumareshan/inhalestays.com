@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   LayoutGrid, List, CalendarIcon, Search, Ban, Lock, Unlock,
-  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Download, ArrowLeft, ArrowRightLeft, RotateCcw, Wallet, LogOut, XCircle, Pencil,
+  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Download, ArrowLeft, ArrowRightLeft, RotateCcw, Wallet, LogOut, XCircle, Pencil, UserCheck,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -321,14 +321,8 @@ const VendorSeats: React.FC = () => {
     const expiring = seats.filter(s => s.dateStatus === 'expiring_soon').length;
     const blocked = seats.filter(s => s.dateStatus === 'blocked').length;
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    const revenue = seats.reduce((sum, s) => {
-      if (s.dateStatus === 'booked' || s.dateStatus === 'expiring_soon') {
-        const active = s.allBookings.find(b => b.startDate <= dateStr && b.endDate >= dateStr);
-        return sum + (active?.totalPrice || 0);
-      }
-      return sum;
-    }, 0);
-    return { total, booked, available, expiring, blocked, revenue };
+    const present = attendanceSet.size;
+    return { total, booked, available, expiring, blocked, present };
   }, [seats, selectedDate]);
 
   // Seat click -> open sheet
@@ -839,7 +833,7 @@ const VendorSeats: React.FC = () => {
           { label: 'Available', value: stats.available, icon: <CheckCircle className="h-3.5 w-3.5 text-emerald-500" /> },
           { label: 'Expiring', value: stats.expiring, icon: <AlertTriangle className="h-3.5 w-3.5 text-amber-500" /> },
           { label: 'Blocked', value: stats.blocked, icon: <Ban className="h-3.5 w-3.5 text-muted-foreground" /> },
-          { label: 'Revenue', value: `₹${stats.revenue.toLocaleString()}`, icon: <IndianRupee className="h-3.5 w-3.5 text-primary" /> },
+          { label: 'Present', value: stats.present, icon: <UserCheck className="h-3.5 w-3.5 text-emerald-600" /> },
         ].map((s, i) => (
           <div key={s.label} className={cn("flex items-center gap-1.5 px-3 py-1 flex-1 justify-center", i > 0 && "border-l")}>
             {s.icon}

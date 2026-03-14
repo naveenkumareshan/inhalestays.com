@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   LayoutGrid, List, CalendarIcon, Search, Ban, Lock, Unlock,
-  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Download, ArrowLeft, ArrowRightLeft, RotateCcw, Wallet, Bed, LogOut, XCircle, Pencil,
+  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Download, ArrowLeft, ArrowRightLeft, RotateCcw, Wallet, Bed, LogOut, XCircle, Pencil, UserCheck,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -507,13 +507,8 @@ const HostelBedMap: React.FC = () => {
     const expiring = beds.filter(b => b.dateStatus === 'expiring_soon').length;
     const blocked = beds.filter(b => b.dateStatus === 'blocked').length;
     const futureBooked = beds.filter(b => b.dateStatus === 'future_booked').length;
-    const revenue = beds.reduce((sum, b) => {
-      if (b.dateStatus === 'booked' || b.dateStatus === 'expiring_soon') {
-        return sum + (b.currentBooking?.totalPrice || 0);
-      }
-      return sum;
-    }, 0);
-    return { total, booked, available, expiring, blocked, futureBooked, revenue };
+    const present = attendanceSet.size;
+    return { total, booked, available, expiring, blocked, futureBooked, present };
   }, [beds]);
 
   // Get hostel info for selected bed
@@ -1205,7 +1200,7 @@ const HostelBedMap: React.FC = () => {
           { label: 'Future', value: stats.futureBooked, icon: <Clock className="h-3.5 w-3.5 text-violet-500" /> },
           { label: 'Expiring', value: stats.expiring, icon: <AlertTriangle className="h-3.5 w-3.5 text-amber-500" /> },
           { label: 'Blocked', value: stats.blocked, icon: <Ban className="h-3.5 w-3.5 text-muted-foreground" /> },
-          { label: 'Revenue', value: `₹${stats.revenue.toLocaleString()}`, icon: <IndianRupee className="h-3.5 w-3.5 text-primary" /> },
+          { label: 'Present', value: stats.present, icon: <UserCheck className="h-3.5 w-3.5 text-emerald-600" /> },
         ].map((s, i) => (
           <div key={s.label} className={cn("flex items-center gap-1.5 px-3 py-1 flex-1 justify-center", i > 0 && "border-l")}>
             {s.icon}
