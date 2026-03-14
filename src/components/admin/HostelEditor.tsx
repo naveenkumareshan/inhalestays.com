@@ -715,6 +715,11 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
                         existingImages={hostel.food_menu_image ? [hostel.food_menu_image] : []}
                       />
                     </div>
+
+                    {/* Hostel-Mess Link Manager */}
+                    {hostel.id && (
+                      <HostelMessLinkManager hostelId={hostel.id} />
+                    )}
                   </div>
                 )}
               </CardContent>

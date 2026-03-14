@@ -518,6 +518,21 @@ export default function MessBookings() {
                             <div>{s.mess_packages?.name || '-'}</div>
                             <div className="text-[10px] text-muted-foreground">{(s.mess_packages?.meal_types as string[])?.join(', ')}</div>
                           </TableCell>
+                          <TableCell className="py-1 px-2 text-[11px]">
+                            {s.source_type === 'hostel_inclusive' ? (
+                              <span className="inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                Hostel Package{s.hostel_bookings?.hostels?.name ? ` · ${s.hostel_bookings.hostels.name}` : ''}
+                              </span>
+                            ) : s.source_type === 'addon_purchase' ? (
+                              <span className="inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                                Addon{s.hostel_bookings?.hostels?.name ? ` · ${s.hostel_bookings.hostels.name}` : ''}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium bg-muted text-muted-foreground border border-border">
+                                Manual
+                              </span>
+                            )}
+                          </TableCell>
                           <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">{fmtDate(s.start_date)}</TableCell>
                           <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">{fmtDate(s.end_date)}</TableCell>
                           <TableCell className="py-1 px-2 text-[11px] font-semibold">
