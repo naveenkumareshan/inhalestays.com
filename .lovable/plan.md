@@ -1,71 +1,67 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Convert Manual Mess Booking from Page to Side Sheet (VendorSeats Pattern)
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Problem
+The manual mess booking is currently a separate page (`/admin/mess-manual-booking`). The user wants it to open as a **right-side Sheet drawer** (same as VendorSeats seat booking), triggered from the MessBookings page via the "Manual Booking" button.
+
+## Solution
+Move all the booking form logic into a Sheet within `MessBookings.tsx`, matching the VendorSeats pattern exactly:
+- `Sheet` opens from right side (`w-[400px] sm:w-[440px]`)
+- Compact `text-[11px]` / `text-xs` sizing matching VendorSeats
+- Same flow order as the screenshot: Mess name header → Search student → Create student collapsible → Duration type pills → Duration count → Start/End dates → Price summary with discount → Partial payment checkbox → PaymentMethodSelector (linked to partner's payment modes) → Confirm button → Success view
 
 ## Changes
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### `src/pages/admin/MessBookings.tsx`
+- Add `Sheet` import and state (`bookingSheetOpen`)
+- Change "Manual Booking" button to open the sheet instead of navigating
+- Add all mess booking form logic inside a `<Sheet>` component:
+  - **Header**: Selected mess name + package info
+  - **Step 1**: Mess selector pills (fetch partner's messes)
+  - **Step 2**: Package selector pills
+  - **Step 3**: Student search + collapsible create (compact `h-7`/`h-8` inputs, `text-[11px]`)
+  - **Step 4**: Duration type pills (Daily/Weekly/Monthly) + count input
+  - **Step 5**: Start date (Popover Calendar) + computed End date display
+  - **Step 6**: Price summary box (`bg-muted/30 border rounded p-3`) with discount inputs
+  - **Step 7**: Partial Payment checkbox + advance amount input
+  - **Step 8**: "Book" button → Confirmation step with `PaymentMethodSelector`, txn ID, proof upload, collected by, then Confirm button
+  - **Success view**: Same pattern as VendorSeats (checkmark, summary, close)
+- Use `PaymentMethodSelector` component (linked to partner's configured payment modes) instead of hardcoded pills
+- On success: close sheet + refresh subscriptions list
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### `src/pages/admin/ManualMessBooking.tsx`
+- Keep file but it becomes unused (or delete route)
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### `src/App.tsx`
+- Remove `/admin/mess-manual-booking` route (optional cleanup)
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### `src/components/admin/AdminSidebar.tsx`
+- Remove "Manual Booking" sidebar item under Mess section (no longer a page)
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
-
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+### Key UI Pattern (matching VendorSeats exactly)
+```
+Sheet (right, 400-440px, overflow-y-auto)
+├── SheetHeader: "New Mess Subscription"
+├── Separator
+├── Mess pills (horizontal scroll)
+├── Package pills (after mess selected)
+├── Separator
+├── "BOOK THIS MESS" label
+├── Student search (h-8 text-xs)
+├── Create Student collapsible (h-7 inputs)
+├── Duration Type pills (Daily/Weekly/Monthly)
+├── Duration count input (h-8)
+├── Start/End date row (grid-cols-2)
+├── Price summary box (seat amount, discount inputs, total)
+├── Partial Payment checkbox + advance input
+├── "Book" button
+├── ── Confirmation step ──
+├── Read-only summary
+├── PaymentMethodSelector (partner modes)
+├── Txn ID + Proof upload
+├── Collected by
+├── Back + Confirm buttons
+└── ── Success view ──
+```
 
