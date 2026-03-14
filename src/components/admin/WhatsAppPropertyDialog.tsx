@@ -34,6 +34,7 @@ export const WhatsAppPropertyDialog: React.FC<WhatsAppPropertyDialogProps> = ({
   const [enabled, setEnabled] = useState(initialEnabled);
   const [saving, setSaving] = useState(false);
   const [loadingState, setLoadingState] = useState(false);
+  const [clickCount, setClickCount] = useState<number>(0);
 
   const table = propertyType === 'cabin' ? 'cabins' : propertyType === 'hostel' ? 'hostels' : 'mess_partners';
 
