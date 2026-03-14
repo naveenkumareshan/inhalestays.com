@@ -85,14 +85,18 @@ const ManageProperties: React.FC = () => {
 
   // Fetch properties for QR dialog
   useEffect(() => {
-    if (!user?.id) return;
     (async () => {
-      const props: { id: string; name: string; type: string }[] = [];
-      const { data: cabins } = await supabase.from('cabins').select('id, name').eq('created_by', user.id).eq('is_active', true);
-      (cabins || []).forEach((c: any) => props.push({ id: c.id, name: c.name, type: 'reading_room' }));
-      const { data: hostels } = await supabase.from('hostels').select('id, name').eq('created_by', user.id).eq('is_active', true);
-      (hostels || []).forEach((h: any) => props.push({ id: h.id, name: h.name, type: 'hostel' }));
-      setQrProperties(props);
+      try {
+        const { ownerId } = await getEffectiveOwnerId();
+        const props: { id: string; name: string; type: string }[] = [];
+        const { data: cabins } = await supabase.from('cabins').select('id, name').eq('created_by', ownerId).eq('is_active', true);
+        (cabins || []).forEach((c: any) => props.push({ id: c.id, name: c.name, type: 'reading_room' }));
+        const { data: hostels } = await supabase.from('hostels').select('id, name').eq('created_by', ownerId).eq('is_active', true);
+        (hostels || []).forEach((h: any) => props.push({ id: h.id, name: h.name, type: 'hostel' }));
+        setQrProperties(props);
+      } catch (e) {
+        console.error('Failed to fetch QR properties', e);
+      }
     })();
   }, [user?.id]);
 
