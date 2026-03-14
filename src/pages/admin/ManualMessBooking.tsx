@@ -190,7 +190,7 @@ export default function ManualMessBooking() {
       // Create due if partial
       if (isPartialPayment) {
         await supabase.from('mess_dues' as any).insert({
-          subscription_id: sub.id,
+          subscription_id: (sub as any).id,
           user_id: selectedUserId,
           mess_id: selectedMess.id,
           total_fee: totalAfterDiscount,
