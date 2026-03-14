@@ -1,71 +1,86 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Fix Payment Method Labels & Standardize Location Display
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Problem 1: Payment Method Showing Raw Values
+Several pages display raw `payment_method` values (e.g., `custom_abc-uuid`) instead of resolved human-readable labels like "Cash Counter 1" or "SBI UPI". Pages that already work correctly (DueManagement, Receipts, HostelReceipts) use `resolvePaymentMethodLabels` + `getMethodLabel` from `src/utils/paymentMethodLabels.ts`. The fix is to apply the same pattern everywhere else.
 
-## Changes
+## Problem 2: Missing Floor/Room in Location Display
+Hostel bookings show "Hostel / Bed #X" without Room number. Reading Room bookings sometimes miss Floor number. This needs standardization across all views.
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+---
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+## Files to Change
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### 1. `src/components/admin/operations/CheckInViewDetailsDialog.tsx`
+- Import `resolvePaymentMethodLabels, getMethodLabel` from paymentMethodLabels utility
+- Add state + useEffect to resolve custom labels from `booking.payment_method`
+- Replace raw `booking.payment_method` (line 88) with resolved label
+- For hostel: add Room number display (booking needs `hostel_rooms` data — already passed from parent)
+- Update hostel line (69) to: `Hostel / Room X · Bed #Y`
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### 2. `src/components/admin/operations/CheckInFinancials.tsx` (ReceiptsDialog)
+- Import `resolvePaymentMethodLabels, getMethodLabel`
+- After fetching receipts, resolve custom method labels
+- Replace raw `r.payment_method` (line 291) with `getMethodLabel(r.payment_method, customLabels)`
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+### 3. `src/components/admin/operations/CheckInTracker.tsx`
+- Hostel column (line 286): Add room number — data is already fetched (`hostel_rooms:room_id(room_number)`)
+- Change display to: `Hostel / Room X · Bed #Y`
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### 4. `src/components/admin/operations/ReportedTodaySection.tsx`
+- Update hostel query (line 40) to include `hostel_rooms:room_id(room_number)` (currently missing)
+- Update hostel display (line 141) to: `Hostel / Room X · Bed #Y`
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+### 5. `src/pages/AdminBookingDetail.tsx`
+- Import `resolvePaymentMethodLabels, getMethodLabel`
+- After fetching receipts, resolve custom labels for all `payment_method` values (including `advancePaymentMethod`)
+- Replace raw `r.payment_method` in receipts table (line 534) with resolved label
+- Update `getSeatLabel()` for reading room (line 157): include floor if available from booking data
+- Invoice download: pass resolved payment method label instead of raw value
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+### 6. `src/pages/Confirmation.tsx`
+- Import `getMethodLabel` from paymentMethodLabels
+- Replace raw `booking.payment_method` (line 134) with `getMethodLabel(booking.payment_method)`
 
-**Reviews section**: Shown below the booking flow (not in a tab)
+### 7. `src/pages/students/StudentBookingView.tsx`
+- Update reading room query (line 199): add `floor` to seats select → `seats:seat_id(price, number, category, floor)`
+- Import `resolvePaymentMethodLabels, getMethodLabel`
+- After fetching receipts, resolve custom labels
+- Replace raw `r.payment_method` (line 553) with resolved label
+- Add Floor info display in Booking Info section for reading rooms
+- Add Room number display for hostel (already fetched via `hostel_rooms(room_number)`)
 
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
+### 8. `src/utils/invoiceGenerator.ts`
+- Update `InvoiceData` interface: add optional `floor` and `roomNumber` fields
+- Update `paymentMethodLabel` function to handle `custom_*` values via a new optional `customLabel` param on `InvoiceData`
+- Add `paymentMethodDisplayLabel` field to `InvoiceData` so callers pass the pre-resolved label
+- Update invoice HTML to show Floor + Room/Flat when available
 
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
+### 9. `src/pages/admin/Reconciliation.tsx`
+- Already resolves custom labels ✓ but doesn't use them in mobile cards (line 540) and desktop table (line 605) — both show `r.payment_method` which is already resolved at mapping time ✓ — no change needed
 
-## File Summary
+---
 
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+## Pattern Applied Everywhere
+```typescript
+// Import
+import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+
+// State
+const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
+
+// After fetching data with payment_method fields
+const methods = data.map(r => r.payment_method);
+const labels = await resolvePaymentMethodLabels(methods);
+setCustomLabels(labels);
+
+// Display
+{getMethodLabel(r.payment_method, customLabels)}
+```
+
+## Location Display Standard
+- **Reading Room**: `{CabinName} / Floor {X} · Seat #{Y}`
+- **Hostel**: `{HostelName} / Room {X} · Bed #{Y}`
+- **Invoice**: `{PropertyName} — Floor {X} · Seat/Bed #{Y}` or `{PropertyName} — Room {X} · Bed #{Y}`
 
