@@ -53,7 +53,6 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
     try {
       setLoading(true);
       setError(null);
-      setMessLinksMap({});
       let data;
       if (user?.role === 'admin') {
         data = await hostelService.getAllHostels({ admin: true });
@@ -61,32 +60,6 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
         data = await hostelService.getUserHostels();
       }
       setHostels(data || []);
-      // Fetch linked mess partners for all hostels
-      if (data && data.length > 0) {
-        const hostelIds = data.map((h: any) => h.id);
-        try {
-          const { data: links, error: linkErr } = await supabase
-            .from('hostel_mess_links' as any)
-            .select('hostel_id, mess_id, is_default, mess_partners:mess_id(name)')
-            .in('hostel_id', hostelIds);
-          if (linkErr) {
-            console.error('Error fetching mess links:', linkErr);
-          }
-          const map: Record<string, { mess_id: string; mess_name: string; is_default: boolean }[]> = {};
-          (links || []).forEach((link: any) => {
-            const hostelId = link.hostel_id;
-            if (!map[hostelId]) map[hostelId] = [];
-            map[hostelId].push({
-              mess_id: link.mess_id,
-              mess_name: link.mess_partners?.name || 'Unknown',
-              is_default: link.is_default,
-            });
-          });
-          setMessLinksMap(map);
-        } catch (linkError) {
-          console.error('Error fetching mess links:', linkError);
-        }
-      }
     } catch (error) {
       console.error('Error fetching hostels:', error);
       setError('Unable to fetch data. Please refresh.');
@@ -94,6 +67,34 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
       setLoading(false);
     }
   };
+
+  // Fetch linked mess partners separately after hostels are loaded
+  useEffect(() => {
+    if (hostels.length === 0) { setMessLinksMap({}); return; }
+    const fetchLinks = async () => {
+      const hostelIds = hostels.map((h: any) => h.id);
+      const { data: links, error: linkErr } = await supabase
+        .from('hostel_mess_links' as any)
+        .select('hostel_id, mess_id, is_default, mess_partners:mess_id(name)')
+        .in('hostel_id', hostelIds);
+      if (linkErr) {
+        console.error('Error fetching mess links:', linkErr);
+        return;
+      }
+      const map: Record<string, { mess_id: string; mess_name: string; is_default: boolean }[]> = {};
+      (links || []).forEach((link: any) => {
+        const hostelId = link.hostel_id;
+        if (!map[hostelId]) map[hostelId] = [];
+        map[hostelId].push({
+          mess_id: link.mess_id,
+          mess_name: link.mess_partners?.name || 'Unknown',
+          is_default: link.is_default,
+        });
+      });
+      setMessLinksMap(map);
+    };
+    fetchLinks();
+  }, [hostels]);
 
   const handleAddHostel = () => { setSelectedHostel(null); setShowEditor(true); };
   const handleEditHostel = (hostel: any) => { setSelectedHostel(hostel); setShowEditor(true); };
