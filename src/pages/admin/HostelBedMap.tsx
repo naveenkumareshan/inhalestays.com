@@ -243,6 +243,19 @@ const HostelBedMap: React.FC = () => {
     })();
   }, [user]);
 
+  // Attendance presence dots - auto-refresh every 30s
+  useEffect(() => {
+    const fetchAttendance = async () => {
+      const hostelIds = hostels.map(h => h.id);
+      if (hostelIds.length === 0) return;
+      const set = await attendanceService.getAllPropertiesAttendanceToday(hostelIds);
+      setAttendanceSet(set);
+    };
+    fetchAttendance();
+    const interval = setInterval(fetchAttendance, 30000);
+    return () => clearInterval(interval);
+  }, [hostels]);
+
   // Fetch hostel floors when hostels load or selected hostel changes
   useEffect(() => {
     (async () => {
