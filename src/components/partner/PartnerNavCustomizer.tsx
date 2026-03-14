@@ -49,7 +49,7 @@ const PartnerNavCustomizer: React.FC<Props> = ({ open, onOpenChange, currentItem
         </SheetHeader>
         <ScrollArea className="h-[calc(85vh-160px)]">
           <div className="px-4 py-3 grid grid-cols-3 gap-2">
-            {ALL_NAV_OPTIONS.map((item) => {
+            {availableOptions.map((item) => {
               const selIdx = selected.findIndex(s => s.key === item.key);
               const isSelected = selIdx >= 0;
               const IconComp = ICON_MAP[item.icon];
