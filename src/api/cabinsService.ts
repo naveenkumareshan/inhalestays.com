@@ -14,7 +14,7 @@ export interface CabinFilters {
 export const cabinsService = {
   getAllCabins: async (filters?: CabinFilters) => {
     try {
-      let query = supabase.from('cabins').select('*', { count: 'exact' }).eq('is_active', true);
+      let query = supabase.from('cabins').select('*', { count: 'exact' }).eq('is_active', true).eq('is_student_visible', true);
 
       if (filters?.category) query = query.eq('category', filters.category);
       if (filters?.search) query = query.ilike('name', `%${filters.search}%`);
