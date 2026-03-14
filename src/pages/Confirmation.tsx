@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { bookingsService } from "@/api/bookingsService";
+import { getMethodLabel } from "@/utils/paymentMethodLabels";
 
 const Confirmation = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
@@ -131,7 +132,7 @@ const Confirmation = () => {
                 {booking?.payment_method && (
                   <div className="bg-cabin-light/20 p-4 rounded-md">
                     <p className="text-sm text-cabin-dark/60 mb-1">Payment Method</p>
-                    <p className="font-medium text-cabin-dark capitalize">{booking.payment_method}</p>
+                    <p className="font-medium text-cabin-dark capitalize">{getMethodLabel(booking.payment_method)}</p>
                   </div>
                 )}
                 {booking?.locker_included && (

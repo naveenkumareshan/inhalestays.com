@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { Download, FileText } from 'lucide-react';
+import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 
 type Module = 'reading_room' | 'hostel';
 
@@ -20,6 +21,13 @@ interface CheckInViewDetailsDialogProps {
 
 const CheckInViewDetailsDialog: React.FC<CheckInViewDetailsDialogProps> = ({ open, onOpenChange, booking, module }) => {
   const { toast } = useToast();
+  const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (booking?.payment_method) {
+      resolvePaymentMethodLabels([booking.payment_method]).then(setCustomLabels);
+    }
+  }, [booking?.payment_method]);
 
   if (!booking) return null;
 
@@ -66,7 +74,7 @@ const CheckInViewDetailsDialog: React.FC<CheckInViewDetailsDialogProps> = ({ ope
               {module === 'reading_room' ? (
                 <InfoRow label="Room / Seat" value={`${booking.cabins?.name || '—'} / ${booking.seats?.floor ? `Floor ${booking.seats.floor} · ` : ''}Seat #${booking.seats?.number || '—'}`} />
               ) : (
-                <InfoRow label="Hostel / Bed" value={`${booking.hostels?.name || '—'} / Bed #${booking.hostel_beds?.bed_number || '—'}`} />
+                <InfoRow label="Hostel / Bed" value={`${booking.hostels?.name || '—'} / Room ${booking.hostel_rooms?.room_number || '—'} · Bed #${booking.hostel_beds?.bed_number || '—'}`} />
               )}
               <InfoRow label="Duration" value={`${booking.booking_duration || '—'} (${booking.duration_count || 1})`} />
               <InfoRow label="Start" value={booking.start_date ? format(parseISO(booking.start_date), 'dd MMM yyyy') : '—'} />
@@ -85,7 +93,7 @@ const CheckInViewDetailsDialog: React.FC<CheckInViewDetailsDialogProps> = ({ ope
                 </Badge>
               } />
               <InfoRow label="Amount" value={`₹${booking.total_price || 0}`} />
-              <InfoRow label="Method" value={booking.payment_method} />
+              <InfoRow label="Method" value={getMethodLabel(booking.payment_method, customLabels)} />
               <InfoRow label="Transaction ID" value={booking.transaction_id} />
             </div>
 

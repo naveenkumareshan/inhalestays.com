@@ -18,6 +18,7 @@ import {
   Mail,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { resolvePaymentMethodLabels, getMethodLabel } from "@/utils/paymentMethodLabels";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { razorpayService } from "@/api/razorpayService";
 import { getTimingDisplay, getClosedDaysDisplay, formatTime } from "@/utils/timingUtils";
@@ -122,6 +123,7 @@ export default function StudentBookingView() {
   const [loading, setLoading] = useState(true);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [partnerInfo, setPartnerInfo] = useState<{ business_name: string; contact_person: string; phone: string; email: string } | null>(null);
+  const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
 
   // Detect if route is hostel
   const isHostelRoute = location.pathname.includes("/hostel-bookings/");
@@ -164,7 +166,9 @@ export default function StudentBookingView() {
           supabase.from("receipts").select("*").eq("booking_id", resolvedId).order("created_at", { ascending: false }),
           supabase.from("dues").select("id, due_amount, paid_amount, status").eq("booking_id", resolvedId).in("status", ["pending", "partial"]).maybeSingle(),
         ]);
-        setReceipts((receiptsRes.data as ReceiptItem[]) || []);
+        const rrReceipts = (receiptsRes.data as ReceiptItem[]) || [];
+        setReceipts(rrReceipts);
+        resolvePaymentMethodLabels(rrReceipts.map(r => r.payment_method).filter(Boolean)).then(setCustomLabels);
         setDueRecord(duesRes.data as DueRecord | null);
 
         // Fetch partner info
@@ -178,7 +182,9 @@ export default function StudentBookingView() {
           supabase.from("hostel_receipts").select("*").eq("booking_id", resolvedId).order("created_at", { ascending: false }),
           supabase.from("hostel_dues").select("id, due_amount, paid_amount, status").eq("booking_id", resolvedId).in("status", ["pending", "partial"]).maybeSingle(),
         ]);
-        setReceipts((receiptsRes.data as ReceiptItem[]) || []);
+        const hReceipts = (receiptsRes.data as ReceiptItem[]) || [];
+        setReceipts(hReceipts);
+        resolvePaymentMethodLabels(hReceipts.map(r => r.payment_method).filter(Boolean)).then(setCustomLabels);
         setDueRecord(duesRes.data as DueRecord | null);
 
         // Fetch partner info for hostel
@@ -196,7 +202,7 @@ export default function StudentBookingView() {
   };
 
   const fetchReadingRoomBooking = async (id: string) => {
-    const selectQuery = "*, cabins(name, opening_time, closing_time, working_days, is_24_hours, slots_enabled, created_by), seats:seat_id(price, number, category), cabin_slots:slot_id(name, start_time, end_time, price)";
+    const selectQuery = "*, cabins(name, opening_time, closing_time, working_days, is_24_hours, slots_enabled, created_by), seats:seat_id(price, number, category, floor), cabin_slots:slot_id(name, start_time, end_time, price)";
     let res = await supabase.from("bookings").select(selectQuery).eq("serial_number", id).maybeSingle();
     if (!res.data && isUUID(id)) {
       res = await supabase.from("bookings").select(selectQuery).eq("id", id).maybeSingle();
@@ -454,6 +460,9 @@ export default function StudentBookingView() {
           {isHostel && booking.hostel_rooms?.room_number && (
             <InfoRow label="Room" value={booking.hostel_rooms.room_number} />
           )}
+          {!isHostel && booking.seats?.floor && (
+            <InfoRow label="Floor" value={booking.seats.floor} />
+          )}
           <InfoRow label={`${unitLabel} Number`} value={`#${unitNumber}`} />
           <InfoRow label="Booking ID" value={booking.serial_number || `#${booking.id?.slice(0, 8)}`} />
           <InfoRow label="Check-in" value={safeFmt(booking.start_date, "dd MMM yyyy")} />
@@ -550,7 +559,7 @@ export default function StudentBookingView() {
                     <span className="text-[10px] text-muted-foreground">{safeFmt(r.created_at, "dd MMM yyyy")}</span>
                   </div>
                   <div className="flex gap-2 mt-1">
-                    <span className="text-[10px] text-muted-foreground capitalize">{r.payment_method}</span>
+                    <span className="text-[10px] text-muted-foreground capitalize">{getMethodLabel(r.payment_method, customLabels)}</span>
                     {r.serial_number && (
                       <span className="text-[10px] text-muted-foreground">• {r.serial_number}</span>
                     )}

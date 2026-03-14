@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from '@/integrations/supabase/client';
 import { downloadInvoice, InvoiceData } from '@/utils/invoiceGenerator';
+import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 
 interface ReceiptRow {
   id: string;
@@ -35,6 +36,7 @@ const AdminBookingDetail = () => {
   const [loading, setLoading] = useState(true);
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [dueData, setDueData] = useState<any>(null);
+  const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -91,20 +93,26 @@ const AdminBookingDetail = () => {
           .select('*')
           .eq('booking_id', resolvedId)
           .order('created_at', { ascending: false });
-        setReceipts((rcpts || []).map(r => ({
+        const mappedRcpts = (rcpts || []).map(r => ({
           ...r,
           transaction_id: r.transaction_id || '',
           collected_by_name: r.collected_by_name || '',
           notes: r.notes || '',
-        })) as ReceiptRow[]);
-        setDueData(null); // Hostel doesn't use dues table
+        })) as ReceiptRow[];
+        setReceipts(mappedRcpts);
+        const allMethods = [...mappedRcpts.map(r => r.payment_method), bookingData?.payment_method].filter(Boolean);
+        resolvePaymentMethodLabels(allMethods).then(setCustomLabels);
+        setDueData(null);
       } else {
         const { data: rcpts } = await supabase
           .from('receipts')
           .select('*')
           .eq('booking_id', resolvedId)
           .order('created_at', { ascending: false });
-        setReceipts((rcpts || []) as ReceiptRow[]);
+        const cabinRcpts = (rcpts || []) as ReceiptRow[];
+        setReceipts(cabinRcpts);
+        const allMethods = [...cabinRcpts.map(r => r.payment_method), bookingData?.paymentMethod || bookingData?.payment_method].filter(Boolean);
+        resolvePaymentMethodLabels(allMethods).then(setCustomLabels);
         const { data: dues } = await supabase
           .from('dues')
           .select('*')
@@ -154,7 +162,9 @@ const AdminBookingDetail = () => {
     if (bookingType === 'hostel') {
       return `Room ${booking?.hostel_rooms?.room_number || '-'} / Bed #${booking?.hostel_beds?.bed_number || '-'}`;
     }
-    return `#${typeof booking?.seatId === 'object' ? booking.seatId?.number : '-'}`;
+    const seat = typeof booking?.seatId === 'object' ? booking.seatId : {};
+    const floor = seat?.floor;
+    return `${floor ? `Floor ${floor} · ` : ''}Seat #${seat?.number || '-'}`;
   };
 
   const getBookingId = () => {
@@ -191,8 +201,10 @@ const AdminBookingDetail = () => {
         studentEmail: booking.profiles?.email || '-',
         studentPhone: booking.profiles?.phone || '-',
         studentSerialNumber: '',
-        cabinName: `${booking.hostels?.name || '-'} — Room ${booking.hostel_rooms?.room_number || '-'}`,
+        cabinName: booking.hostels?.name || '-',
         seatNumber: booking.hostel_beds?.bed_number || 0,
+        roomNumber: booking.hostel_rooms?.room_number,
+        seatLabel: `Bed #${booking.hostel_beds?.bed_number || '-'}`,
         startDate: booking.start_date || '',
         endDate: booking.end_date || '',
         duration: booking.booking_duration || '-',
@@ -209,7 +221,7 @@ const AdminBookingDetail = () => {
         foodAmount: booking.food_amount || 0,
         foodPolicyType: foodPolicy as any,
         totalAmount: booking.total_price || 0,
-        paymentMethod: booking.payment_method || 'cash',
+        paymentMethod: getMethodLabel(booking.payment_method || 'cash', customLabels),
         transactionId: booking.transaction_id || '',
         collectedByName: booking.collected_by_name || '-',
       };
@@ -227,6 +239,7 @@ const AdminBookingDetail = () => {
         studentSerialNumber: user?.userId || '',
         cabinName: cabin?.name || '-',
         seatNumber: seat?.number || booking.seatNumber || 0,
+        floor: seat?.floor,
         startDate: booking.startDate || '',
         endDate: booking.endDate || '',
         duration: booking.bookingDuration || booking.duration || '-',
@@ -238,7 +251,7 @@ const AdminBookingDetail = () => {
         lockerIncluded: booking.lockerIncluded || false,
         lockerPrice: booking.lockerPrice || 0,
         totalAmount: booking.totalPrice || 0,
-        paymentMethod: booking.paymentMethod || 'cash',
+        paymentMethod: getMethodLabel(booking.paymentMethod || 'cash', customLabels),
         transactionId: booking.transactionId || '',
         collectedByName: booking.collectedByName || '-',
       };
@@ -531,7 +544,7 @@ const AdminBookingDetail = () => {
                         <TableCell className="py-1.5">
                           <span className="text-[11px] font-medium">₹{Number(r.amount).toLocaleString()}</span>
                         </TableCell>
-                        <TableCell className="text-[11px] py-1.5 capitalize">{r.payment_method}</TableCell>
+                        <TableCell className="text-[11px] py-1.5 capitalize">{getMethodLabel(r.payment_method, customLabels)}</TableCell>
                         <TableCell className="text-[11px] py-1.5">{r.transaction_id || '-'}</TableCell>
                         <TableCell className="py-1.5">
                           {r.payment_proof_url ? (

@@ -20,6 +20,7 @@ import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { HostelDuePaymentHistory } from '@/components/booking/HostelDuePaymentHistory';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { bookingEmailService } from '@/api/bookingEmailService';
+import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 
 type Module = 'reading_room' | 'hostel';
 
@@ -243,6 +244,7 @@ interface ReceiptsDialogProps {
 export const ReceiptsDialog: React.FC<ReceiptsDialogProps> = ({ open, onOpenChange, booking, module }) => {
   const [receipts, setReceipts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
 
   React.useEffect(() => {
     if (!booking || !open) return;
@@ -254,7 +256,11 @@ export const ReceiptsDialog: React.FC<ReceiptsDialogProps> = ({ open, onOpenChan
         .select('*')
         .eq('booking_id', booking.id)
         .order('created_at', { ascending: false });
-      setReceipts(data || []);
+      const rcpts = data || [];
+      setReceipts(rcpts);
+      const methods = rcpts.map((r: any) => r.payment_method).filter(Boolean);
+      const labels = await resolvePaymentMethodLabels(methods);
+      setCustomLabels(labels);
       setLoading(false);
     };
     fetchReceipts();
@@ -288,7 +294,7 @@ export const ReceiptsDialog: React.FC<ReceiptsDialogProps> = ({ open, onOpenChan
                 <Separator className="my-1" />
                 <div className="grid grid-cols-2 gap-1">
                   <div><span className="text-muted-foreground">Amount:</span> <span className="font-medium">₹{Number(r.amount).toLocaleString()}</span></div>
-                  <div><span className="text-muted-foreground">Method:</span> {r.payment_method}</div>
+                  <div><span className="text-muted-foreground">Method:</span> {getMethodLabel(r.payment_method, customLabels)}</div>
                   <div><span className="text-muted-foreground">Date:</span> {format(new Date(r.created_at), 'dd MMM yy, hh:mm a')}</div>
                   <div><span className="text-muted-foreground">By:</span> {r.collected_by_name || '-'}</div>
                   {r.transaction_id && <div className="col-span-2"><span className="text-muted-foreground">Txn ID:</span> {r.transaction_id}</div>}
