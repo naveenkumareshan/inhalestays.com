@@ -1,71 +1,40 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Decouple Duration Type from Package — Add to Booking Flow Instead
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Problem
+Currently, `duration_type` and `duration_count` are stored on the `mess_packages` table and set during package creation. The user wants:
+1. **Package creation**: Only name, price, and meals selection — no duration fields
+2. **Manual booking** (partner side): Duration type (daily/weekly/monthly) + count as a separate step after package selection
+3. **Student side**: Same — duration type selection independent of package (already partially exists but tied to package filtering)
 
 ## Changes
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### 1. `src/pages/admin/MessManagement.tsx` — Remove duration from package form
+- Remove `duration_type` and `duration_count` from `pkgForm` state
+- Remove the Duration Type `<Select>` and Duration Count `<Input>` from the form
+- Stop passing `duration_type`/`duration_count` to `upsertMessPackage`
+- In the package list display, remove the `{p.duration_count} {p.duration_type}` text
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### 2. `src/pages/admin/MessBookings.tsx` — Add duration type to booking sheet
+- Add state: `durationType` ('daily'|'weekly'|'monthly', default 'monthly') and `durationCount` (number, default 1)
+- After package pills and before student search, add:
+  - Duration Type pills (Daily / Weekly / Monthly)
+  - Duration Count input
+- Update `recalcEndDate` to use the new `durationType`/`durationCount` state instead of reading from `selectedPackage`
+- Update `handlePackageSelect` to not rely on `pkg.duration_type`
+- Calculate price as `selectedPackage.price * durationCount`
+- Update `handleStartDateChange` accordingly
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### 3. `src/pages/MessDetail.tsx` — Fix student-side duration selection
+- Already has `durationType` and `durationCount` state — good
+- Remove the logic that filters packages by `duration_type` (`availableDurationTypes`, `matchingPackages` filtering by `p.duration_type`)
+- Instead: after selecting a meal plan, show all matching packages (by meal_types only), then show duration type pills independently
+- Price calculation: `selectedPackage.price * durationCount` (already partially there)
+- Remove the `availableDurationTypes` useMemo that reads `p.duration_type` from packages
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
-
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
-
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+### Files Modified
+- `src/pages/admin/MessManagement.tsx` — Remove duration fields from package form
+- `src/pages/admin/MessBookings.tsx` — Add duration type/count to booking sheet
+- `src/pages/MessDetail.tsx` — Decouple duration from package filtering
 
