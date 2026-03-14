@@ -1,23 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Filter, BookOpen, Plus, XCircle, RefreshCw, IndianRupee } from 'lucide-react';
+import { Search, Filter, BookOpen, Plus, XCircle, RefreshCw, IndianRupee, UserPlus, Loader2, Check, CalendarIcon, ArrowLeft } from 'lucide-react';
 import { formatCurrency } from '@/utils/currency';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { addDays, addMonths, subDays, format } from 'date-fns';
-import { updateMessSubscription, createMessReceipt } from '@/api/messService';
+import { updateMessSubscription, createMessReceipt, getMessPackages } from '@/api/messService';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
+import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
+import { vendorSeatsService } from '@/api/vendorSeatsService';
+import { cn } from '@/lib/utils';
 
 const badgeCls = (s: string) => {
   switch (s) {
@@ -37,10 +46,8 @@ export default function MessBookings() {
   const [searchQuery, setSearchQuery] = useState('');
   const [status, setStatus] = useState('');
   const { toast } = useToast();
-  const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const routePrefix = isAdmin ? '/admin' : '/partner';
 
   // Cancel dialog
   const [cancelSub, setCancelSub] = useState<any>(null);
@@ -64,7 +71,75 @@ export default function MessBookings() {
   const [collectSubmitting, setCollectSubmitting] = useState(false);
   const [duesMap, setDuesMap] = useState<Record<string, any>>({});
 
+  // ──── Booking Sheet state ────
+  const [bookingSheetOpen, setBookingSheetOpen] = useState(false);
+  const [bookingStep, setBookingStep] = useState<'details' | 'confirm' | 'success'>('details');
+  const studentSearchRef = useRef<HTMLDivElement>(null);
+
+  // Student
+  const [studentQuery, setStudentQuery] = useState('');
+  const [studentResults, setStudentResults] = useState<any[]>([]);
+  const [studentSearching, setStudentSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedStudentName, setSelectedStudentName] = useState('');
+  const [showNewStudent, setShowNewStudent] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [creatingStudent, setCreatingStudent] = useState(false);
+
+  // Mess
+  const [messes, setMesses] = useState<any[]>([]);
+  const [selectedMess, setSelectedMess] = useState<any>(null);
+
+  // Package
+  const [packages, setPackages] = useState<any[]>([]);
+  const [selectedPackage, setSelectedPackage] = useState<any>(null);
+
+  // Dates
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [endDate, setEndDate] = useState('');
+  const [startDateOpen, setStartDateOpen] = useState(false);
+
+  // Payment
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [transactionId, setTransactionId] = useState('');
+  const [pricePaid, setPricePaid] = useState(0);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [advanceAmount, setAdvanceAmount] = useState(0);
+  const [paymentProofUrl, setPaymentProofUrl] = useState('');
+  const [collectedByName, setCollectedByName] = useState('');
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [partnerId, setPartnerId] = useState('');
+
   useEffect(() => { fetchSubs(); }, [page, searchQuery, status]);
+
+  // Fetch messes when sheet opens
+  useEffect(() => {
+    if (!bookingSheetOpen) return;
+    (async () => {
+      const { ownerId } = await getEffectiveOwnerId();
+      setPartnerId(ownerId || '');
+      let q = supabase.from('mess_partners' as any).select('id, name, food_type, user_id').eq('is_active', true);
+      if (!isAdmin) q = q.eq('user_id', ownerId);
+      const { data } = await q.order('name');
+      setMesses(data || []);
+    })();
+  }, [bookingSheetOpen]);
+
+  // Student search
+  useEffect(() => {
+    if (studentQuery.length < 2) { setStudentResults([]); return; }
+    const timer = setTimeout(async () => {
+      setStudentSearching(true);
+      const res = await vendorSeatsService.searchStudents(studentQuery);
+      if (res.success && res.data) { setStudentResults(res.data); setShowResults(true); }
+      setStudentSearching(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [studentQuery]);
 
   const fetchSubs = async () => {
     try {
@@ -95,7 +170,6 @@ export default function MessBookings() {
       setSubs(filtered);
       setTotalCount(count || 0);
 
-      // Fetch dues for these subs
       const subIds = filtered.map((s: any) => s.id);
       if (subIds.length > 0) {
         const { data: dues } = await supabase.from('mess_dues' as any).select('*').in('subscription_id', subIds).eq('status', 'pending');
@@ -182,7 +256,6 @@ export default function MessBookings() {
     if (!due) return;
     setCollectSubmitting(true);
     try {
-      // Insert due payment
       await supabase.from('mess_due_payments' as any).insert({
         due_id: due.id,
         amount: collectAmount,
@@ -193,14 +266,12 @@ export default function MessBookings() {
         collected_by_name: user?.name || '',
         notes: collectNotes,
       });
-      // Update due
       const newPaid = (due.paid_amount || 0) + collectAmount;
       const remaining = Math.max(0, due.due_amount - newPaid);
       await supabase.from('mess_dues' as any).update({
         paid_amount: newPaid,
         status: remaining <= 0 ? 'paid' : 'pending',
       }).eq('id', due.id);
-      // Create receipt
       await createMessReceipt({
         subscription_id: collectSub.id,
         user_id: collectSub.user_id,
@@ -220,6 +291,139 @@ export default function MessBookings() {
     setCollectSubmitting(false);
   };
 
+  // ──── Booking Sheet helpers ────
+  const resetBookingSheet = () => {
+    setBookingStep('details');
+    setStudentQuery(''); setStudentResults([]); setShowResults(false);
+    setSelectedUserId(''); setSelectedStudentName('');
+    setShowNewStudent(false); setNewName(''); setNewEmail(''); setNewPhone('');
+    setSelectedMess(null); setPackages([]); setSelectedPackage(null);
+    setStartDate(new Date()); setEndDate('');
+    setPaymentMethod(''); setTransactionId('');
+    setPricePaid(0); setDiscountAmount(0); setAdvanceAmount(0);
+    setPaymentProofUrl(''); setCollectedByName(''); setNotes('');
+  };
+
+  const openBookingSheet = () => {
+    resetBookingSheet();
+    setBookingSheetOpen(true);
+  };
+
+  const handleStudentSelect = (s: any) => {
+    setSelectedUserId(s.id);
+    setSelectedStudentName(`${s.name} (${s.email})`);
+    setStudentQuery(s.name);
+    setShowResults(false);
+  };
+
+  const handleCreateStudent = async () => {
+    if (!newName || !newEmail) { toast({ title: 'Name & email required', variant: 'destructive' }); return; }
+    setCreatingStudent(true);
+    const res = await vendorSeatsService.createStudent(newName, newEmail, newPhone);
+    if (res.success && res.userId) {
+      setSelectedUserId(res.userId);
+      setSelectedStudentName(`${newName} (${newEmail})`);
+      setShowNewStudent(false);
+      toast({ title: res.existing ? 'Existing student selected' : 'Student created' });
+    } else { toast({ title: 'Error', description: res.error, variant: 'destructive' }); }
+    setCreatingStudent(false);
+  };
+
+  const handleMessSelect = async (mess: any) => {
+    setSelectedMess(mess);
+    setSelectedPackage(null);
+    setPartnerId(mess.user_id || partnerId);
+    const pkgs = await getMessPackages(mess.id);
+    setPackages(pkgs);
+  };
+
+  const handlePackageSelect = (pkg: any) => {
+    setSelectedPackage(pkg);
+    setPricePaid(pkg.price);
+    setAdvanceAmount(pkg.price);
+    recalcEndDate(startDate, pkg);
+  };
+
+  const recalcEndDate = (start: Date, pkg: any) => {
+    const count = pkg.duration_count || 1;
+    let end: Date;
+    if (pkg.duration_type === 'daily') end = addDays(start, count - 1);
+    else if (pkg.duration_type === 'weekly') end = addDays(start, count * 7 - 1);
+    else end = subDays(addMonths(start, count), 1);
+    setEndDate(format(end, 'yyyy-MM-dd'));
+  };
+
+  const handleStartDateChange = (d: Date) => {
+    setStartDate(d);
+    setStartDateOpen(false);
+    if (selectedPackage) recalcEndDate(d, selectedPackage);
+  };
+
+  const totalAfterDiscount = Math.max(0, pricePaid - discountAmount);
+  const dueAmount = Math.max(0, totalAfterDiscount - advanceAmount);
+
+  const handleBookingSubmit = async () => {
+    if (!selectedUserId || !selectedMess || !selectedPackage) return;
+    setSubmitting(true);
+    try {
+      const isPartial = dueAmount > 0;
+      const { data: sub, error: subErr } = await supabase.from('mess_subscriptions' as any).insert({
+        user_id: selectedUserId,
+        mess_id: selectedMess.id,
+        package_id: selectedPackage.id,
+        start_date: format(startDate, 'yyyy-MM-dd'),
+        end_date: endDate,
+        price_paid: totalAfterDiscount,
+        payment_method: paymentMethod,
+        payment_status: isPartial ? 'advance_paid' : 'completed',
+        status: 'active',
+        transaction_id: transactionId,
+        advance_amount: advanceAmount,
+        discount_amount: discountAmount,
+        notes,
+        created_by: user?.id,
+        collected_by_name: collectedByName || user?.name || '',
+        payment_proof_url: paymentProofUrl || null,
+      }).select().single();
+      if (subErr) throw subErr;
+
+      await createMessReceipt({
+        subscription_id: (sub as any).id,
+        user_id: selectedUserId,
+        mess_id: selectedMess.id,
+        amount: advanceAmount,
+        payment_method: paymentMethod,
+        transaction_id: transactionId,
+        collected_by: user?.id,
+        collected_by_name: collectedByName || user?.name || '',
+        payment_proof_url: paymentProofUrl || null,
+        notes,
+      });
+
+      if (isPartial) {
+        await supabase.from('mess_dues' as any).insert({
+          subscription_id: (sub as any).id,
+          user_id: selectedUserId,
+          mess_id: selectedMess.id,
+          total_fee: totalAfterDiscount,
+          advance_paid: advanceAmount,
+          paid_amount: 0,
+          due_amount: dueAmount,
+          status: 'pending',
+          due_date: endDate,
+        });
+      }
+
+      setBookingStep('success');
+      fetchSubs();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+    setSubmitting(false);
+  };
+
+  const canProceedToConfirm = selectedUserId && selectedMess && selectedPackage && endDate;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -227,7 +431,7 @@ export default function MessBookings() {
           <h1 className="text-lg font-semibold tracking-tight">Mess Subscriptions</h1>
           <p className="text-muted-foreground text-xs mt-0.5">View and manage all mess meal subscriptions.</p>
         </div>
-        <Button size="sm" className="gap-1 text-xs" onClick={() => navigate(`${routePrefix}/mess-manual-booking`)}>
+        <Button size="sm" className="gap-1 text-xs" onClick={openBookingSheet}>
           <Plus className="h-3.5 w-3.5" /> Manual Booking
         </Button>
       </div>
@@ -414,6 +618,251 @@ export default function MessBookings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ════════════ BOOKING SHEET ════════════ */}
+      <Sheet open={bookingSheetOpen} onOpenChange={(open) => { if (!open) resetBookingSheet(); setBookingSheetOpen(open); }}>
+        <SheetContent className="w-[400px] sm:w-[440px] overflow-y-auto p-0 flex flex-col" side="right">
+          <SheetHeader className="p-4 pb-2">
+            <SheetTitle className="text-sm font-bold">New Mess Subscription</SheetTitle>
+          </SheetHeader>
+          <Separator />
+
+          {bookingStep === 'success' ? (
+            /* ──── Success View ──── */
+            <div className="flex-1 flex flex-col items-center justify-center p-6 gap-4">
+              <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center">
+                <Check className="h-8 w-8 text-emerald-600" />
+              </div>
+              <h3 className="text-sm font-semibold">Subscription Created!</h3>
+              <div className="bg-muted/30 rounded-lg border p-3 w-full text-xs space-y-1">
+                <div className="flex justify-between"><span className="text-muted-foreground">Student</span><span className="font-medium">{selectedStudentName}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Mess</span><span className="font-medium">{selectedMess?.name}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Package</span><span className="font-medium">{selectedPackage?.name}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Period</span><span className="font-medium">{format(startDate, 'dd MMM yyyy')} – {endDate}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-semibold">{formatCurrency(totalAfterDiscount)}</span></div>
+                {dueAmount > 0 && <div className="flex justify-between text-red-600"><span>Due</span><span className="font-medium">{formatCurrency(dueAmount)}</span></div>}
+              </div>
+              <Button className="w-full" onClick={() => { setBookingSheetOpen(false); resetBookingSheet(); }}>Close</Button>
+            </div>
+          ) : bookingStep === 'confirm' ? (
+            /* ──── Confirm Step ──── */
+            <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+              <div className="bg-muted/30 rounded-lg border p-3 text-xs space-y-1.5">
+                <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Booking Summary</h4>
+                <div className="flex justify-between"><span className="text-muted-foreground">Student</span><span className="font-medium">{selectedStudentName}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Mess</span><span className="font-medium">{selectedMess?.name}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Package</span><span className="font-medium">{selectedPackage?.name}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Period</span><span className="font-medium">{format(startDate, 'dd MMM yyyy')} – {endDate}</span></div>
+                <Separator className="my-1.5 opacity-50" />
+                <div className="flex justify-between"><span className="text-muted-foreground">Package Price</span><span>{formatCurrency(pricePaid)}</span></div>
+                {discountAmount > 0 && <div className="flex justify-between text-red-600"><span>Discount</span><span>-{formatCurrency(discountAmount)}</span></div>}
+                <div className="flex justify-between font-semibold"><span>Total</span><span>{formatCurrency(totalAfterDiscount)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Collecting Now</span><span>{formatCurrency(advanceAmount)}</span></div>
+                {dueAmount > 0 && <div className="flex justify-between text-red-600 font-medium"><span>Due</span><span>{formatCurrency(dueAmount)}</span></div>}
+              </div>
+
+              <div>
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Payment Method</Label>
+                <div className="mt-1.5">
+                  <PaymentMethodSelector value={paymentMethod} onValueChange={setPaymentMethod} partnerId={partnerId} compact />
+                </div>
+              </div>
+
+              {paymentMethod && !paymentMethod.includes('cash') && (
+                <>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Transaction ID</Label>
+                    <Input value={transactionId} onChange={e => setTransactionId(e.target.value)} className="h-8 text-xs" placeholder="Enter txn ID" />
+                  </div>
+                  <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
+                </>
+              )}
+
+              <div>
+                <Label className="text-xs text-muted-foreground">Collected By</Label>
+                <Input value={collectedByName} onChange={e => setCollectedByName(e.target.value)} placeholder={user?.name || ''} className="h-8 text-xs" />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={() => setBookingStep('details')}>
+                  <ArrowLeft className="h-3 w-3" /> Back
+                </Button>
+                <Button size="sm" className="flex-1 text-xs gap-1" onClick={handleBookingSubmit} disabled={submitting || !paymentMethod}>
+                  {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  Confirm
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* ──── Details Step ──── */
+            <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+
+              {/* Mess pills */}
+              <div>
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Select Mess</Label>
+                <div className="flex gap-1.5 overflow-x-auto pb-1 mt-1.5 no-scrollbar">
+                  {messes.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground">No mess found.</p>
+                  ) : messes.map(m => (
+                    <button key={m.id} onClick={() => handleMessSelect(m)}
+                      className={cn("px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all",
+                        selectedMess?.id === m.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                      )}>
+                      {m.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Package pills */}
+              {selectedMess && (
+                <div>
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Select Package</Label>
+                  {packages.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground mt-1">No packages found.</p>
+                  ) : (
+                    <div className="flex gap-1.5 flex-wrap mt-1.5">
+                      {packages.map(p => (
+                        <button key={p.id} onClick={() => handlePackageSelect(p)}
+                          className={cn("px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all",
+                            selectedPackage?.id === p.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                          )}>
+                          {p.name} · {formatCurrency(p.price)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedPackage && <Separator />}
+
+              {/* Student search */}
+              {selectedPackage && (
+                <div>
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Student</Label>
+                  <div className="relative mt-1.5" ref={studentSearchRef}>
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input placeholder="Search by name, phone or email..." value={studentQuery}
+                      onChange={e => { setStudentQuery(e.target.value); setShowResults(true); if (!e.target.value) { setSelectedUserId(''); setSelectedStudentName(''); } }}
+                      className="pl-8 h-8 text-xs" />
+                    {studentSearching && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+
+                    {showResults && studentResults.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-card border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                        {studentResults.map(s => (
+                          <button key={s.id} className="w-full text-left px-3 py-2 hover:bg-muted/50 border-b last:border-0 text-xs" onClick={() => handleStudentSelect(s)}>
+                            <p className="font-medium">{s.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{s.email} {s.phone ? `· ${s.phone}` : ''}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedStudentName && (
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-emerald-50 text-emerald-700 rounded-full px-2.5 py-0.5">
+                        <Check className="h-3 w-3" /> {selectedStudentName}
+                      </span>
+                    </div>
+                  )}
+
+                  <Collapsible open={showNewStudent} onOpenChange={setShowNewStudent}>
+                    <CollapsibleTrigger asChild>
+                      <button className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-muted/50 text-muted-foreground border hover:bg-muted transition-colors">
+                        <UserPlus className="h-3 w-3" /> {showNewStudent ? 'Hide' : 'Create New'}
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 space-y-1.5 bg-muted/20 rounded-lg p-2.5 border">
+                      <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Student name *" className="h-7 text-[11px]" />
+                      <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="Email *" className="h-7 text-[11px]" />
+                      <Input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="Phone" className="h-7 text-[11px]" />
+                      <Button size="sm" onClick={handleCreateStudent} disabled={creatingStudent} className="w-full h-7 text-[11px]">
+                        {creatingStudent ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null} Create & Select
+                      </Button>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              )}
+
+              {/* Dates */}
+              {selectedPackage && selectedUserId && (
+                <div>
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Duration</Label>
+                  <div className="grid grid-cols-2 gap-2 mt-1.5">
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">Start Date</Label>
+                      <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="w-full h-8 text-xs justify-start gap-1">
+                            <CalendarIcon className="h-3 w-3" /> {format(startDate, 'dd MMM yyyy')}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar mode="single" selected={startDate} onSelect={d => { if (d) handleStartDateChange(d); }} className="p-3 pointer-events-auto" />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">End Date</Label>
+                      <div className="h-8 flex items-center px-2 bg-muted/30 border rounded-md text-xs font-medium">
+                        {endDate || '—'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-1">
+                    <Badge variant="outline" className="text-[10px]">
+                      {selectedPackage.duration_count || 1} {selectedPackage.duration_type || 'month'}(s)
+                    </Badge>
+                  </div>
+                </div>
+              )}
+
+              {/* Pricing */}
+              {selectedPackage && selectedUserId && endDate && (
+                <div className="bg-muted/20 rounded-lg border p-3 space-y-2">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Pricing</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">Package Price</Label>
+                      <Input type="number" value={pricePaid} onChange={e => setPricePaid(Number(e.target.value))} className="h-8 text-xs" />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">Discount</Label>
+                      <Input type="number" value={discountAmount} onChange={e => setDiscountAmount(Number(e.target.value))} className="h-8 text-xs" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Collecting Now</Label>
+                    <Input type="number" value={advanceAmount} onChange={e => setAdvanceAmount(Number(e.target.value))} className="h-8 text-xs" />
+                  </div>
+                  <Separator className="opacity-50" />
+                  <div className="text-xs space-y-1">
+                    <div className="flex justify-between font-semibold"><span>Total</span><span>{formatCurrency(totalAfterDiscount)}</span></div>
+                    {dueAmount > 0 && <div className="flex justify-between text-red-600 font-medium"><span>Due</span><span>{formatCurrency(dueAmount)}</span></div>}
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              {selectedPackage && selectedUserId && endDate && (
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">Notes (optional)</Label>
+                  <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="text-xs" />
+                </div>
+              )}
+
+              {/* Book button */}
+              {canProceedToConfirm && (
+                <Button className="w-full text-xs gap-1" onClick={() => setBookingStep('confirm')}>
+                  <IndianRupee className="h-3.5 w-3.5" /> Proceed to Payment
+                </Button>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
