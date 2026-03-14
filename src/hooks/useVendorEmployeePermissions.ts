@@ -58,6 +58,9 @@ export interface PartnerEmployeePermissions {
   manage_reconciliation: boolean;
   view_banks: boolean;
   manage_banks: boolean;
+  // Attendance
+  view_attendance: boolean;
+  manage_attendance: boolean;
   // Granular Reading Room Actions
   can_create_booking: boolean;
   can_renew_booking: boolean;
