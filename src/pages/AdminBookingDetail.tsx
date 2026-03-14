@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from '@/integrations/supabase/client';
 import { downloadInvoice, InvoiceData } from '@/utils/invoiceGenerator';
+import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 
 interface ReceiptRow {
   id: string;
