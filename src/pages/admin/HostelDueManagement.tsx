@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { format, differenceInDays } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,6 +20,7 @@ import { HostelDuePaymentHistory } from '@/components/booking/HostelDuePaymentHi
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 const HostelDueManagement: React.FC = () => {
   const [dues, setDues] = useState<any[]>([]);
