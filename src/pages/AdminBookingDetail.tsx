@@ -219,7 +219,7 @@ const AdminBookingDetail = () => {
         foodAmount: booking.food_amount || 0,
         foodPolicyType: foodPolicy as any,
         totalAmount: booking.total_price || 0,
-        paymentMethod: booking.payment_method || 'cash',
+        paymentMethod: getMethodLabel(booking.payment_method || 'cash', customLabels),
         transactionId: booking.transaction_id || '',
         collectedByName: booking.collected_by_name || '-',
       };
