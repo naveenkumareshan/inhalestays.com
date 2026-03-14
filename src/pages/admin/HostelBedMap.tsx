@@ -197,6 +197,13 @@ const HostelBedMap: React.FC = () => {
   const [dateEditOpen, setDateEditOpen] = useState(false);
   const [dateEditBooking, setDateEditBooking] = useState<any>(null);
 
+  // Context menu for long-press (touch)
+  const [contextMenuBed, setContextMenuBed] = useState<HostelBed | null>(null);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const longPressTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPressRef = React.useRef(false);
+  const touchStartPosRef = React.useRef<{ x: number; y: number } | null>(null);
+
   const { toast } = useToast();
   const { user } = useAuth();
 
