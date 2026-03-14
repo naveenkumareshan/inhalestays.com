@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, MousePointerClick } from 'lucide-react';
 
 interface WhatsAppPropertyDialogProps {
   open: boolean;
