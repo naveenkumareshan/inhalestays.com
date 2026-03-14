@@ -1,47 +1,71 @@
 
 
-# Fix Manual Mess Booking Sheet — Reorder Flow, Fix Dues, Clean Up
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Current Issues
-1. **Wrong order**: Currently Mess → Package → Duration → Student → Dates → Pricing → Notes → Proceed → (Confirm step with Payment/CollectedBy). User wants: Mess → Student → Duration Type & Dates → Package → Pricing & Discount → Final Price with Collecting Now & Due → Payment Mode → Collected By → Submit (all in one scroll, no separate confirm step).
-2. **Due calculations wrong**: `dueAmount = totalAfterDiscount - advanceAmount` but `advanceAmount` starts equal to full price, not tracking properly when user changes "Collecting Now".
-3. **Notes field**: Remove it.
-4. **Booking summary name**: `selectedStudentName` includes `(email)` — should show just the name in summary.
-5. **Collected By**: Should auto-fill with logged-in user's name, not be empty with placeholder.
-6. **Two-step flow** (details → confirm): Merge into single scrolling step.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-## Changes to `src/pages/admin/MessBookings.tsx`
+## Changes
 
-### Reorder the Details Step sections:
-1. **Select Mess** (pills) — same as now
-2. **Student** (search + create) — move up, show after mess selected
-3. **Duration** (type pills + count + start/end dates) — show after student selected
-4. **Select Package** (pills) — show after duration set
-5. **Pricing** section — show after package selected:
-   - Package Price (read-only display), Discount input, Final Total display, Collecting Now input, Due Remaining display
-6. **Payment Method** (`PaymentMethodSelector`) — inline, no separate confirm step
-7. **Transaction ID + Proof** (if not cash) — inline
-8. **Collected By** — default value set to `user?.name || ''` on sheet open
-9. **Submit** button — single button, no Back/Confirm two-step
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-### Fix Due Calculation
-- When package selected: `pricePaid = pkg.price * durationCount`, `advanceAmount = pricePaid` (full by default)
-- `totalAfterDiscount = pricePaid - discountAmount`
-- `dueAmount = totalAfterDiscount - advanceAmount`
-- Ensure `advanceAmount` can't exceed `totalAfterDiscount`
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-### Remove
-- `notes` state and textarea
-- `bookingStep` state — no more 'details'/'confirm'/'success' steps, just 'form' and 'success'
-- Separate confirm step JSX
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-### Fix Summary
-- Store `selectedStudentNameOnly` (just name, no email) for display in summary
-- Format end date properly with `fmtDate()`
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-### Collected By
-- Set `collectedByName` to `user?.name || ''` in `resetBookingSheet`
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-## Files Modified
-- `src/pages/admin/MessBookings.tsx` — single file, reorder JSX sections, merge confirm into form, fix dues, remove notes, fix name format, default collected by
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
+
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

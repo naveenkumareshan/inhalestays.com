@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Filter, BookOpen, Plus, XCircle, RefreshCw, IndianRupee, UserPlus, Loader2, Check, CalendarIcon, ArrowLeft } from 'lucide-react';
+import { Search, Filter, BookOpen, Plus, XCircle, RefreshCw, IndianRupee, UserPlus, Loader2, Check, CalendarIcon } from 'lucide-react';
 import { formatCurrency } from '@/utils/currency';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -73,7 +73,7 @@ export default function MessBookings() {
 
   // ──── Booking Sheet state ────
   const [bookingSheetOpen, setBookingSheetOpen] = useState(false);
-  const [bookingStep, setBookingStep] = useState<'details' | 'confirm' | 'success'>('details');
+  const [bookingStep, setBookingStep] = useState<'form' | 'success'>('form');
   const studentSearchRef = useRef<HTMLDivElement>(null);
 
   // Student
@@ -114,7 +114,6 @@ export default function MessBookings() {
   const [advanceAmount, setAdvanceAmount] = useState(0);
   const [paymentProofUrl, setPaymentProofUrl] = useState('');
   const [collectedByName, setCollectedByName] = useState('');
-  const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [partnerId, setPartnerId] = useState('');
 
@@ -297,7 +296,7 @@ export default function MessBookings() {
 
   // ──── Booking Sheet helpers ────
   const resetBookingSheet = () => {
-    setBookingStep('details');
+    setBookingStep('form');
     setStudentQuery(''); setStudentResults([]); setShowResults(false);
     setSelectedUserId(''); setSelectedStudentName('');
     setShowNewStudent(false); setNewName(''); setNewEmail(''); setNewPhone('');
@@ -306,7 +305,7 @@ export default function MessBookings() {
     setStartDate(new Date()); setEndDate('');
     setPaymentMethod(''); setTransactionId('');
     setPricePaid(0); setDiscountAmount(0); setAdvanceAmount(0);
-    setPaymentProofUrl(''); setCollectedByName(''); setNotes('');
+    setPaymentProofUrl(''); setCollectedByName(user?.name || '');
   };
 
   const openBookingSheet = () => {
@@ -316,7 +315,7 @@ export default function MessBookings() {
 
   const handleStudentSelect = (s: any) => {
     setSelectedUserId(s.id);
-    setSelectedStudentName(`${s.name} (${s.email})`);
+    setSelectedStudentName(s.name);
     setStudentQuery(s.name);
     setShowResults(false);
   };
@@ -327,7 +326,7 @@ export default function MessBookings() {
     const res = await vendorSeatsService.createStudent(newName, newEmail, newPhone);
     if (res.success && res.userId) {
       setSelectedUserId(res.userId);
-      setSelectedStudentName(`${newName} (${newEmail})`);
+      setSelectedStudentName(newName);
       setShowNewStudent(false);
       toast({ title: res.existing ? 'Existing student selected' : 'Student created' });
     } else { toast({ title: 'Error', description: res.error, variant: 'destructive' }); }
@@ -403,7 +402,7 @@ export default function MessBookings() {
         transaction_id: transactionId,
         advance_amount: advanceAmount,
         discount_amount: discountAmount,
-        notes,
+        notes: '',
         created_by: user?.id,
         collected_by_name: collectedByName || user?.name || '',
         payment_proof_url: paymentProofUrl || null,
@@ -420,7 +419,7 @@ export default function MessBookings() {
         collected_by: user?.id,
         collected_by_name: collectedByName || user?.name || '',
         payment_proof_url: paymentProofUrl || null,
-        notes,
+        notes: '',
       });
 
       if (isPartial) {
@@ -445,7 +444,6 @@ export default function MessBookings() {
     setSubmitting(false);
   };
 
-  const canProceedToConfirm = selectedUserId && selectedMess && selectedPackage && endDate;
 
   return (
     <div className="flex flex-col gap-4">
@@ -661,66 +659,17 @@ export default function MessBookings() {
                 <div className="flex justify-between"><span className="text-muted-foreground">Student</span><span className="font-medium">{selectedStudentName}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Mess</span><span className="font-medium">{selectedMess?.name}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Package</span><span className="font-medium">{selectedPackage?.name}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Period</span><span className="font-medium">{format(startDate, 'dd MMM yyyy')} – {endDate}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Period</span><span className="font-medium">{format(startDate, 'dd MMM yyyy')} – {endDate ? fmtDate(endDate) : '—'}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-semibold">{formatCurrency(totalAfterDiscount)}</span></div>
                 {dueAmount > 0 && <div className="flex justify-between text-red-600"><span>Due</span><span className="font-medium">{formatCurrency(dueAmount)}</span></div>}
               </div>
               <Button className="w-full" onClick={() => { setBookingSheetOpen(false); resetBookingSheet(); }}>Close</Button>
             </div>
-          ) : bookingStep === 'confirm' ? (
-            /* ──── Confirm Step ──── */
-            <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-              <div className="bg-muted/30 rounded-lg border p-3 text-xs space-y-1.5">
-                <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Booking Summary</h4>
-                <div className="flex justify-between"><span className="text-muted-foreground">Student</span><span className="font-medium">{selectedStudentName}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Mess</span><span className="font-medium">{selectedMess?.name}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Package</span><span className="font-medium">{selectedPackage?.name}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Period</span><span className="font-medium">{format(startDate, 'dd MMM yyyy')} – {endDate}</span></div>
-                <Separator className="my-1.5 opacity-50" />
-                <div className="flex justify-between"><span className="text-muted-foreground">Package Price</span><span>{formatCurrency(pricePaid)}</span></div>
-                {discountAmount > 0 && <div className="flex justify-between text-red-600"><span>Discount</span><span>-{formatCurrency(discountAmount)}</span></div>}
-                <div className="flex justify-between font-semibold"><span>Total</span><span>{formatCurrency(totalAfterDiscount)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Collecting Now</span><span>{formatCurrency(advanceAmount)}</span></div>
-                {dueAmount > 0 && <div className="flex justify-between text-red-600 font-medium"><span>Due</span><span>{formatCurrency(dueAmount)}</span></div>}
-              </div>
-
-              <div>
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Payment Method</Label>
-                <div className="mt-1.5">
-                  <PaymentMethodSelector value={paymentMethod} onValueChange={setPaymentMethod} partnerId={partnerId} compact />
-                </div>
-              </div>
-
-              {paymentMethod && !paymentMethod.includes('cash') && (
-                <>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Transaction ID</Label>
-                    <Input value={transactionId} onChange={e => setTransactionId(e.target.value)} className="h-8 text-xs" placeholder="Enter txn ID" />
-                  </div>
-                  <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
-                </>
-              )}
-
-              <div>
-                <Label className="text-xs text-muted-foreground">Collected By</Label>
-                <Input value={collectedByName} onChange={e => setCollectedByName(e.target.value)} placeholder={user?.name || ''} className="h-8 text-xs" />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={() => setBookingStep('details')}>
-                  <ArrowLeft className="h-3 w-3" /> Back
-                </Button>
-                <Button size="sm" className="flex-1 text-xs gap-1" onClick={handleBookingSubmit} disabled={submitting || !paymentMethod}>
-                  {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                  Confirm
-                </Button>
-              </div>
-            </div>
           ) : (
-            /* ──── Details Step ──── */
+            /* ──── Single Form ──── */
             <div className="flex-1 p-4 space-y-4 overflow-y-auto">
 
-              {/* Mess pills */}
+              {/* 1. Mess pills */}
               <div>
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Select Mess</Label>
                 <div className="flex gap-1.5 overflow-x-auto pb-1 mt-1.5 no-scrollbar">
@@ -737,54 +686,8 @@ export default function MessBookings() {
                 </div>
               </div>
 
-              {/* Package pills */}
+              {/* 2. Student search */}
               {selectedMess && (
-                <div>
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Select Package</Label>
-                  {packages.length === 0 ? (
-                    <p className="text-[11px] text-muted-foreground mt-1">No packages found.</p>
-                  ) : (
-                    <div className="flex gap-1.5 flex-wrap mt-1.5">
-                      {packages.map(p => (
-                        <button key={p.id} onClick={() => handlePackageSelect(p)}
-                          className={cn("px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all",
-                            selectedPackage?.id === p.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
-                          )}>
-                          {p.name} · {formatCurrency(p.price)}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Duration type & count */}
-              {selectedPackage && (
-                <div>
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Duration</Label>
-                  <div className="flex gap-1.5 mt-1.5">
-                    {(['daily', 'weekly', 'monthly'] as const).map(type => (
-                      <button key={type} onClick={() => handleDurationTypeChange(type)}
-                        className={cn("px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all",
-                          durationType === type ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
-                        )}>
-                        {type === 'daily' ? 'Daily' : type === 'weekly' ? 'Weekly' : 'Monthly'}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-2">
-                    <Label className="text-[10px] text-muted-foreground">
-                      {durationType === 'daily' ? 'Days' : durationType === 'weekly' ? 'Weeks' : 'Months'}
-                    </Label>
-                    <Input type="number" min={1} value={durationCount} onChange={e => handleDurationCountChange(Math.max(1, Number(e.target.value)))} className="h-8 text-xs w-24" />
-                  </div>
-                </div>
-              )}
-
-              {selectedPackage && <Separator />}
-
-              {/* Student search */}
-              {selectedPackage && (
                 <div>
                   <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Student</Label>
                   <div className="relative mt-1.5" ref={studentSearchRef}>
@@ -832,11 +735,27 @@ export default function MessBookings() {
                 </div>
               )}
 
-              {/* Dates */}
-              {selectedPackage && selectedUserId && (
+              {/* 3. Duration type, count & dates */}
+              {selectedMess && selectedUserId && (
                 <div>
                   <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Duration</Label>
-                  <div className="grid grid-cols-2 gap-2 mt-1.5">
+                  <div className="flex gap-1.5 mt-1.5">
+                    {(['daily', 'weekly', 'monthly'] as const).map(type => (
+                      <button key={type} onClick={() => handleDurationTypeChange(type)}
+                        className={cn("px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all",
+                          durationType === type ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                        )}>
+                        {type === 'daily' ? 'Daily' : type === 'weekly' ? 'Weekly' : 'Monthly'}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-2">
+                    <Label className="text-[10px] text-muted-foreground">
+                      {durationType === 'daily' ? 'Days' : durationType === 'weekly' ? 'Weeks' : 'Months'}
+                    </Label>
+                    <Input type="number" min={1} value={durationCount} onChange={e => handleDurationCountChange(Math.max(1, Number(e.target.value)))} className="h-8 text-xs w-24" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
                     <div>
                       <Label className="text-[10px] text-muted-foreground">Start Date</Label>
                       <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
@@ -853,56 +772,95 @@ export default function MessBookings() {
                     <div>
                       <Label className="text-[10px] text-muted-foreground">End Date</Label>
                       <div className="h-8 flex items-center px-2 bg-muted/30 border rounded-md text-xs font-medium">
-                        {endDate || '—'}
+                        {endDate ? fmtDate(endDate) : '—'}
                       </div>
                     </div>
                   </div>
-                  <div className="mt-1">
-                    <Badge variant="outline" className="text-[10px]">
-                      {durationCount} {durationType === 'daily' ? 'day' : durationType === 'weekly' ? 'week' : 'month'}(s)
-                    </Badge>
-                  </div>
                 </div>
               )}
 
-              {/* Pricing */}
+              {/* 4. Package pills */}
+              {selectedMess && selectedUserId && (
+                <div>
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Select Package</Label>
+                  {packages.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground mt-1">No packages found.</p>
+                  ) : (
+                    <div className="flex gap-1.5 flex-wrap mt-1.5">
+                      {packages.map(p => (
+                        <button key={p.id} onClick={() => handlePackageSelect(p)}
+                          className={cn("px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all",
+                            selectedPackage?.id === p.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                          )}>
+                          {p.name} · {formatCurrency(p.price)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 5. Pricing & Dues */}
               {selectedPackage && selectedUserId && endDate && (
                 <div className="bg-muted/20 rounded-lg border p-3 space-y-2">
                   <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Pricing</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Package Price</Label>
-                      <Input type="number" value={pricePaid} onChange={e => setPricePaid(Number(e.target.value))} className="h-8 text-xs" />
-                    </div>
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Discount</Label>
-                      <Input type="number" value={discountAmount} onChange={e => setDiscountAmount(Number(e.target.value))} className="h-8 text-xs" />
-                    </div>
+                  <div className="text-xs flex justify-between"><span className="text-muted-foreground">Package Price ({durationCount} {durationType === 'daily' ? 'day' : durationType === 'weekly' ? 'week' : 'month'}(s))</span><span className="font-medium">{formatCurrency(pricePaid)}</span></div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Discount</Label>
+                    <Input type="number" min={0} value={discountAmount} onChange={e => {
+                      const d = Math.max(0, Number(e.target.value));
+                      setDiscountAmount(d);
+                      // Keep advance <= total after discount
+                      const newTotal = Math.max(0, pricePaid - d);
+                      if (advanceAmount > newTotal) setAdvanceAmount(newTotal);
+                    }} className="h-8 text-xs" />
                   </div>
+                  <div className="text-xs flex justify-between font-semibold"><span>Total</span><span>{formatCurrency(totalAfterDiscount)}</span></div>
+                  <Separator className="opacity-50" />
                   <div>
                     <Label className="text-[10px] text-muted-foreground">Collecting Now</Label>
-                    <Input type="number" value={advanceAmount} onChange={e => setAdvanceAmount(Number(e.target.value))} className="h-8 text-xs" />
+                    <Input type="number" min={0} max={totalAfterDiscount} value={advanceAmount} onChange={e => setAdvanceAmount(Math.min(totalAfterDiscount, Math.max(0, Number(e.target.value))))} className="h-8 text-xs" />
                   </div>
-                  <Separator className="opacity-50" />
-                  <div className="text-xs space-y-1">
-                    <div className="flex justify-between font-semibold"><span>Total</span><span>{formatCurrency(totalAfterDiscount)}</span></div>
-                    {dueAmount > 0 && <div className="flex justify-between text-red-600 font-medium"><span>Due</span><span>{formatCurrency(dueAmount)}</span></div>}
-                  </div>
+                  {dueAmount > 0 && (
+                    <div className="text-xs flex justify-between text-red-600 font-medium"><span>Due Remaining</span><span>{formatCurrency(dueAmount)}</span></div>
+                  )}
                 </div>
               )}
 
-              {/* Notes */}
+              {/* 6. Payment Method */}
               {selectedPackage && selectedUserId && endDate && (
                 <div>
-                  <Label className="text-[10px] text-muted-foreground">Notes (optional)</Label>
-                  <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="text-xs" />
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Payment Method</Label>
+                  <div className="mt-1.5">
+                    <PaymentMethodSelector value={paymentMethod} onValueChange={setPaymentMethod} partnerId={partnerId} compact />
+                  </div>
                 </div>
               )}
 
-              {/* Book button */}
-              {canProceedToConfirm && (
-                <Button className="w-full text-xs gap-1" onClick={() => setBookingStep('confirm')}>
-                  <IndianRupee className="h-3.5 w-3.5" /> Proceed to Payment
+              {/* 7. Transaction ID & Proof */}
+              {paymentMethod && !paymentMethod.includes('cash') && (
+                <>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Transaction ID</Label>
+                    <Input value={transactionId} onChange={e => setTransactionId(e.target.value)} className="h-8 text-xs" placeholder="Enter txn ID" />
+                  </div>
+                  <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
+                </>
+              )}
+
+              {/* 8. Collected By */}
+              {selectedPackage && selectedUserId && endDate && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Collected By</Label>
+                  <Input value={collectedByName} onChange={e => setCollectedByName(e.target.value)} className="h-8 text-xs" />
+                </div>
+              )}
+
+              {/* 9. Submit */}
+              {selectedUserId && selectedMess && selectedPackage && endDate && paymentMethod && (
+                <Button className="w-full text-xs gap-1" onClick={handleBookingSubmit} disabled={submitting}>
+                  {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  Create Subscription
                 </Button>
               )}
             </div>
