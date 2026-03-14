@@ -1415,6 +1415,9 @@ const HostelBedMap: React.FC = () => {
                         statusColors(bed.dateStatus)
                       )}
                     >
+                      {attendanceSet.has(bed.id) && (
+                        <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-1 ring-white z-10" title="Present today" />
+                      )}
                       <span className="text-xs font-bold leading-none">B{bed.bed_number}</span>
                       <span className="text-[9px] text-muted-foreground leading-tight truncate w-full">{bed.category || bed.roomCategory}</span>
                       <div className="flex items-center gap-0.5 mt-0.5">
