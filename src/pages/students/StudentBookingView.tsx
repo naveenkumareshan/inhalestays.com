@@ -166,7 +166,9 @@ export default function StudentBookingView() {
           supabase.from("receipts").select("*").eq("booking_id", resolvedId).order("created_at", { ascending: false }),
           supabase.from("dues").select("id, due_amount, paid_amount, status").eq("booking_id", resolvedId).in("status", ["pending", "partial"]).maybeSingle(),
         ]);
-        setReceipts((receiptsRes.data as ReceiptItem[]) || []);
+        const rrReceipts = (receiptsRes.data as ReceiptItem[]) || [];
+        setReceipts(rrReceipts);
+        resolvePaymentMethodLabels(rrReceipts.map(r => r.payment_method).filter(Boolean)).then(setCustomLabels);
         setDueRecord(duesRes.data as DueRecord | null);
 
         // Fetch partner info
