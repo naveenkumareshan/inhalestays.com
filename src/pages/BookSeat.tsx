@@ -12,7 +12,8 @@ import { ShareButton } from "@/components/ShareButton";
 import { generateCabinShareText } from "@/utils/shareUtils";
 import { useAuth } from "@/hooks/use-auth";
 import { isUUID } from "@/utils/idUtils";
-import { WhatsAppChatButton } from "@/components/WhatsAppChatButton";
+import { MessageCircle } from "lucide-react";
+import { whatsappLeadService } from "@/api/whatsappLeadService";
 
 const SeatBookingForm = lazy(() =>
   import("@/components/seats/SeatBookingForm").then((m) => ({
@@ -358,6 +359,24 @@ const BookSeat = () => {
                     ))}
                   </div>
                 )}
+                {cabin.whatsappChatEnabled && cabin.whatsappNumber && (
+                  <>
+                    <Separator className="my-2.5 opacity-50" />
+                    <Button
+                      className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white"
+                      size="sm"
+                      onClick={() => {
+                        if (cabin.createdBy) whatsappLeadService.trackClick(cabin.createdBy, 'cabin', cabin.id);
+                        const cleanNumber = cabin.whatsappNumber!.replace(/[^0-9]/g, '');
+                        const message = `Hi, I'm interested in ${cabin.name} (reading room). Can you share more details?`;
+                        window.open(`https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                      }}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" fill="#fff" />
+                      Contact Property on WhatsApp
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -442,16 +461,6 @@ const BookSeat = () => {
         </>
       )}
 
-      {cabin?.createdBy && (
-        <WhatsAppChatButton
-          partnerUserId={cabin.createdBy}
-          propertyType="cabin"
-          propertyId={cabin.id}
-          propertyName={cabin.name}
-          whatsappChatEnabled={!!cabin.whatsappChatEnabled}
-          whatsappNumber={cabin.whatsappNumber || ''}
-        />
-      )}
       </div>
     </div>
   );

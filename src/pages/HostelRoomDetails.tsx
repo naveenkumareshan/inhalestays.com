@@ -55,7 +55,8 @@ import { FoodMenuModal } from "@/components/hostels/FoodMenuModal";
 import { ShareButton } from "@/components/ShareButton";
 import { generateHostelShareText } from "@/utils/shareUtils";
 import { isUUID } from "@/utils/idUtils";
-import { WhatsAppChatButton } from "@/components/WhatsAppChatButton";
+import { MessageCircle } from "lucide-react";
+import { whatsappLeadService } from "@/api/whatsappLeadService";
 /* ─── Skeleton ─── */
 const HostelDetailSkeleton = () => (
   <div className="min-h-screen bg-background pb-24">
@@ -613,6 +614,24 @@ const HostelRoomDetails = () => {
                       />
                     </div>
                   )}
+                  {(hostel as any).whatsapp_chat_enabled && (hostel as any).whatsapp_number && (
+                    <>
+                      <Separator className="my-2.5 opacity-50" />
+                      <Button
+                        className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white"
+                        size="sm"
+                        onClick={() => {
+                          if (hostel.created_by) whatsappLeadService.trackClick(hostel.created_by, 'hostel', hostel.id);
+                          const cleanNumber = ((hostel as any).whatsapp_number || '').replace(/[^0-9]/g, '');
+                          const message = `Hi, I'm interested in ${hostel.name} (hostel). Can you share more details?`;
+                          window.open(`https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                        }}
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" fill="#fff" />
+                        Contact Property on WhatsApp
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -1073,16 +1092,6 @@ const HostelRoomDetails = () => {
 
       </div>
 
-      {hostel?.created_by && (
-        <WhatsAppChatButton
-          partnerUserId={hostel.created_by}
-          propertyType="hostel"
-          propertyId={hostel.id}
-          propertyName={hostel.name}
-          whatsappChatEnabled={!!(hostel as any).whatsapp_chat_enabled}
-          whatsappNumber={(hostel as any).whatsapp_number || ''}
-        />
-      )}
       </div>
     </ErrorBoundary>
   );

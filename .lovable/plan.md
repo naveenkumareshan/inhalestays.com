@@ -1,40 +1,71 @@
 
 
-# Move WhatsApp Button From Floating to Inline "Contact Property" Section
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Problem
-The floating WhatsApp button at the bottom-right corner looks like a generic customer support widget, confusing students. It should be placed inline within the property details so students clearly understand it's for contacting that specific property.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
 ## Changes
 
-### 1. Remove floating `WhatsAppChatButton` from all three student pages
-- `src/pages/BookSeat.tsx` — remove the `<WhatsAppChatButton>` at line 446
-- `src/pages/HostelRoomDetails.tsx` — remove the `<WhatsAppChatButton>` at line 1077
-- `src/pages/MessDetail.tsx` — remove the `<WhatsAppChatButton>` at line 611
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-### 2. Add inline "Contact Property" button inside `CabinDetails.tsx`
-- Accept new props: `whatsappChatEnabled`, `whatsappNumber`, `partnerUserId`, `propertyId`
-- After the Amenities section (line ~165), add a "Contact Property" section:
-  - Green button with WhatsApp icon + "Contact Property on WhatsApp" text
-  - Only renders when `whatsappChatEnabled && whatsappNumber` are truthy
-  - Calls `whatsappLeadService.trackClick()` on click, then opens `wa.me` link
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-### 3. Add inline "Contact Property" button in `HostelRoomDetails.tsx`
-- Place the button inline within the hostel details card (near the description/amenities area), not as a floating element
-- Same green styled button with clear "Contact Property on WhatsApp" label
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-### 4. Add inline "Contact Property" button in `MessDetail.tsx`
-- Same pattern — place within the mess detail content area
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-### 5. Keep `WhatsAppChatButton` component
-- The floating component file stays for potential future use but is no longer imported in student pages
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-## Result
-Students see a clear, labeled "Contact Property on WhatsApp" button within the property details — no confusion with a support chatbot.
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-## Files Modified
-- `src/components/CabinDetails.tsx` — add inline WhatsApp contact button + new props
-- `src/pages/BookSeat.tsx` — remove floating button, pass WhatsApp props to CabinDetails
-- `src/pages/HostelRoomDetails.tsx` — remove floating, add inline button
-- `src/pages/MessDetail.tsx` — remove floating, add inline button
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 
