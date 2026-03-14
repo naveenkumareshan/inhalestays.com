@@ -429,6 +429,15 @@ const HostelDueManagement: React.FC = () => {
               </Table>
             </div>
           )}
+          <div className="border-t">
+            <AdminTablePagination
+              currentPage={currentPage}
+              totalItems={dues.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+            />
+          </div>
         </CardContent>
       </Card>
 
