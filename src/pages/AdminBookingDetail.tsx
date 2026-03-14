@@ -204,6 +204,7 @@ const AdminBookingDetail = () => {
         cabinName: booking.hostels?.name || '-',
         seatNumber: booking.hostel_beds?.bed_number || 0,
         roomNumber: booking.hostel_rooms?.room_number,
+        seatLabel: `Bed #${booking.hostel_beds?.bed_number || '-'}`,
         startDate: booking.start_date || '',
         endDate: booking.end_date || '',
         duration: booking.booking_duration || '-',
