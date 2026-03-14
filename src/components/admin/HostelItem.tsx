@@ -15,6 +15,12 @@ import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
+interface LinkedMess {
+  mess_id: string;
+  mess_name: string;
+  is_default: boolean;
+}
+
 interface HostelItemProps {
   hostel: any;
   onEdit: (hostel: any) => void;
@@ -27,6 +33,7 @@ interface HostelItemProps {
   onToggleStudentVisible?: (hostelId: string, isVisible: boolean) => void;
   partnerId?: string;
   onDownloadQr?: (hostelId: string, hostelName: string) => void;
+  linkedMesses?: LinkedMess[];
 }
 
 export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, onToggleStudentVisible, partnerId, onDownloadQr }: HostelItemProps) {
