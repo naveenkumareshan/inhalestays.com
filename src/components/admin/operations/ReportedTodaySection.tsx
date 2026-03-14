@@ -37,7 +37,7 @@ const ReportedTodaySection = ({ module }: { module: Module }) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('hostel_bookings')
-        .select('*, profiles:user_id(name, phone, email), hostels:hostel_id(name), hostel_beds:bed_id(bed_number)')
+        .select('*, profiles:user_id(name, phone, email), hostels:hostel_id(name), hostel_rooms:room_id(room_number), hostel_beds:bed_id(bed_number)')
         .gte('checked_in_at', todayStart)
         .order('checked_in_at', { ascending: false });
       if (error) throw error;
