@@ -484,6 +484,7 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
                       onToggleActive={handleToggleActive}
                       onToggleBooking={onToggleBooking}
                       onTogglePartnerVisible={onTogglePartnerVisible}
+                      onToggleStudentVisible={onToggleStudentVisible}
                       onEdit={() => handleEditCabin(cabin)}
                       onDelete={() => handleDeleteCabin(cabin._id)}
                       onManageSeats={() => handleManageSeats(cabin._id)}
