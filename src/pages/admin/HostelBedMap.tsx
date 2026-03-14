@@ -197,6 +197,13 @@ const HostelBedMap: React.FC = () => {
   const [dateEditOpen, setDateEditOpen] = useState(false);
   const [dateEditBooking, setDateEditBooking] = useState<any>(null);
 
+  // Context menu for long-press (touch)
+  const [contextMenuBed, setContextMenuBed] = useState<HostelBed | null>(null);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const longPressTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPressRef = React.useRef(false);
+  const touchStartPosRef = React.useRef<{ x: number; y: number } | null>(null);
+
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -497,6 +504,49 @@ const HostelBedMap: React.FC = () => {
     if (!selectedBed) return null;
     return hostels.find(h => h.id === selectedBed.hostelId) || null;
   }, [selectedBed, hostels]);
+
+  // Long-press touch handlers for mobile context menu
+  const handleTouchStart = useCallback((e: React.TouchEvent, bed: HostelBed) => {
+    const touch = e.touches[0];
+    touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+    isLongPressRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      setContextMenuBed(bed);
+      setContextMenuPosition({ x: touch.clientX, y: touch.clientY });
+    }, 500);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartPosRef.current) return;
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
+    const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
+    if (dx > 10 || dy > 10) {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  const handleBedCardClick = useCallback((bed: HostelBed) => {
+    if (isLongPressRef.current) {
+      isLongPressRef.current = false;
+      return; // Long press fired, don't open sheet
+    }
+    handleBedClick(bed);
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenuBed(null);
+    setContextMenuPosition(null);
+  }, []);
 
   // Bed click -> open sheet
   const handleBedClick = (bed: HostelBed) => {
@@ -1249,9 +1299,12 @@ const HostelBedMap: React.FC = () => {
           {filteredBeds.map(bed => (
             <div
               key={bed.id}
-              onClick={() => handleBedClick(bed)}
+              onClick={() => handleBedCardClick(bed)}
+              onTouchStart={(e) => handleTouchStart(e, bed)}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
               className={cn(
-                "relative border rounded cursor-pointer p-1 flex flex-col items-center justify-center text-center transition-all hover:shadow-md group min-h-[72px] max-w-[90px] overflow-hidden",
+                "relative border rounded cursor-pointer p-1 flex flex-col items-center justify-center text-center transition-all hover:shadow-md group min-h-[72px] max-w-[90px] overflow-hidden select-none",
                 statusColors(bed.dateStatus)
               )}
             >
@@ -1324,9 +1377,12 @@ const HostelBedMap: React.FC = () => {
                   {group.beds.map(bed => (
                     <div
                       key={bed.id}
-                      onClick={() => handleBedClick(bed)}
+                      onClick={() => handleBedCardClick(bed)}
+                      onTouchStart={(e) => handleTouchStart(e, bed)}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
                       className={cn(
-                        "relative border rounded cursor-pointer p-1.5 flex flex-col items-center justify-center text-center transition-all hover:shadow-md group w-[76px] min-h-[64px] overflow-hidden",
+                        "relative border rounded cursor-pointer p-1.5 flex flex-col items-center justify-center text-center transition-all hover:shadow-md group w-[76px] min-h-[64px] overflow-hidden select-none",
                         statusColors(bed.dateStatus)
                       )}
                     >
@@ -1488,6 +1544,58 @@ const HostelBedMap: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ──── Touch Context Menu ──── */}
+      {contextMenuBed && contextMenuPosition && (
+        <>
+          <div className="fixed inset-0 z-50" onClick={closeContextMenu} onTouchEnd={closeContextMenu} />
+          <div
+            className="fixed z-50 bg-popover border rounded-lg shadow-lg p-2 min-w-[180px]"
+            style={{
+              left: Math.min(contextMenuPosition.x, window.innerWidth - 200),
+              top: Math.min(contextMenuPosition.y - 10, window.innerHeight - 200),
+            }}
+          >
+            <div className="text-xs font-semibold px-2 py-1 border-b mb-1 text-foreground">
+              {contextMenuBed.roomNumber}-B{contextMenuBed.bed_number}
+              <span className="text-muted-foreground font-normal ml-1">₹{contextMenuBed.price}</span>
+            </div>
+            <button
+              className="flex items-center gap-2 w-full px-2 py-2 text-xs rounded hover:bg-muted transition-colors text-left"
+              onClick={() => { closeContextMenu(); handleBedClick(contextMenuBed); }}
+            >
+              <Info className="h-4 w-4 text-primary" /> View Details / Book
+            </button>
+            <button
+              className="flex items-center gap-2 w-full px-2 py-2 text-xs rounded hover:bg-muted transition-colors text-left"
+              onClick={() => { closeContextMenu(); setEditingBedId(contextMenuBed.id); setEditPrice(String(contextMenuBed.price)); }}
+            >
+              <Edit className="h-4 w-4 text-muted-foreground" /> Edit Price
+            </button>
+            <button
+              className="flex items-center gap-2 w-full px-2 py-2 text-xs rounded hover:bg-muted transition-colors text-left"
+              onClick={() => { closeContextMenu(); openBlockDialog(contextMenuBed); }}
+            >
+              {contextMenuBed.is_blocked
+                ? <><Unlock className="h-4 w-4 text-emerald-600" /> Unblock Bed</>
+                : <><Lock className="h-4 w-4 text-amber-600" /> Block Bed</>
+              }
+            </button>
+            {(contextMenuBed.dateStatus === 'booked' || contextMenuBed.dateStatus === 'expiring_soon') && contextMenuBed.currentBooking && (
+              <button
+                className="flex items-center gap-2 w-full px-2 py-2 text-xs rounded hover:bg-muted transition-colors text-left"
+                onClick={() => {
+                  closeContextMenu();
+                  openTransferDialog(contextMenuBed.currentBooking!.bookingId);
+                  setSelectedBed(contextMenuBed);
+                }}
+              >
+                <ArrowRightLeft className="h-4 w-4 text-violet-600" /> Transfer Bed
+              </button>
+            )}
+          </div>
+        </>
+      )}
 
       {/* ──── Right-Side Sheet ──── */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
