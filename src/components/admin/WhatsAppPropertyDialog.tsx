@@ -108,6 +108,12 @@ export const WhatsAppPropertyDialog: React.FC<WhatsAppPropertyDialogProps> = ({
             />
             <p className="text-[10px] text-muted-foreground">Include country code without + sign</p>
           </div>
+          {clickCount > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted rounded-md px-3 py-2">
+              <MousePointerClick className="h-3.5 w-3.5 text-primary" />
+              <span><strong className="text-foreground">{clickCount}</strong> student{clickCount !== 1 ? 's' : ''} clicked WhatsApp on this property</span>
+            </div>
+          )}
           <Button size="sm" className="h-7 text-xs gap-1 w-full" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
             Save
