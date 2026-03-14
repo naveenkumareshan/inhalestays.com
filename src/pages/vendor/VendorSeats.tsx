@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   LayoutGrid, List, CalendarIcon, Search, Ban, Lock, Unlock,
-  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Download, ArrowLeft, ArrowRightLeft, RotateCcw, Wallet, LogOut, XCircle, Pencil,
+  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Download, ArrowLeft, ArrowRightLeft, RotateCcw, Wallet, LogOut, XCircle, Pencil, UserCheck,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
