@@ -255,6 +255,7 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
       open={customizerOpen}
       onOpenChange={setCustomizerOpen}
       currentItems={pinnedItems}
+      availableOptions={filteredNavOptions}
       onSave={savePreferences}
       isSaving={isSaving}
     />
