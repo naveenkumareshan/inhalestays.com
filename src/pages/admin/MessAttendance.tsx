@@ -11,10 +11,10 @@ import { Calendar } from '@/components/ui/calendar';
 import { toast } from '@/hooks/use-toast';
 import {
   Loader2, Download, Search, Eye, CalendarIcon,
-  Coffee, UtensilsCrossed, Moon, Users, UserCheck, UserX, Activity,
+  Coffee, UtensilsCrossed, Moon, Users, UserCheck, UserX, Activity, Building2,
 } from 'lucide-react';
 import {
-  getMyMessPartner, getMessSubscriptions, getMessAttendance, markAttendance,
+  getMyMessPartner, getMessSubscriptions, getMessAttendance, markAttendance, getMealTimings,
 } from '@/api/messService';
 import { generateBrandedQrPng } from '@/utils/brandedQrGenerator';
 import { format, isSameDay, isFuture, parseISO } from 'date-fns';
