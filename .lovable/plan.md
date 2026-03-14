@@ -1,40 +1,71 @@
 
-Goal: Fix the `/admin/mess` crash first, then ensure linked hostel/mess rows are visible as intended.
 
-1) Root-cause fix (blocking issue)
-- File: `src/components/ui/badge.tsx`
-- Problem observed: runtime crash `TypeError: Component is not a function` with stack pointing to `<Badge>` in `MessManagement` header.
-- Plan:
-  - Replace the current `Badge` implementation with the stable function-component pattern (same API: `variant`, `className`, children).
-  - Keep exports unchanged (`export { Badge }`) so all existing imports continue to work.
-  - Avoid ref-forwarding for this component unless absolutely needed, because this change introduced the hard crash.
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-2) Safety check on affected screens
-- Files:
-  - `src/pages/admin/MessManagement.tsx`
-  - `src/pages/hotelManager/HostelManagement.tsx`
-- Plan:
-  - Keep the count chips and linked-entity sections, but verify they render after the badge fix.
-  - If any residual badge rendering issue appears, temporarily switch only the count chip in these two screens to a plain `<span>` fallback to prevent page-level failure while preserving functionality.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-3) Preserve and verify linked mapping features
-- Files:
-  - `src/components/admin/MessItem.tsx`
-  - `src/components/admin/HostelItem.tsx`
-  - `src/pages/admin/MessManagement.tsx`
-  - `src/pages/hotelManager/HostelManagement.tsx`
-- Plan:
-  - Re-validate existing linked rows (`Hostels:` in Mess cards, `Mess:` in Hostel cards).
-  - Ensure fallback labels (`No hostel linked` / `No mess linked`) still show when no links exist.
+## Changes
 
-4) Verification checklist (post-fix)
-- `/admin/mess` loads without ErrorBoundary crash.
-- Console no longer shows `Component is not a function` for `Badge`.
-- Mess cards display linked hostel names.
-- `/admin/hostels` displays linked mess names.
-- Try Again button is no longer needed for this issue.
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-Technical details
-- This is a frontend runtime/component regression, not a backend data issue.
-- No database migration or backend function changes are required.
-- The immediate blocker is the shared `Badge` component contract used by management page headers.
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
+
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
+
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
+
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
+
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
+
