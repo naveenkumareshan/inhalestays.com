@@ -154,6 +154,9 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${cabin.isPartnerVisible === false ? "bg-muted text-muted-foreground border border-border" : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
                 {cabin.isPartnerVisible === false ? "● Emp Hidden" : "● Emp Visible"}
               </span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${(cabin as any).isStudentVisible === false ? "bg-orange-50 text-orange-700 border border-orange-200" : "bg-teal-50 text-teal-700 border border-teal-200"}`}>
+                {(cabin as any).isStudentVisible === false ? "● Student Hidden" : "● Student Visible"}
+              </span>
             </div>
 
             <h3 className="font-semibold text-sm leading-snug text-foreground">{cabin.name}</h3>
