@@ -506,16 +506,20 @@ const HostelBedMap: React.FC = () => {
   }, [selectedBed, hostels]);
 
   // Long-press touch handlers for mobile context menu
-  const handleTouchStart = useCallback((e: React.TouchEvent, bed: HostelBed) => {
+  const handleTouchStart = (e: React.TouchEvent, bed: HostelBed) => {
     const touch = e.touches[0];
     touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
     isLongPressRef.current = false;
     longPressTimerRef.current = setTimeout(() => {
       isLongPressRef.current = true;
       setContextMenuBed(bed);
-      setContextMenuPosition({ x: touch.clientX, y: touch.clientY });
+      // Use pageX/pageY for scroll-aware positioning, clamped to viewport
+      const menuW = 200, menuH = 180;
+      const x = Math.min(touch.pageX, window.innerWidth - menuW - 8);
+      const y = Math.min(touch.pageY, window.scrollY + window.innerHeight - menuH - 8);
+      setContextMenuPosition({ x, y });
     }, 500);
-  }, []);
+  };
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!touchStartPosRef.current) return;
