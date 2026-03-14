@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,16 +6,19 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { toast } from '@/hooks/use-toast';
 import {
-  Loader2, Maximize2, Download, Printer, Search,
+  Loader2, Download, Search, Eye, CalendarIcon,
   Coffee, UtensilsCrossed, Moon, Users, UserCheck, UserX, Activity,
 } from 'lucide-react';
 import {
   getMyMessPartner, getMessSubscriptions, getMessAttendance, markAttendance,
 } from '@/api/messService';
 import { generateBrandedQrPng } from '@/utils/brandedQrGenerator';
-import { format } from 'date-fns';
+import { format, isSameDay, isFuture } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const MEALS = ['breakfast', 'lunch', 'dinner'] as const;
 const MEAL_LABELS: Record<string, string> = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
@@ -32,13 +35,22 @@ export default function MessAttendance() {
   const [loading, setLoading] = useState(true);
   const [mess, setMess] = useState<any>(null);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
-  const [attendance, setAttendance] = useState<any[]>([]);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [qrFullscreen, setQrFullscreen] = useState(false);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [manualDate, setManualDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  // Date selection for stats
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+  const isToday = isSameDay(selectedDate, new Date());
+  const isFutureDate = isFuture(selectedDate) && !isToday;
+
+  // Attendance data for selected date
+  const [dateAttendance, setDateAttendance] = useState<any[]>([]);
+
+  // Manual correction date
+  const [manualDate, setManualDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [manualAttendance, setManualAttendance] = useState<any[]>([]);
 
   // Load mess partner
   useEffect(() => {
@@ -65,26 +77,31 @@ export default function MessAttendance() {
     generateBrandedQrPng(mess.id, 'mess', mess.name).then(setQrDataUrl);
   }, [mess]);
 
-  // Load attendance for today (live feed) + manual date
-  const loadTodayAttendance = useCallback(async () => {
-    if (!mess?.id) return;
-    const att = await getMessAttendance(mess.id, todayStr);
-    setAttendance(att);
-  }, [mess?.id, todayStr]);
+  // Load attendance for selected date
+  const loadDateAttendance = useCallback(async () => {
+    if (!mess?.id || isFutureDate) return;
+    const att = await getMessAttendance(mess.id, selectedDateStr);
+    setDateAttendance(att);
+  }, [mess?.id, selectedDateStr, isFutureDate]);
 
   useEffect(() => {
-    if (mess?.id) loadTodayAttendance();
-  }, [mess?.id, loadTodayAttendance]);
+    if (mess?.id) {
+      if (isFutureDate) {
+        setDateAttendance([]);
+      } else {
+        loadDateAttendance();
+      }
+    }
+  }, [mess?.id, loadDateAttendance, isFutureDate]);
 
-  // Auto-refresh every 30s
+  // Auto-refresh every 30s only for today
   useEffect(() => {
-    if (!mess?.id) return;
-    const interval = setInterval(loadTodayAttendance, 30000);
+    if (!mess?.id || !isToday) return;
+    const interval = setInterval(loadDateAttendance, 30000);
     return () => clearInterval(interval);
-  }, [mess?.id, loadTodayAttendance]);
+  }, [mess?.id, isToday, loadDateAttendance]);
 
   // Manual date attendance
-  const [manualAttendance, setManualAttendance] = useState<any[]>([]);
   useEffect(() => {
     if (!mess?.id) return;
     getMessAttendance(mess.id, manualDate).then(setManualAttendance);
@@ -105,7 +122,7 @@ export default function MessAttendance() {
         date: manualDate, meal_type: mealType, status: 'consumed', marked_by: 'manual',
       });
       toast({ title: 'Attendance marked!' });
-      if (manualDate === todayStr) loadTodayAttendance();
+      if (manualDate === selectedDateStr) loadDateAttendance();
       getMessAttendance(mess.id, manualDate).then(setManualAttendance);
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
@@ -120,26 +137,29 @@ export default function MessAttendance() {
     a.click();
   };
 
-  const handlePrintQr = () => {
-    if (!qrDataUrl) return;
-    const w = window.open('', '_blank');
-    if (!w) return;
-    w.document.write(`<html><body style="display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0"><img src="${qrDataUrl}" style="max-width:480px;width:100%" onload="window.print();window.close()" /></body></html>`);
-    w.document.close();
-  };
-
   // Derived stats
   const activeSubsForAttendance = subscriptions.filter(s => s.status === 'active');
-  const todayAttendance = attendance;
-  const uniqueStudentsToday = new Set(todayAttendance.map(a => a.user_id)).size;
+  const uniqueStudentsOnDate = new Set(dateAttendance.map(a => a.user_id)).size;
   const totalSubscribers = activeSubsForAttendance.length;
-  const absentToday = Math.max(0, totalSubscribers - uniqueStudentsToday);
+  const absentOnDate = Math.max(0, totalSubscribers - uniqueStudentsOnDate);
 
   // Filtered subscribers for manual correction
   const filteredSubs = activeSubsForAttendance.filter(s =>
     !searchQuery || s.profiles?.name?.toLowerCase().includes(searchQuery.toLowerCase())
     || s.profiles?.phone?.includes(searchQuery)
   );
+
+  // Meal stats per meal for selected date
+  const mealStats = useMemo(() => {
+    return MEALS.map(meal => {
+      const total = activeSubsForAttendance.filter(s =>
+        (s.mess_packages?.meal_types as string[])?.includes(meal)
+      ).length;
+      const consumed = isFutureDate ? 0 : dateAttendance.filter(a => a.meal_type === meal).length;
+      const pct = total > 0 ? Math.round((consumed / total) * 100) : 0;
+      return { meal, total, consumed, pct };
+    });
+  }, [activeSubsForAttendance, dateAttendance, isFutureDate]);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[40vh]">
@@ -155,176 +175,161 @@ export default function MessAttendance() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-lg font-semibold tracking-tight">Mess Attendance</h1>
+      {/* Header with View QR button */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-semibold tracking-tight">Mess Attendance</h1>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setQrDialogOpen(true)}
+        >
+          <Eye className="h-4 w-4 mr-1" /> View QR
+        </Button>
+      </div>
 
-      {/* 1. Mess QR Code Section */}
-      <Card className="border-teal-200 bg-teal-50/30">
-        <CardHeader className="py-3 pb-0">
-          <CardTitle className="text-base text-teal-800 flex items-center gap-2">
-            Mess QR Code
-            <Badge className="bg-teal-100 text-teal-700 border-teal-200 text-[10px]">
-              Students scan this
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-3">
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            {qrDataUrl ? (
-              <img
-                src={qrDataUrl}
-                alt="Mess QR Code"
-                className="w-full max-w-[240px] h-auto rounded-lg border border-teal-200 shadow-sm"
-              />
-            ) : (
-              <div className="w-[240px] h-[320px] bg-teal-100/50 rounded-lg animate-pulse" />
-            )}
-            <div className="flex sm:flex-col gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-teal-300 text-teal-700 hover:bg-teal-50"
-                onClick={() => setQrFullscreen(true)}
-              >
-                <Maximize2 className="h-4 w-4 mr-1" /> Fullscreen
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-teal-300 text-teal-700 hover:bg-teal-50"
-                onClick={handleDownloadQr}
-              >
-                <Download className="h-4 w-4 mr-1" /> Download
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-teal-300 text-teal-700 hover:bg-teal-50"
-                onClick={handlePrintQr}
-              >
-                <Printer className="h-4 w-4 mr-1" /> Print
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* QR Fullscreen Dialog */}
-      <Dialog open={qrFullscreen} onOpenChange={setQrFullscreen}>
-        <DialogContent className="max-w-md">
+      {/* QR Dialog */}
+      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Mess QR Code — {mess.name}</DialogTitle>
+            <DialogTitle>Mess QR — {mess.name}</DialogTitle>
           </DialogHeader>
-          {qrDataUrl && (
-            <img src={qrDataUrl} alt="Mess QR" className="w-full h-auto rounded-lg" />
+          {qrDataUrl ? (
+            <img src={qrDataUrl} alt="Mess QR" className="w-full max-w-[320px] h-auto rounded-lg mx-auto" />
+          ) : (
+            <div className="w-full h-[400px] bg-muted rounded-lg animate-pulse" />
           )}
+          <Button variant="outline" size="sm" className="w-full" onClick={handleDownloadQr}>
+            <Download className="h-4 w-4 mr-1" /> Download QR
+          </Button>
         </DialogContent>
       </Dialog>
 
-      {/* 2. Meal Attendance Cards */}
-      <div className="grid grid-cols-3 gap-3">
-        {MEALS.map(meal => {
-          const consumed = todayAttendance.filter(a => a.meal_type === meal).length;
-          const total = activeSubsForAttendance.filter(s =>
-            (s.mess_packages?.meal_types as string[])?.includes(meal)
-          ).length;
-          const pct = total > 0 ? Math.round((consumed / total) * 100) : 0;
-          const isCurrent = meal === currentMeal;
+      {/* Date Selector */}
+      <div className="flex items-center gap-2">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !selectedDate && "text-muted-foreground")}>
+              <CalendarIcon className="h-4 w-4 mr-1.5" />
+              {format(selectedDate, 'PPP')}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(d) => d && setSelectedDate(d)}
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
+        {isToday && (
+          <Badge variant="outline" className="text-[10px]">Today — Live</Badge>
+        )}
+        {isFutureDate && (
+          <Badge variant="secondary" className="text-[10px]">Future — Expected counts</Badge>
+        )}
+      </div>
 
+      {/* Meal Attendance Cards */}
+      <div className="grid grid-cols-3 gap-3">
+        {mealStats.map(({ meal, total, consumed, pct }) => {
+          const isCurrent = isToday && meal === currentMeal;
           return (
-            <Card key={meal} className={isCurrent ? 'border-teal-300 bg-teal-50/50 ring-1 ring-teal-200' : ''}>
+            <Card key={meal} className={isCurrent ? 'border-primary ring-1 ring-primary/30' : ''}>
               <CardContent className="p-3 text-center space-y-2">
                 <div className="flex items-center justify-center gap-1.5">
-                  <span className={isCurrent ? 'text-teal-600' : 'text-muted-foreground'}>
+                  <span className={isCurrent ? 'text-primary' : 'text-muted-foreground'}>
                     {MEAL_ICONS[meal]}
                   </span>
-                  <span className={`text-xs font-medium ${isCurrent ? 'text-teal-700' : 'text-muted-foreground'}`}>
+                  <span className={`text-xs font-medium ${isCurrent ? 'text-primary' : 'text-muted-foreground'}`}>
                     {MEAL_LABELS[meal]}
                   </span>
                   {isCurrent && (
-                    <Badge className="bg-teal-600 text-white text-[9px] px-1.5 py-0">Now</Badge>
+                    <Badge className="text-[9px] px-1.5 py-0">Now</Badge>
                   )}
                 </div>
-                <p className={`text-2xl font-bold ${isCurrent ? 'text-teal-700' : 'text-foreground'}`}>
-                  {consumed}<span className="text-sm font-normal text-muted-foreground">/{total}</span>
-                </p>
-                <Progress value={pct} className="h-2 bg-teal-100" />
-                <p className="text-[10px] text-muted-foreground">{pct}% attendance</p>
+                {isFutureDate ? (
+                  <p className="text-2xl font-bold">{total}<span className="text-sm font-normal text-muted-foreground"> expected</span></p>
+                ) : (
+                  <>
+                    <p className={`text-2xl font-bold ${isCurrent ? 'text-primary' : ''}`}>
+                      {consumed}<span className="text-sm font-normal text-muted-foreground">/{total}</span>
+                    </p>
+                    <Progress value={pct} className="h-2" />
+                    <p className="text-[10px] text-muted-foreground">{pct}% attendance</p>
+                  </>
+                )}
               </CardContent>
             </Card>
           );
         })}
       </div>
 
-      {/* 3. Subscriber Status Summary */}
+      {/* Subscriber Status Summary */}
       <div className="grid grid-cols-3 gap-3">
-        <Card className="bg-teal-50/40 border-teal-100">
+        <Card>
           <CardContent className="p-3 text-center">
-            <Users className="h-4 w-4 mx-auto text-teal-600 mb-1" />
+            <Users className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
             <p className="text-[10px] uppercase text-muted-foreground">Total Subscribers</p>
-            <p className="text-xl font-bold text-teal-700">{totalSubscribers}</p>
+            <p className="text-xl font-bold">{totalSubscribers}</p>
           </CardContent>
         </Card>
-        <Card className="bg-teal-50/40 border-teal-100">
+        <Card>
           <CardContent className="p-3 text-center">
-            <UserCheck className="h-4 w-4 mx-auto text-teal-600 mb-1" />
-            <p className="text-[10px] uppercase text-muted-foreground">Present Today</p>
-            <p className="text-xl font-bold text-teal-700">{uniqueStudentsToday}</p>
+            <UserCheck className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
+            <p className="text-[10px] uppercase text-muted-foreground">{isFutureDate ? 'Expected' : 'Present'}</p>
+            <p className="text-xl font-bold">{isFutureDate ? totalSubscribers : uniqueStudentsOnDate}</p>
           </CardContent>
         </Card>
-        <Card className="bg-teal-50/40 border-teal-100">
+        <Card>
           <CardContent className="p-3 text-center">
-            <UserX className="h-4 w-4 mx-auto text-teal-600 mb-1" />
-            <p className="text-[10px] uppercase text-muted-foreground">Absent Today</p>
-            <p className="text-xl font-bold text-teal-700">{absentToday}</p>
+            <UserX className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
+            <p className="text-[10px] uppercase text-muted-foreground">Absent</p>
+            <p className="text-xl font-bold">{isFutureDate ? 0 : absentOnDate}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* 4. Live Attendance Feed */}
-      <Card>
-        <CardHeader className="py-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Activity className="h-4 w-4 text-teal-600" />
-            Live Attendance Feed
-            <Badge variant="outline" className="text-[10px] border-teal-200 text-teal-600 ml-auto">
-              Auto-refreshes
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {todayAttendance.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">
-              No attendance entries yet today. Students will appear here when they scan the QR.
-            </p>
-          ) : (
-            <div className="divide-y max-h-[300px] overflow-y-auto">
-              {todayAttendance.slice(0, 50).map((a: any, i: number) => (
-                <div key={a.id || i} className="flex items-center justify-between py-2">
-                  <div>
-                    <p className="text-sm font-medium">{a.profiles?.name || 'Student'}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {a.marked_at ? format(new Date(a.marked_at), 'hh:mm a') : '—'}
-                    </p>
+      {/* Live Attendance Feed (only for today/past) */}
+      {!isFutureDate && (
+        <Card>
+          <CardHeader className="py-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Activity className="h-4 w-4 text-muted-foreground" />
+              {isToday ? 'Live Attendance Feed' : `Attendance — ${format(selectedDate, 'dd MMM yyyy')}`}
+              {isToday && (
+                <Badge variant="outline" className="text-[10px] ml-auto">Auto-refreshes</Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {dateAttendance.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                {isToday ? 'No attendance entries yet today. Students will appear here when they scan the QR.' : 'No attendance entries for this date.'}
+              </p>
+            ) : (
+              <div className="divide-y max-h-[300px] overflow-y-auto">
+                {dateAttendance.slice(0, 50).map((a: any, i: number) => (
+                  <div key={a.id || i} className="flex items-center justify-between py-2">
+                    <div>
+                      <p className="text-sm font-medium">{a.profiles?.name || 'Student'}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {a.marked_at ? format(new Date(a.marked_at), 'hh:mm a') : '—'}
+                      </p>
+                    </div>
+                    <Badge variant="outline">
+                      {MEAL_LABELS[a.meal_type] || a.meal_type}
+                    </Badge>
                   </div>
-                  <Badge
-                    className={
-                      a.meal_type === 'breakfast'
-                        ? 'bg-amber-100 text-amber-700 border-amber-200'
-                        : a.meal_type === 'lunch'
-                        ? 'bg-teal-100 text-teal-700 border-teal-200'
-                        : 'bg-indigo-100 text-indigo-700 border-indigo-200'
-                    }
-                  >
-                    {MEAL_LABELS[a.meal_type] || a.meal_type}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-      {/* 5. Manual Attendance Correction */}
+      {/* Manual Attendance Correction */}
       <Card>
         <CardHeader className="py-3">
           <CardTitle className="text-base">Manual Attendance Correction</CardTitle>
@@ -373,7 +378,6 @@ export default function MessAttendance() {
                             variant={marked ? 'default' : 'outline'}
                             size="sm"
                             disabled={!!marked}
-                            className={marked ? 'bg-teal-600 hover:bg-teal-700' : 'border-teal-300 text-teal-700 hover:bg-teal-50'}
                             onClick={() => handleMarkAttendance(s.id, s.user_id, meal)}
                           >
                             {MEAL_LABELS[meal]} {marked ? '✓' : ''}
