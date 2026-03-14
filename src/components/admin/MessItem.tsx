@@ -120,6 +120,16 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
                 <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onEdit(mess)}>
                   <Edit className="h-3 w-3 mr-1" />Edit
                 </Button>
+                {onDownloadQr && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onDownloadQr(mess)}>
+                        <QrCode className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Download QR</TooltipContent>
+                  </Tooltip>
+                )}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onManagePackages(mess)}>
