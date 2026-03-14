@@ -151,6 +151,11 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${hostel.is_student_visible === false ? "bg-orange-50 text-orange-700 border border-orange-200" : "bg-teal-50 text-teal-700 border border-teal-200"}`}>
                 {hostel.is_student_visible === false ? "● Student Hidden" : "● Student Visible"}
               </span>
+              {linkedMesses && linkedMesses.length > 0 && linkedMesses.map((m) => (
+                <Badge key={m.mess_id} variant="outline" className="text-[10px] gap-0.5 border-amber-300 text-amber-700 bg-amber-50">
+                  🍽️ {m.mess_name} {m.is_default && '★'}
+                </Badge>
+              ))}
             </div>
 
             <h3 className="font-semibold text-sm leading-snug text-foreground">{hostel.name}</h3>
