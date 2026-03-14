@@ -419,7 +419,7 @@ export default function MessBookings() {
         collected_by: user?.id,
         collected_by_name: collectedByName || user?.name || '',
         payment_proof_url: paymentProofUrl || null,
-        notes,
+        notes: '',
       });
 
       if (isPartial) {
