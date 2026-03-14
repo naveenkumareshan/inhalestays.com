@@ -89,7 +89,8 @@ const HostelDueManagement: React.FC = () => {
       .order('created_at', { ascending: false });
 
     if (filterHostel !== 'all') duesQuery = duesQuery.eq('hostel_id', filterHostel);
-    if (filterStatus !== 'all') duesQuery = duesQuery.eq('status', filterStatus);
+    if (filterStatus === 'pending') duesQuery = duesQuery.neq('status', 'paid');
+    else if (filterStatus === 'paid') duesQuery = duesQuery.eq('status', 'paid');
 
     const { data: duesData } = await duesQuery;
 
