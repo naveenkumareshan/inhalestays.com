@@ -21,6 +21,13 @@ interface CheckInViewDetailsDialogProps {
 
 const CheckInViewDetailsDialog: React.FC<CheckInViewDetailsDialogProps> = ({ open, onOpenChange, booking, module }) => {
   const { toast } = useToast();
+  const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (booking?.payment_method) {
+      resolvePaymentMethodLabels([booking.payment_method]).then(setCustomLabels);
+    }
+  }, [booking?.payment_method]);
 
   if (!booking) return null;
 
