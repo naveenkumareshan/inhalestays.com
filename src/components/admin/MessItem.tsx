@@ -16,6 +16,7 @@ interface MessItemProps {
   onToggleActive?: (messId: string, isActive: boolean) => void;
   onToggleBooking?: (messId: string, isBookingActive: boolean) => void;
   onTogglePartnerVisible?: (messId: string, isVisible: boolean) => void;
+  onToggleStudentVisible?: (messId: string, isVisible: boolean) => void;
 }
 
 const FOOD_BADGES: Record<string, { label: string; cls: string }> = {
