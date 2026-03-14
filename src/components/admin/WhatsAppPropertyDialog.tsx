@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, MousePointerClick } from 'lucide-react';
 
 interface WhatsAppPropertyDialogProps {
   open: boolean;
@@ -34,6 +34,7 @@ export const WhatsAppPropertyDialog: React.FC<WhatsAppPropertyDialogProps> = ({
   const [enabled, setEnabled] = useState(initialEnabled);
   const [saving, setSaving] = useState(false);
   const [loadingState, setLoadingState] = useState(false);
+  const [clickCount, setClickCount] = useState<number>(0);
 
   const table = propertyType === 'cabin' ? 'cabins' : propertyType === 'hostel' ? 'hostels' : 'mess_partners';
 
@@ -52,6 +53,12 @@ export const WhatsAppPropertyDialog: React.FC<WhatsAppPropertyDialogProps> = ({
           setNumber((data as any).whatsapp_number || '');
           setEnabled((data as any).whatsapp_chat_enabled || false);
         }
+        // Fetch click count
+        const { count } = await supabase
+          .from('whatsapp_clicks' as any)
+          .select('*', { count: 'exact', head: true })
+          .eq('property_id', propertyId);
+        setClickCount(count || 0);
       } catch {
         // fallback to props
         setNumber(initialNumber);
@@ -101,6 +108,12 @@ export const WhatsAppPropertyDialog: React.FC<WhatsAppPropertyDialogProps> = ({
             />
             <p className="text-[10px] text-muted-foreground">Include country code without + sign</p>
           </div>
+          {clickCount > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted rounded-md px-3 py-2">
+              <MousePointerClick className="h-3.5 w-3.5 text-primary" />
+              <span><strong className="text-foreground">{clickCount}</strong> student{clickCount !== 1 ? 's' : ''} clicked WhatsApp on this property</span>
+            </div>
+          )}
           <Button size="sm" className="h-7 text-xs gap-1 w-full" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
             Save
