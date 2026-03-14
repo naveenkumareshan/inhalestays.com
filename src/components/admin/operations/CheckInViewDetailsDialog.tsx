@@ -74,7 +74,7 @@ const CheckInViewDetailsDialog: React.FC<CheckInViewDetailsDialogProps> = ({ ope
               {module === 'reading_room' ? (
                 <InfoRow label="Room / Seat" value={`${booking.cabins?.name || '—'} / ${booking.seats?.floor ? `Floor ${booking.seats.floor} · ` : ''}Seat #${booking.seats?.number || '—'}`} />
               ) : (
-                <InfoRow label="Hostel / Bed" value={`${booking.hostels?.name || '—'} / Bed #${booking.hostel_beds?.bed_number || '—'}`} />
+                <InfoRow label="Hostel / Bed" value={`${booking.hostels?.name || '—'} / Room ${booking.hostel_rooms?.room_number || '—'} · Bed #${booking.hostel_beds?.bed_number || '—'}`} />
               )}
               <InfoRow label="Duration" value={`${booking.booking_duration || '—'} (${booking.duration_count || 1})`} />
               <InfoRow label="Start" value={booking.start_date ? format(parseISO(booking.start_date), 'dd MMM yyyy') : '—'} />
