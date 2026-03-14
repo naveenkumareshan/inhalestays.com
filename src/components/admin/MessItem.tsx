@@ -27,7 +27,7 @@ const FOOD_BADGES: Record<string, { label: string; cls: string }> = {
   both: { label: '🟡 Both', cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
 };
 
-export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, onToggleStudentVisible, onDownloadQr }: MessItemProps) {
+export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, onToggleStudentVisible, onDownloadQr, linkedHostels }: MessItemProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const badge = FOOD_BADGES[mess.food_type] || FOOD_BADGES.both;
