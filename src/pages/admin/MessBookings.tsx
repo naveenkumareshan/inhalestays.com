@@ -375,7 +375,7 @@ export default function MessBookings() {
               </div>
               <div><Label className="text-xs">Txn ID</Label><Input value={renewTxnId} onChange={e => setRenewTxnId(e.target.value)} className="h-8 text-xs" /></div>
             </div>
-            {renewPaymentMethod !== 'cash' && <PaymentProofUpload onUpload={setRenewProofUrl} existingUrl={renewProofUrl} />}
+            {renewPaymentMethod !== 'cash' && <PaymentProofUpload value={renewProofUrl} onChange={setRenewProofUrl} />}
             <Textarea value={renewNotes} onChange={e => setRenewNotes(e.target.value)} placeholder="Notes..." rows={2} className="text-xs" />
           </div>
           <DialogFooter>
