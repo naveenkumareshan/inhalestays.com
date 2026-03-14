@@ -288,6 +288,13 @@ export function AdminSidebar() {
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_hostel_bookings']
       },
+      {
+        title: 'Attendance',
+        url: `${routePrefix}/property-attendance?type=hostel`,
+        icon: UserCheck,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_bed_map']
+      },
     ];
 
     // Approvals moved to Partners section
