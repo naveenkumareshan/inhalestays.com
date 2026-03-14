@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building, Hotel, Plus, Shirt, Loader2, UtensilsCrossed, Crown, LayoutGrid, QrCode, Download } from 'lucide-react';
+import { Building, Hotel, Plus, Shirt, Loader2, UtensilsCrossed, Crown, LayoutGrid, Download } from 'lucide-react';
 import QRCode from 'qrcode';
 import PlansComparisonDialog from '@/components/partner/PlansComparisonDialog';
 import { Button } from '@/components/ui/button';
