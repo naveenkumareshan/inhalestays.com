@@ -169,24 +169,15 @@ export default function MessDetail() {
     });
   }, [selectedMealPlan, messPackages]);
 
-  // Available duration types from matching packages
-  const availableDurationTypes = useMemo(() => {
-    const types = new Set(matchingPackages.map((p: any) => p.duration_type));
-    return ['daily', 'weekly', 'monthly'].filter(t => types.has(t)) as ('daily' | 'weekly' | 'monthly')[];
-  }, [matchingPackages]);
-
-  // Auto-set duration type when meal plan changes
+  // Reset duration when meal plan changes
   useEffect(() => {
-    if (availableDurationTypes.length > 0 && !availableDurationTypes.includes(durationType)) {
-      setDurationType(availableDurationTypes[0]);
-    }
     setDurationCount(1);
-  }, [availableDurationTypes]);
+  }, [selectedMealPlan]);
 
-  // Selected package based on meal plan + duration type
+  // Selected package = first matching package for selected meal plan
   const selectedPackage = useMemo(() => {
-    return matchingPackages.find((p: any) => p.duration_type === durationType) || null;
-  }, [matchingPackages, durationType]);
+    return matchingPackages.length > 0 ? matchingPackages[0] : null;
+  }, [matchingPackages]);
 
   const endDate = useMemo(() => {
     return calculateBookingEndDate(checkInDate, durationType, durationCount);
