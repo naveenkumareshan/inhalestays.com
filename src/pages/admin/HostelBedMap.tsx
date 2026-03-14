@@ -1545,6 +1545,58 @@ const HostelBedMap: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* ──── Touch Context Menu ──── */}
+      {contextMenuBed && contextMenuPosition && (
+        <>
+          <div className="fixed inset-0 z-50" onClick={closeContextMenu} onTouchEnd={closeContextMenu} />
+          <div
+            className="fixed z-50 bg-popover border rounded-lg shadow-lg p-2 min-w-[180px]"
+            style={{
+              left: Math.min(contextMenuPosition.x, window.innerWidth - 200),
+              top: Math.min(contextMenuPosition.y - 10, window.innerHeight - 200),
+            }}
+          >
+            <div className="text-xs font-semibold px-2 py-1 border-b mb-1 text-foreground">
+              {contextMenuBed.roomNumber}-B{contextMenuBed.bed_number}
+              <span className="text-muted-foreground font-normal ml-1">₹{contextMenuBed.price}</span>
+            </div>
+            <button
+              className="flex items-center gap-2 w-full px-2 py-2 text-xs rounded hover:bg-muted transition-colors text-left"
+              onClick={() => { closeContextMenu(); handleBedClick(contextMenuBed); }}
+            >
+              <Info className="h-4 w-4 text-primary" /> View Details / Book
+            </button>
+            <button
+              className="flex items-center gap-2 w-full px-2 py-2 text-xs rounded hover:bg-muted transition-colors text-left"
+              onClick={() => { closeContextMenu(); setEditingBedId(contextMenuBed.id); setEditPrice(String(contextMenuBed.price)); }}
+            >
+              <Edit className="h-4 w-4 text-muted-foreground" /> Edit Price
+            </button>
+            <button
+              className="flex items-center gap-2 w-full px-2 py-2 text-xs rounded hover:bg-muted transition-colors text-left"
+              onClick={() => { closeContextMenu(); openBlockDialog(contextMenuBed); }}
+            >
+              {contextMenuBed.is_blocked
+                ? <><Unlock className="h-4 w-4 text-emerald-600" /> Unblock Bed</>
+                : <><Lock className="h-4 w-4 text-amber-600" /> Block Bed</>
+              }
+            </button>
+            {(contextMenuBed.dateStatus === 'booked' || contextMenuBed.dateStatus === 'expiring_soon') && contextMenuBed.currentBooking && (
+              <button
+                className="flex items-center gap-2 w-full px-2 py-2 text-xs rounded hover:bg-muted transition-colors text-left"
+                onClick={() => {
+                  closeContextMenu();
+                  openTransferDialog(contextMenuBed.currentBooking!.bookingId);
+                  setSelectedBed(contextMenuBed);
+                }}
+              >
+                <ArrowRightLeft className="h-4 w-4 text-violet-600" /> Transfer Bed
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
       {/* ──── Right-Side Sheet ──── */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="right" className="w-[400px] sm:w-[440px] p-4 overflow-y-auto">
