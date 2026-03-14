@@ -281,7 +281,7 @@ const PropertyAttendance: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs w-[40px]">#</TableHead>
+                <TableHead className="text-xs w-[40px]">S.No.</TableHead>
                 <TableHead className="text-xs">Student</TableHead>
                 <TableHead className="text-xs">Phone</TableHead>
                 <TableHead className="text-xs">Seat / Bed</TableHead>
@@ -290,9 +290,9 @@ const PropertyAttendance: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {records.map((r, i) => (
+              {records.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((r, i) => (
                 <TableRow key={r.id}>
-                  <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{getSerialNumber(i, currentPage, pageSize)}</TableCell>
                   <TableCell className="text-xs font-medium">{r.student_name || '-'}</TableCell>
                   <TableCell className="text-xs">{r.student_phone || '-'}</TableCell>
                   <TableCell className="text-xs">
@@ -312,6 +312,13 @@ const PropertyAttendance: React.FC = () => {
               ))}
             </TableBody>
           </Table>
+          <AdminTablePagination
+            currentPage={currentPage}
+            totalItems={records.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+          />
         </div>
       )}
     </div>
