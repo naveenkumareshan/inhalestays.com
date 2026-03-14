@@ -46,6 +46,7 @@ interface Vendor {
 interface RoomManagementProps {
   autoCreateNew?: boolean;
   onTriggerConsumed?: () => void;
+  onOpenQr?: (propertyId: string, propertyName: string) => void;
 }
 
 const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTriggerConsumed }) => {
