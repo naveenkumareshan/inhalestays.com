@@ -1,71 +1,41 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Fix Mess Attendance Logic & UI Issues
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Problems Identified
 
-## Changes
+1. **Subscriptions not date-filtered**: `activeSubsForAttendance` only filters by `status === 'active'` but ignores `start_date` and `end_date`. A subscription active in January shouldn't count for a March date. The meal cards and subscriber counts are inflated.
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+2. **Progress bar always 100%**: Because all subscriptions (regardless of date range) are counted as "total", but attendance data is date-specific, the ratio is wrong. When there are 0 subscribers with dates matching the selected date, division produces incorrect percentages.
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+3. **Manual correction available for future dates**: The manual correction section allows selecting future dates and marking attendance, which shouldn't be possible.
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+## Changes — `src/pages/admin/MessAttendance.tsx`
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### 1. Filter subscriptions by selected date
+Replace the simple `status === 'active'` filter with date-aware filtering:
+```typescript
+const activeSubsForDate = useMemo(() => {
+  return subscriptions.filter(s =>
+    s.status === 'active' &&
+    s.start_date <= selectedDateStr &&
+    s.end_date >= selectedDateStr
+  );
+}, [subscriptions, selectedDateStr]);
+```
+Use `activeSubsForDate` everywhere instead of `activeSubsForAttendance` for meal cards and subscriber summary.
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+### 2. Fix meal stats calculation
+Use the date-filtered subscriptions so totals match reality for the selected date. This fixes the progress bar showing incorrect percentages.
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### 3. Freeze manual correction for future dates
+- Restrict the manual date input's `max` attribute to today's date
+- Disable the mark attendance buttons if `manualDate` is in the future
+- Show a note if a future date is somehow selected
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+### 4. Manual correction subscriber list also date-filtered
+Filter the manual correction subscriber list using `manualDate` so only subscribers whose subscription covers that date appear.
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+## File
+**EDIT**: `src/pages/admin/MessAttendance.tsx` — fix subscription date filtering, progress calculation, freeze future manual corrections
 
