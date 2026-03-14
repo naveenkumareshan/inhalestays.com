@@ -457,6 +457,50 @@ export default function MessBookings() {
         </Button>
       </div>
 
+      {/* Source-Based Analytics */}
+      {subs.length > 0 && (() => {
+        const sourceStats = subs.reduce((acc: Record<string, { count: number; revenue: number; hostels: Record<string, number> }>, s: any) => {
+          const src = s.source_type || 'manual';
+          if (!acc[src]) acc[src] = { count: 0, revenue: 0, hostels: {} };
+          acc[src].count++;
+          acc[src].revenue += s.price_paid || 0;
+          if (src !== 'manual' && s.hostel_bookings?.hostels?.name) {
+            const hName = s.hostel_bookings.hostels.name;
+            acc[src].hostels[hName] = (acc[src].hostels[hName] || 0) + 1;
+          }
+          return acc;
+        }, {});
+        const entries = Object.entries(sourceStats);
+        if (entries.length <= 1 && entries[0]?.[0] === 'manual') return null;
+        const sourceLabels: Record<string, string> = { manual: 'Manual', hostel_inclusive: 'Hostel Package', addon_purchase: 'Addon' };
+        const sourceBg: Record<string, string> = { manual: 'bg-muted', hostel_inclusive: 'bg-blue-50', addon_purchase: 'bg-purple-50' };
+        const sourceText: Record<string, string> = { manual: 'text-muted-foreground', hostel_inclusive: 'text-blue-700', addon_purchase: 'text-purple-700' };
+        return (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {entries.map(([src, stats]) => (
+              <Card key={src} className="overflow-hidden">
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className={`inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium ${sourceBg[src] || 'bg-muted'} ${sourceText[src] || 'text-muted-foreground'} border`}>
+                      {sourceLabels[src] || src}
+                    </span>
+                  </div>
+                  <p className="text-lg font-bold">{(stats as any).count} <span className="text-xs font-normal text-muted-foreground">subs</span></p>
+                  <p className="text-xs text-muted-foreground">{formatCurrency((stats as any).revenue)}</p>
+                  {Object.entries((stats as any).hostels).length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {Object.entries((stats as any).hostels).map(([name, cnt]) => (
+                        <Badge key={name} variant="outline" className="text-[9px]">🏨 {name}: {cnt as number}</Badge>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        );
+      })()}
+
       <Card className="shadow-sm">
         <CardHeader className="py-3 border-b">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

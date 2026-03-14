@@ -248,6 +248,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
                   onTogglePartnerVisible={handleTogglePartnerVisible}
                   onToggleStudentVisible={handleToggleStudentVisible}
                   onDownloadQr={onOpenQr ? (mess: any) => onOpenQr(mess.id, mess.name) : undefined}
+                  linkedHostels={hostelLinksMap[mess.id]}
                 />
               ))}
             </div>

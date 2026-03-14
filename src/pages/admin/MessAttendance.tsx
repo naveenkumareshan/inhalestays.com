@@ -310,6 +310,28 @@ export default function MessAttendance() {
         </Card>
       </div>
 
+      {/* Source Breakdown */}
+      {(() => {
+        const sourceBreakdown = activeSubsForDate.reduce((acc: Record<string, number>, s: any) => {
+          const src = s.source_type || 'manual';
+          acc[src] = (acc[src] || 0) + 1;
+          return acc;
+        }, {});
+        const entries = Object.entries(sourceBreakdown);
+        if (entries.length <= 1 && entries[0]?.[0] === 'manual') return null;
+        const sourceLabels: Record<string, string> = { manual: 'Manual', hostel_inclusive: 'Hostel Package', addon_purchase: 'Addon' };
+        return (
+          <div className="flex flex-wrap gap-2">
+            {entries.map(([src, count]) => (
+              <Badge key={src} variant="outline" className="text-[10px] gap-1">
+                <Building2 className="h-3 w-3" />
+                {sourceLabels[src] || src}: {count as number}
+              </Badge>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Live Attendance Feed (only for today/past) */}
       {!isFutureDate && (
         <Card>
