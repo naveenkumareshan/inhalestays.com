@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock, BookMarked, ChevronRight, ChevronDown, Info, MessageSquareWarning, Headphones, Phone, Camera, Loader2, BadgeCheck, Mail } from 'lucide-react';
+import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock, BookMarked, ChevronRight, ChevronDown, Info, MessageSquareWarning, Headphones, Phone, Camera, Loader2, BadgeCheck, Mail, QrCode, History } from 'lucide-react';
 import { userProfileService } from '@/api/userProfileService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -596,6 +596,26 @@ export const ProfileManagement = () => {
                   <Headphones className="h-4 w-4 text-blue-600" />
                 </div>
                 <span className="text-[12px] font-medium text-foreground">Support</span>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link to="/student/scan-attendance">
+            <Card className="rounded-2xl border hover:shadow-sm transition-shadow cursor-pointer">
+              <CardContent className="p-3 flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <QrCode className="h-4 w-4 text-emerald-600" />
+                </div>
+                <span className="text-[12px] font-medium text-foreground">Scan QR</span>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link to="/student/attendance-history">
+            <Card className="rounded-2xl border hover:shadow-sm transition-shadow cursor-pointer">
+              <CardContent className="p-3 flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
+                  <History className="h-4 w-4 text-purple-600" />
+                </div>
+                <span className="text-[12px] font-medium text-foreground">Attendance</span>
               </CardContent>
             </Card>
           </Link>
