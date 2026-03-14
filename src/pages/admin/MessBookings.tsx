@@ -97,6 +97,10 @@ export default function MessBookings() {
   const [packages, setPackages] = useState<any[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
 
+  // Duration
+  const [durationType, setDurationType] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
+  const [durationCount, setDurationCount] = useState(1);
+
   // Dates
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState('');
