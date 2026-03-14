@@ -1,71 +1,43 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Make Stats Bar Items Clickable Filters
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## What Changes
+The stats bar items (Total, Booked, Available, Expiring, Blocked, Present) become toggle buttons. Clicking one filters the seat/bed grid to show only that status. Clicking the active one again resets to "All".
 
-## Changes
+## Implementation
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### 1. `src/pages/vendor/VendorSeats.tsx` (Reading Room)
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+**Type update** (~line 49):
+- Add `'present'` to `StatusFilter`: `type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'present';`
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+**Filter logic** (~line 296):
+- Add `present` case: filter seats where `attendanceSet.has(s._id)`
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+**Stats bar** (~lines 830-846):
+- Add a `filter` key to each stat item mapping to the StatusFilter value (Total→'all', Booked→'booked', Available→'available', Expiring→'expiring_soon', Blocked→'blocked', Present→'present')
+- Make each item a `<button>` with `onClick={() => setStatusFilter(current === filter ? 'all' : filter)}`
+- Add active highlight styling: when `statusFilter === filter`, apply `bg-primary/10` or ring
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+**Status dropdown** (~line 890):
+- Add `<SelectItem value="present">Present</SelectItem>` to keep dropdown in sync
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### 2. `src/pages/admin/HostelBedMap.tsx` (Hostel)
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+**Same pattern**:
+- Add `'present'` to `StatusFilter` type (~line 42)
+- Add present filter case in the filtering memo (~line 483)
+- Make stats bar items clickable buttons with active state (~lines 1196-1213)
+- Hostel also has `'future_booked'` — map the "Future" stat to that filter
+- Add `present` to status dropdown
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+### Interaction Pattern
+- Click a stat → filters to that status, stat gets highlighted ring/bg
+- Click same stat again → resets to "all"
+- Syncs with the existing status dropdown (both control `statusFilter`)
 
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+### Files
+- **EDIT**: `src/pages/vendor/VendorSeats.tsx` — 4 small edits
+- **EDIT**: `src/pages/admin/HostelBedMap.tsx` — 4 small edits
 
