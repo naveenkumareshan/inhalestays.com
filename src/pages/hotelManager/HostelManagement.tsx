@@ -20,6 +20,7 @@ const DEFAULT_PAGE_SIZE = 9;
 interface HostelManagementProps {
   autoCreateNew?: boolean;
   onTriggerConsumed?: () => void;
+  onOpenQr?: (propertyId: string, propertyName: string) => void;
 }
 
 const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTriggerConsumed }) => {
