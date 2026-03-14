@@ -1,33 +1,71 @@
 
 
-# Fix Due Management Pages — Add Pagination & S.No. Column
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Problem
-1. **DueManagement.tsx** (Reading Room) and **HostelDueManagement.tsx** — both are missing `AdminTablePagination` with page size selector, showing/total label, and page navigation. They render all rows without pagination.
-2. Both pages also lack an S.No. column in the table.
-3. No separate mess due management page exists (mess dues are inline in MessBookings), so no changes needed there.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
 ## Changes
 
-### `src/pages/admin/DueManagement.tsx`
-- Add pagination state: `currentPage`, `pageSize`
-- Slice `dues` array for current page display
-- Add S.No. column as first column in both desktop table and mobile cards
-- Add `AdminTablePagination` component after the table Card
-- Import `AdminTablePagination, getSerialNumber`
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-### `src/pages/admin/HostelDueManagement.tsx`
-- Same changes: pagination state, sliced data, S.No. column, `AdminTablePagination` after table
-- Import `AdminTablePagination, getSerialNumber`
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-### Technical Details
-- State: `const [currentPage, setCurrentPage] = useState(1);` and `const [pageSize, setPageSize] = useState(10);`
-- Compute: `const paginatedDues = dues.slice((currentPage - 1) * pageSize, currentPage * pageSize);`
-- Reset page to 1 when filters change
-- S.No. uses `getSerialNumber(index, currentPage, pageSize)`
-- Standard `pageSizeOptions` default (10, 25, 50, 100)
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-## Files Modified
-- `src/pages/admin/DueManagement.tsx`
-- `src/pages/admin/HostelDueManagement.tsx`
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
+
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
+
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

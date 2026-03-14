@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { format, differenceInDays } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,6 +20,7 @@ import { HostelDuePaymentHistory } from '@/components/booking/HostelDuePaymentHi
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 const HostelDueManagement: React.FC = () => {
   const [dues, setDues] = useState<any[]>([]);
@@ -29,6 +30,8 @@ const HostelDueManagement: React.FC = () => {
   const [filterHostel, setFilterHostel] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Receipts dialog
   const [receiptsOpen, setReceiptsOpen] = useState(false);
@@ -135,9 +138,13 @@ const HostelDueManagement: React.FC = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [filterHostel, filterStatus]);
+  useEffect(() => { fetchData(); setCurrentPage(1); }, [filterHostel, filterStatus]);
 
-  const handleSearch = () => fetchData();
+  const handleSearch = () => { setCurrentPage(1); fetchData(); };
+
+  const paginatedDues = useMemo(() => {
+    return dues.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [dues, currentPage, pageSize]);
 
   const getStatusBadge = (due: any) => {
     const today = new Date().toISOString().split('T')[0];
@@ -324,7 +331,8 @@ const HostelDueManagement: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="text-[10px]">
-                    <TableHead className="text-[10px]">Booking Date</TableHead>
+                     <TableHead className="text-[10px]">S.No.</TableHead>
+                     <TableHead className="text-[10px]">Booking Date</TableHead>
                     <TableHead className="text-[10px]">Student</TableHead>
                     <TableHead className="text-[10px]">Hostel / Bed</TableHead>
                      <TableHead className="text-[10px]">Booking</TableHead>
@@ -339,11 +347,12 @@ const HostelDueManagement: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {dues.map((due: any) => {
+                  {paginatedDues.map((due: any, idx: number) => {
                     const remaining = Number(due.due_amount) - Number(due.paid_amount);
                     return (
-                      <TableRow key={due.id} className="text-[11px]">
-                        <TableCell className="py-2 text-[11px]">
+                       <TableRow key={due.id} className="text-[11px]">
+                         <TableCell className="py-2 text-[11px] text-muted-foreground">{getSerialNumber(idx, currentPage, pageSize)}</TableCell>
+                         <TableCell className="py-2 text-[11px]">
                           {(due.hostel_bookings as any)?.start_date
                             ? format(new Date((due.hostel_bookings as any).start_date), 'dd MMM yy')
                             : '-'}
@@ -420,6 +429,15 @@ const HostelDueManagement: React.FC = () => {
               </Table>
             </div>
           )}
+          <div className="border-t">
+            <AdminTablePagination
+              currentPage={currentPage}
+              totalItems={dues.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+            />
+          </div>
         </CardContent>
       </Card>
 

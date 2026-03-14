@@ -20,6 +20,7 @@ import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 const DueManagement: React.FC = () => {
   const [dues, setDues] = useState<any[]>([]);
@@ -29,6 +30,8 @@ const DueManagement: React.FC = () => {
   const [filterCabin, setFilterCabin] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Receipts dialog
   const [receiptsOpen, setReceiptsOpen] = useState(false);
@@ -71,7 +74,7 @@ const DueManagement: React.FC = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [filterCabin, filterStatus]);
+  useEffect(() => { fetchData(); setCurrentPage(1); }, [filterCabin, filterStatus]);
 
   // Resolve partner ID and custom labels for payment methods
   useEffect(() => {
@@ -83,7 +86,11 @@ const DueManagement: React.FC = () => {
     })();
   }, []);
 
-  const handleSearch = () => fetchData();
+  const handleSearch = () => { setCurrentPage(1); fetchData(); };
+
+  const paginatedDues = useMemo(() => {
+    return dues.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [dues, currentPage, pageSize]);
 
   const getStatusBadge = (due: any) => {
     const today = new Date().toISOString().split('T')[0];
@@ -241,10 +248,11 @@ const DueManagement: React.FC = () => {
             <div className="overflow-x-auto">
               {isMobile ? (
                 <div className="space-y-3 p-3">
-                  {dues.map((due: any) => {
+                  {paginatedDues.map((due: any, idx: number) => {
                     const remaining = Number(due.due_amount) - Number(due.paid_amount);
                     return (
                       <div key={due.id} className="border rounded-lg p-3 bg-card space-y-2">
+                        <div className="text-[10px] text-muted-foreground font-medium">#{getSerialNumber(idx, currentPage, pageSize)}</div>
                         <div className="flex items-start justify-between">
                           <div className="min-w-0">
                             <p className="font-medium text-xs">{(due.profiles as any)?.name || 'N/A'}</p>
@@ -277,7 +285,8 @@ const DueManagement: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="text-[10px]">
-                    <TableHead className="text-[10px]">Booking Date</TableHead>
+                     <TableHead className="text-[10px]">S.No.</TableHead>
+                     <TableHead className="text-[10px]">Booking Date</TableHead>
                     <TableHead className="text-[10px]">Student</TableHead>
                     <TableHead className="text-[10px]">Room / Seat</TableHead>
                     <TableHead className="text-[10px]">Booking</TableHead>
@@ -291,10 +300,11 @@ const DueManagement: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {dues.map((due: any) => {
+                  {paginatedDues.map((due: any, idx: number) => {
                     const remaining = Number(due.due_amount) - Number(due.paid_amount);
                     return (
                       <TableRow key={due.id} className="text-[11px]">
+                        <TableCell className="py-2 text-[11px] text-muted-foreground">{getSerialNumber(idx, currentPage, pageSize)}</TableCell>
                         <TableCell className="py-2 text-[11px]">
                           {(due.bookings as any)?.start_date ? format(new Date((due.bookings as any).start_date), 'dd MMM yy') : '-'}
                         </TableCell>
@@ -348,6 +358,15 @@ const DueManagement: React.FC = () => {
               )}
             </div>
           )}
+          <div className="border-t">
+            <AdminTablePagination
+              currentPage={currentPage}
+              totalItems={dues.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+            />
+          </div>
         </CardContent>
       </Card>
 
