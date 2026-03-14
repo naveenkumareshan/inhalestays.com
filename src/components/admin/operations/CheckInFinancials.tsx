@@ -244,6 +244,7 @@ interface ReceiptsDialogProps {
 export const ReceiptsDialog: React.FC<ReceiptsDialogProps> = ({ open, onOpenChange, booking, module }) => {
   const [receipts, setReceipts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
 
   React.useEffect(() => {
     if (!booking || !open) return;
@@ -255,7 +256,11 @@ export const ReceiptsDialog: React.FC<ReceiptsDialogProps> = ({ open, onOpenChan
         .select('*')
         .eq('booking_id', booking.id)
         .order('created_at', { ascending: false });
-      setReceipts(data || []);
+      const rcpts = data || [];
+      setReceipts(rcpts);
+      const methods = rcpts.map((r: any) => r.payment_method).filter(Boolean);
+      const labels = await resolvePaymentMethodLabels(methods);
+      setCustomLabels(labels);
       setLoading(false);
     };
     fetchReceipts();
