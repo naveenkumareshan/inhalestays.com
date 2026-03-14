@@ -182,9 +182,9 @@ const AdminEmployees: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {employees.map((emp, idx) => (
+              {employees.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((emp, idx) => (
                 <TableRow key={emp.id} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
-                  <TableCell className="text-[11px] py-1.5 px-3 text-muted-foreground">{idx + 1}</TableCell>
+                  <TableCell className="text-[11px] py-1.5 px-3 text-muted-foreground">{getSerialNumber(idx, currentPage, pageSize)}</TableCell>
                   <TableCell className="py-1.5 px-3">
                     <span className="font-medium text-[11px]">{emp.name}</span>
                   </TableCell>
@@ -237,6 +237,13 @@ const AdminEmployees: React.FC = () => {
               ))}
             </TableBody>
           </Table>
+          <AdminTablePagination
+            currentPage={currentPage}
+            totalItems={employees.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+          />
         </div>
       )}
 
