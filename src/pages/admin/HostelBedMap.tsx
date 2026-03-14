@@ -505,6 +505,49 @@ const HostelBedMap: React.FC = () => {
     return hostels.find(h => h.id === selectedBed.hostelId) || null;
   }, [selectedBed, hostels]);
 
+  // Long-press touch handlers for mobile context menu
+  const handleTouchStart = useCallback((e: React.TouchEvent, bed: HostelBed) => {
+    const touch = e.touches[0];
+    touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+    isLongPressRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      setContextMenuBed(bed);
+      setContextMenuPosition({ x: touch.clientX, y: touch.clientY });
+    }, 500);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartPosRef.current) return;
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
+    const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
+    if (dx > 10 || dy > 10) {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  const handleBedCardClick = useCallback((bed: HostelBed) => {
+    if (isLongPressRef.current) {
+      isLongPressRef.current = false;
+      return; // Long press fired, don't open sheet
+    }
+    handleBedClick(bed);
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenuBed(null);
+    setContextMenuPosition(null);
+  }, []);
+
   // Bed click -> open sheet
   const handleBedClick = (bed: HostelBed) => {
     setSelectedBed(bed);
