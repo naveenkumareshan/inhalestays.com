@@ -52,6 +52,8 @@ const VendorEmployees: React.FC = () => {
   const [resetPasswordEmployee, setResetPasswordEmployee] = useState<VendorEmployeeData | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const { toast } = useToast();
 
   useEffect(() => {
