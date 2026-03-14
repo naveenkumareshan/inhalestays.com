@@ -28,7 +28,7 @@ interface MessManagementProps {
   onOpenQr?: (propertyId: string, propertyName: string) => void;
 }
 
-export default function MessManagement({ autoCreateNew, onTriggerConsumed }: MessManagementProps = {}) {
+export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpenQr }: MessManagementProps = {}) {
   const [messes, setMesses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
