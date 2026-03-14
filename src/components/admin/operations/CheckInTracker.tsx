@@ -207,8 +207,58 @@ const CheckInTracker = () => {
     }
   };
 
+  // Fetch all properties for QR section
+  const { data: qrProperties = [] } = useQuery({
+    queryKey: ['ops-qr-properties', user?.id],
+    queryFn: async () => {
+      const { ownerId } = await getEffectiveOwnerId();
+      const items: { id: string; name: string; type: string }[] = [];
+      const { data: cabins } = await supabase.from('cabins').select('id, name').eq('created_by', ownerId).eq('is_active', true);
+      (cabins || []).forEach(c => items.push({ id: c.id, name: c.name, type: 'reading_room' }));
+      const { data: hostels } = await supabase.from('hostels').select('id, name').eq('created_by', ownerId).eq('is_active', true);
+      (hostels || []).forEach(h => items.push({ id: h.id, name: h.name, type: 'hostel' }));
+      const { data: messes } = await supabase.from('mess_partners' as any).select('id, name').eq('user_id', ownerId).eq('is_active', true);
+      (messes || []).forEach((m: any) => items.push({ id: m.id, name: m.name, type: 'mess' }));
+      if (user?.role === 'vendor_employee') {
+        const { data: emp } = await supabase.from('vendor_employees').select('allowed_properties').eq('employee_user_id', user.id).eq('status', 'active').maybeSingle();
+        const allowed = emp?.allowed_properties as string[] | null;
+        if (allowed && allowed.length > 0) return items.filter(i => allowed.includes(i.id));
+      }
+      return items;
+    },
+    enabled: !!user?.id,
+  });
+
+  const handleDownloadQr = async (prop: { id: string; name: string; type: string }) => {
+    const qrData = JSON.stringify({ propertyId: prop.id, type: prop.type });
+    const url = await QRCode.toDataURL(qrData, { width: 400, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `qr-${prop.name.replace(/\s+/g, '-').toLowerCase()}.png`;
+    a.click();
+  };
+
   return (
     <div className="space-y-4">
+      {/* QR Code Buttons */}
+      {qrProperties.length > 0 && (
+        <div className="flex flex-wrap gap-2 p-3 bg-muted/30 rounded-lg border border-border/60">
+          <div className="flex items-center gap-1.5 mr-2">
+            <QrCode className="h-4 w-4 text-primary" />
+            <span className="text-xs font-medium text-muted-foreground">Download QR:</span>
+          </div>
+          {qrProperties.map(prop => (
+            <Button key={prop.id} size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => handleDownloadQr(prop)}>
+              <Download className="h-3 w-3" />
+              {prop.name}
+              <Badge variant="secondary" className="text-[8px] px-1 py-0 ml-0.5">
+                {prop.type === 'reading_room' ? 'RR' : prop.type === 'hostel' ? 'H' : 'M'}
+              </Badge>
+            </Button>
+          ))}
+        </div>
+      )}
+
       {/* Module toggle + search */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         {showToggle && (
