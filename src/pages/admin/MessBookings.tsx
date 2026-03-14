@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Filter, BookOpen, Plus, XCircle, RefreshCw, IndianRupee, UserPlus, Loader2, Check, CalendarIcon, ArrowLeft } from 'lucide-react';
+import { Search, Filter, BookOpen, Plus, XCircle, RefreshCw, IndianRupee, UserPlus, Loader2, Check, CalendarIcon } from 'lucide-react';
 import { formatCurrency } from '@/utils/currency';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
