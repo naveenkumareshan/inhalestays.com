@@ -66,6 +66,7 @@ export interface Cabin {
   fullAddress?: string;
   createdBy?: string;
   whatsappChatEnabled?: boolean;
+  whatsappNumber?: string;
 }
 
 export interface RoomElement {
@@ -181,6 +182,7 @@ const BookSeat = () => {
           serialNumber: (d as any).serial_number || undefined,
           createdBy: (d as any).created_by || undefined,
           whatsappChatEnabled: (d as any).whatsapp_chat_enabled || false,
+          whatsappNumber: (d as any).whatsapp_number || '',
         });
         setLayoutImage((d as any).layout_image || null);
         setRoomWidth((d as any).room_width || 800);
@@ -447,7 +449,7 @@ const BookSeat = () => {
           propertyId={cabin.id}
           propertyName={cabin.name}
           whatsappChatEnabled={!!cabin.whatsappChatEnabled}
-          whatsappNumber={(cabin as any).whatsappNumber || ''}
+          whatsappNumber={cabin.whatsappNumber || ''}
         />
       )}
       </div>
