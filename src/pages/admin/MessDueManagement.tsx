@@ -28,7 +28,7 @@ const MessDueManagement: React.FC = () => {
   const [summary, setSummary] = useState({ totalDue: 0, overdue: 0, dueToday: 0, collectedThisMonth: 0 });
   const [loading, setLoading] = useState(true);
   const [filterMess, setFilterMess] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('pending');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
