@@ -344,6 +344,12 @@ export function AdminSidebar() {
         roles: ['admin', 'vendor', 'vendor_employee'],
       },
       {
+        title: 'Manual Booking',
+        url: `${routePrefix}/mess-manual-booking`,
+        icon: Plus,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      },
+      {
         title: 'Receipts',
         url: `${routePrefix}/mess-receipts`,
         icon: CreditCard,

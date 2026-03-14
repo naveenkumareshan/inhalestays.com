@@ -1,116 +1,71 @@
 
 
-# Feature 1: QR Code Buttons in Operations Hub + Feature 2: Mess QR Attendance for Students + Offline Mess Booking
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-This is a large combined implementation touching Operations Hub, student scanning, mess management, and a new manual mess booking flow.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
----
+## Changes
 
-## Part 1: QR Code Buttons in Operations Hub
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-**Problem**: Operations Hub has no QR code download buttons. Partners see QR only from Manage Properties. Employees restricted to specific properties should only see QR for those properties.
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-**Solution**: Add a QR code section at the top of the CheckInTracker component showing downloadable QR buttons per property.
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-### Changes:
-- **`src/components/admin/operations/CheckInTracker.tsx`**:
-  - Fetch partner's cabins and hostels (using `getEffectiveOwnerId`)
-  - For employees with `allowed_properties`, filter to only those
-  - Render a row of QR download buttons (one per property) above the check-in table
-  - Use the `qrcode` library (already in deps) to generate and download QR images
-  - Group by property type (Reading Room / Hostel / Mess)
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-- **`src/hooks/usePartnerPropertyTypes.ts`**: No changes needed, already provides property type flags
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-### Employee property filtering:
-- Read `allowed_properties` from `vendor_employees` table for employee users
-- If empty array → show all properties (existing convention)
-- If populated → filter QR buttons to only those property IDs
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
----
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-## Part 2: Mess QR Attendance for Students
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-**Problem**: Students can scan QR for reading rooms and hostels but not mess. The `mark_qr_attendance` RPC and `ScanAttendance` page only support `reading_room` and `hostel` types.
+**Reviews section**: Shown below the booking flow (not in a tab)
 
-**Solution**: Extend QR system to support `mess` property type.
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
 
-### Database Changes:
-- **Migration**: Update `mark_qr_attendance` RPC to add a `mess` branch:
-  - Validate student has an active `mess_subscription` at this mess
-  - Auto-detect current meal type (breakfast/lunch/dinner) based on time
-  - Insert into `mess_attendance` table
-  - Prevent duplicate meal-type attendance for same date
-- Update `validate_property_attendance_type` trigger to allow `'mess'` type
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
 
-### Code Changes:
-- **`src/pages/student/ScanAttendance.tsx`**: Already handles generic QR data `{propertyId, type}` — no changes needed since the RPC will handle `mess` type
-- **`src/components/admin/MessItem.tsx`**: Add `onDownloadQr` prop and QR button (same pattern as CabinItem/HostelItem)
-- **`src/pages/admin/MessManagement.tsx`**: Pass `onOpenQr` to MessManagement and wire to MessItem
-- **`src/pages/partner/ManageProperties.tsx`**: Pass `onOpenQr` to MessManagement (same as rooms/hostels)
-- **`src/pages/students/MessDashboard.tsx`**: Remove the subscription-based QR code (which encodes subscription_id) since property QR is the correct pattern
+## File Summary
 
----
-
-## Part 3: Offline/Manual Mess Booking
-
-**Problem**: No way for partners/employees to create mess subscriptions offline. Only online student booking exists.
-
-**Solution**: Create a manual mess subscription booking page following the same pattern as the existing manual reading room booking (student search → select mess → select package → dates → payment → create subscription).
-
-### Database Changes:
-- **Migration**: Add columns to `mess_subscriptions`:
-  - `advance_amount` (numeric, default 0) — for partial payments
-  - `discount_amount` (numeric, default 0)
-  - `notes` (text, nullable)
-  - `created_by` (uuid, nullable, references profiles) — who created the booking
-  - `collected_by_name` (text, nullable)
-  - `payment_proof_url` (text, nullable)
-- Create `mess_dues` table (same pattern as `dues` / `hostel_dues`):
-  - id, subscription_id, user_id, mess_id, due_amount, paid_amount, advance_paid, status, due_date, serial_number, transaction_id, payment_method, payment_proof_url, collected_by, collected_by_name, notes, created_at, updated_at
-- Create `mess_due_payments` table (same pattern as `due_payments` / `hostel_due_payments`)
-- Add serial triggers for mess_dues
-
-### New Files:
-- **`src/pages/admin/ManualMessBooking.tsx`**: Manual mess subscription creation page
-  - Step 1: Search/create student (reuse debounced search pattern from ManualBookingManagement)
-  - Step 2: Select mess partner (dropdown of partner's mess places)
-  - Step 3: Select package (from mess_packages)
-  - Step 4: Choose start date → auto-calculate end date based on package duration
-  - Step 5: Payment details (payment method selector, amount, discount, advance/partial, transaction ID, proof upload, notes)
-  - Step 6: Review & Create subscription
-  - Actions: Create `mess_subscription` + create `mess_dues` if partial payment + create `mess_receipt`
-
-### Subscription Management (in MessBookings.tsx):
-- Add action buttons per subscription row:
-  - **Cancel**: Set status to `cancelled`
-  - **Renew**: Open renewal flow (extend end_date, create new receipt)
-  - **Collect Due**: If partial payment, collect remaining amount
-
-### Sidebar & Routing:
-- **`src/components/admin/AdminSidebar.tsx`**: Add "Manual Booking" item under Mess / Food section
-- **`src/App.tsx`**: Add route for `/admin/mess-manual-booking`
-
----
-
-## Files Summary
-
-### Database Migrations:
-1. Update `mark_qr_attendance` RPC to support mess
-2. Update `validate_property_attendance_type` to allow mess
-3. Add columns to `mess_subscriptions` (advance_amount, discount_amount, notes, created_by, collected_by_name, payment_proof_url)
-4. Create `mess_dues` and `mess_due_payments` tables with serial triggers
-
-### New Files:
-- `src/pages/admin/ManualMessBooking.tsx` — full manual booking flow
-
-### Modified Files:
-- `src/components/admin/operations/CheckInTracker.tsx` — QR buttons at top
-- `src/components/admin/MessItem.tsx` — add QR button
-- `src/pages/admin/MessManagement.tsx` — wire QR handler
-- `src/pages/partner/ManageProperties.tsx` — pass onOpenQr to MessManagement
-- `src/pages/admin/MessBookings.tsx` — add Cancel/Renew/Collect actions
-- `src/components/admin/AdminSidebar.tsx` — add manual booking link
-- `src/App.tsx` — add route
-- `src/pages/students/MessDashboard.tsx` — remove subscription-based QR, direct to property QR scan
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

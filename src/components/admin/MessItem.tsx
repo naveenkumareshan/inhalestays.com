@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Edit, FileMinus, FilePlus, Package, Eye, EyeOff, Globe, GlobeLock, Eye as EyeView } from 'lucide-react';
+import { Edit, FileMinus, FilePlus, Package, Eye, EyeOff, Globe, GlobeLock, Eye as EyeView, QrCode } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShareButton } from '@/components/ShareButton';
 import { getImageUrl } from '@/lib/utils';
@@ -17,6 +17,7 @@ interface MessItemProps {
   onToggleBooking?: (messId: string, isBookingActive: boolean) => void;
   onTogglePartnerVisible?: (messId: string, isVisible: boolean) => void;
   onToggleStudentVisible?: (messId: string, isVisible: boolean) => void;
+  onDownloadQr?: (mess: any) => void;
 }
 
 const FOOD_BADGES: Record<string, { label: string; cls: string }> = {
@@ -25,7 +26,7 @@ const FOOD_BADGES: Record<string, { label: string; cls: string }> = {
   both: { label: '🟡 Both', cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
 };
 
-export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, onToggleStudentVisible }: MessItemProps) {
+export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, onToggleStudentVisible, onDownloadQr }: MessItemProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const badge = FOOD_BADGES[mess.food_type] || FOOD_BADGES.both;
@@ -119,6 +120,16 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
                 <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onEdit(mess)}>
                   <Edit className="h-3 w-3 mr-1" />Edit
                 </Button>
+                {onDownloadQr && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onDownloadQr(mess)}>
+                        <QrCode className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Download QR</TooltipContent>
+                  </Tooltip>
+                )}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onManagePackages(mess)}>

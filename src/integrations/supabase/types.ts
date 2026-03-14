@@ -2510,6 +2510,123 @@ export type Database = {
           },
         ]
       }
+      mess_due_payments: {
+        Row: {
+          amount: number | null
+          collected_by: string | null
+          collected_by_name: string | null
+          created_at: string | null
+          due_id: string
+          id: string
+          notes: string | null
+          payment_method: string | null
+          payment_proof_url: string | null
+          transaction_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          collected_by?: string | null
+          collected_by_name?: string | null
+          created_at?: string | null
+          due_id: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          payment_proof_url?: string | null
+          transaction_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          collected_by?: string | null
+          collected_by_name?: string | null
+          created_at?: string | null
+          due_id?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          payment_proof_url?: string | null
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mess_due_payments_due_id_fkey"
+            columns: ["due_id"]
+            isOneToOne: false
+            referencedRelation: "mess_dues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mess_dues: {
+        Row: {
+          advance_paid: number | null
+          created_at: string | null
+          due_amount: number | null
+          due_date: string
+          id: string
+          mess_id: string
+          paid_amount: number | null
+          serial_number: string | null
+          status: string | null
+          subscription_id: string
+          total_fee: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          advance_paid?: number | null
+          created_at?: string | null
+          due_amount?: number | null
+          due_date: string
+          id?: string
+          mess_id: string
+          paid_amount?: number | null
+          serial_number?: string | null
+          status?: string | null
+          subscription_id: string
+          total_fee?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          advance_paid?: number | null
+          created_at?: string | null
+          due_amount?: number | null
+          due_date?: string
+          id?: string
+          mess_id?: string
+          paid_amount?: number | null
+          serial_number?: string | null
+          status?: string | null
+          subscription_id?: string
+          total_fee?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mess_dues_mess_id_fkey"
+            columns: ["mess_id"]
+            isOneToOne: false
+            referencedRelation: "mess_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_dues_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "mess_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_dues_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mess_meal_timings: {
         Row: {
           created_at: string
@@ -2759,14 +2876,20 @@ export type Database = {
       }
       mess_subscriptions: {
         Row: {
+          advance_amount: number | null
+          collected_by_name: string | null
           created_at: string
+          created_by: string | null
+          discount_amount: number | null
           end_date: string
           id: string
           mess_id: string
+          notes: string | null
           package_id: string
           pause_end: string | null
           pause_start: string | null
           payment_method: string
+          payment_proof_url: string | null
           payment_status: string
           price_paid: number
           serial_number: string | null
@@ -2777,14 +2900,20 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          advance_amount?: number | null
+          collected_by_name?: string | null
           created_at?: string
+          created_by?: string | null
+          discount_amount?: number | null
           end_date: string
           id?: string
           mess_id: string
+          notes?: string | null
           package_id: string
           pause_end?: string | null
           pause_start?: string | null
           payment_method?: string
+          payment_proof_url?: string | null
           payment_status?: string
           price_paid?: number
           serial_number?: string | null
@@ -2795,14 +2924,20 @@ export type Database = {
           user_id: string
         }
         Update: {
+          advance_amount?: number | null
+          collected_by_name?: string | null
           created_at?: string
+          created_by?: string | null
+          discount_amount?: number | null
           end_date?: string
           id?: string
           mess_id?: string
+          notes?: string | null
           package_id?: string
           pause_end?: string | null
           pause_start?: string | null
           payment_method?: string
+          payment_proof_url?: string | null
           payment_status?: string
           price_paid?: number
           serial_number?: string | null
@@ -2813,6 +2948,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "mess_subscriptions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "mess_subscriptions_mess_id_fkey"
             columns: ["mess_id"]

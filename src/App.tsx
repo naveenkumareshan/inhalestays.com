@@ -78,6 +78,7 @@ const AdminEmployees = lazy(() => import("./pages/admin/AdminEmployees"));
 const BookingActivityLog = lazy(() => import("./pages/admin/BookingActivityLog"));
 const MessManagement = lazy(() => import("./pages/admin/MessManagement"));
 const MessBookings = lazy(() => import("./pages/admin/MessBookings"));
+const ManualMessBooking = lazy(() => import("./pages/admin/ManualMessBooking"));
 const MessReceipts = lazy(() => import("./pages/admin/MessReceipts"));
 const MessAttendance = lazy(() => import("./pages/admin/MessAttendance"));
 const StudentLaundryOrders = lazy(() => import("./pages/StudentLaundryOrders"));
@@ -226,6 +227,7 @@ function App() {
               <Route path="booking-activity-log" element={<BookingActivityLog />} />
               <Route path="mess" element={<MessManagement />} />
               <Route path="mess-bookings" element={<MessBookings />} />
+              <Route path="mess-manual-booking" element={<ManualMessBooking />} />
               <Route path="mess-receipts" element={<MessReceipts />} />
               <Route path="mess-attendance" element={<MessAttendance />} />
               <Route path="reconciliation" element={<Reconciliation />} />
@@ -284,6 +286,7 @@ function App() {
               <Route path="booking-activity-log" element={<BookingActivityLog />} />
               <Route path="mess" element={<MessManagement />} />
               <Route path="mess-bookings" element={<MessBookings />} />
+              <Route path="mess-manual-booking" element={<ManualMessBooking />} />
               <Route path="mess-receipts" element={<MessReceipts />} />
               <Route path="mess-attendance" element={<MessAttendance />} />
               <Route path="reconciliation" element={<Reconciliation />} />

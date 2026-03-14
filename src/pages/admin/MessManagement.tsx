@@ -25,9 +25,10 @@ const MEAL_LABELS: Record<string, string> = { breakfast: 'Breakfast', lunch: 'Lu
 interface MessManagementProps {
   autoCreateNew?: boolean;
   onTriggerConsumed?: () => void;
+  onOpenQr?: (propertyId: string, propertyName: string) => void;
 }
 
-export default function MessManagement({ autoCreateNew, onTriggerConsumed }: MessManagementProps = {}) {
+export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpenQr }: MessManagementProps = {}) {
   const [messes, setMesses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -226,6 +227,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed }: Mes
                   onToggleBooking={handleToggleBooking}
                   onTogglePartnerVisible={handleTogglePartnerVisible}
                   onToggleStudentVisible={handleToggleStudentVisible}
+                  onDownloadQr={onOpenQr ? (mess: any) => onOpenQr(mess.id, mess.name) : undefined}
                 />
               ))}
             </div>
