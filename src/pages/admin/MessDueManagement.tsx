@@ -83,10 +83,15 @@ const MessDueManagement: React.FC = () => {
       // Fetch dues
       let duesQ = supabase.from('mess_dues' as any).select('*').in('mess_id', messIds).order('created_at', { ascending: false });
       if (filterMess !== 'all') duesQ = duesQ.eq('mess_id', filterMess);
-      if (filterStatus === 'pending') duesQ = duesQ.neq('status', 'paid');
-      else if (filterStatus === 'paid') duesQ = duesQ.eq('status', 'paid');
       const { data: duesData } = await duesQ;
       let rows = (duesData || []) as any[];
+
+      // Client-side status filter based on actual remaining amount
+      if (filterStatus === 'pending') {
+        rows = rows.filter(r => (Number(r.due_amount || 0) - Number(r.paid_amount || 0)) > 0);
+      } else if (filterStatus === 'paid') {
+        rows = rows.filter(r => (Number(r.due_amount || 0) - Number(r.paid_amount || 0)) <= 0 || r.status === 'paid');
+      }
 
       // Enrich with student names
       const userIds = [...new Set(rows.map(r => r.user_id))];

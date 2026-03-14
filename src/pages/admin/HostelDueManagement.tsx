@@ -89,12 +89,17 @@ const HostelDueManagement: React.FC = () => {
       .order('created_at', { ascending: false });
 
     if (filterHostel !== 'all') duesQuery = duesQuery.eq('hostel_id', filterHostel);
-    if (filterStatus === 'pending') duesQuery = duesQuery.neq('status', 'paid');
-    else if (filterStatus === 'paid') duesQuery = duesQuery.eq('status', 'paid');
 
     const { data: duesData } = await duesQuery;
 
-    let filteredDues = duesData || [];
+    let filteredDues = (duesData || []) as any[];
+
+    // Client-side status filter based on actual remaining amount
+    if (filterStatus === 'pending') {
+      filteredDues = filteredDues.filter((d: any) => (Number(d.due_amount) - Number(d.paid_amount)) > 0);
+    } else if (filterStatus === 'paid') {
+      filteredDues = filteredDues.filter((d: any) => (Number(d.due_amount) - Number(d.paid_amount)) <= 0 || d.status === 'paid');
+    }
 
     // Client-side search filter
     if (searchTerm) {

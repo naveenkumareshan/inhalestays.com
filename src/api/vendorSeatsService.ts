@@ -851,18 +851,18 @@ export const vendorSeatsService = {
       if (filters?.cabinId && filters.cabinId !== 'all') {
         query = query.eq('cabin_id', filters.cabinId);
       }
-      if (filters?.status && filters.status !== 'all') {
-        if (filters.status === 'pending') {
-          query = query.neq('status', 'paid');
-        } else {
-          query = query.eq('status', filters.status);
-        }
-      }
-
       const { data, error } = await query;
       if (error) throw error;
 
       let results = data || [];
+
+      // Client-side status filter based on actual remaining amount
+      if (filters?.status === 'pending') {
+        results = results.filter((d: any) => (Number(d.due_amount) - Number(d.paid_amount)) > 0);
+      } else if (filters?.status === 'paid') {
+        results = results.filter((d: any) => (Number(d.due_amount) - Number(d.paid_amount)) <= 0 || d.status === 'paid');
+      }
+
       if (filters?.search) {
         const q = filters.search.toLowerCase();
         results = results.filter((d: any) => {
