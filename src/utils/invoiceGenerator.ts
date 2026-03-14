@@ -26,6 +26,9 @@ export interface InvoiceData {
   paymentMethod: string;
   transactionId: string;
   collectedByName: string;
+  floor?: number | string;
+  roomNumber?: number | string;
+  seatLabel?: string;
 }
 
 const paymentMethodLabel = (method: string) => {

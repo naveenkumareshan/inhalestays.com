@@ -551,7 +551,7 @@ export default function StudentBookingView() {
                     <span className="text-[10px] text-muted-foreground">{safeFmt(r.created_at, "dd MMM yyyy")}</span>
                   </div>
                   <div className="flex gap-2 mt-1">
-                    <span className="text-[10px] text-muted-foreground capitalize">{r.payment_method}</span>
+                    <span className="text-[10px] text-muted-foreground capitalize">{getMethodLabel(r.payment_method, customLabels)}</span>
                     {r.serial_number && (
                       <span className="text-[10px] text-muted-foreground">• {r.serial_number}</span>
                     )}

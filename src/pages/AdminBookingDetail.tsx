@@ -541,7 +541,7 @@ const AdminBookingDetail = () => {
                         <TableCell className="py-1.5">
                           <span className="text-[11px] font-medium">₹{Number(r.amount).toLocaleString()}</span>
                         </TableCell>
-                        <TableCell className="text-[11px] py-1.5 capitalize">{r.payment_method}</TableCell>
+                        <TableCell className="text-[11px] py-1.5 capitalize">{getMethodLabel(r.payment_method, customLabels)}</TableCell>
                         <TableCell className="text-[11px] py-1.5">{r.transaction_id || '-'}</TableCell>
                         <TableCell className="py-1.5">
                           {r.payment_proof_url ? (

@@ -93,7 +93,7 @@ const CheckInViewDetailsDialog: React.FC<CheckInViewDetailsDialogProps> = ({ ope
                 </Badge>
               } />
               <InfoRow label="Amount" value={`₹${booking.total_price || 0}`} />
-              <InfoRow label="Method" value={booking.payment_method} />
+              <InfoRow label="Method" value={getMethodLabel(booking.payment_method, customLabels)} />
               <InfoRow label="Transaction ID" value={booking.transaction_id} />
             </div>
 

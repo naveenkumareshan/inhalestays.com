@@ -294,7 +294,7 @@ export const ReceiptsDialog: React.FC<ReceiptsDialogProps> = ({ open, onOpenChan
                 <Separator className="my-1" />
                 <div className="grid grid-cols-2 gap-1">
                   <div><span className="text-muted-foreground">Amount:</span> <span className="font-medium">₹{Number(r.amount).toLocaleString()}</span></div>
-                  <div><span className="text-muted-foreground">Method:</span> {r.payment_method}</div>
+                  <div><span className="text-muted-foreground">Method:</span> {getMethodLabel(r.payment_method, customLabels)}</div>
                   <div><span className="text-muted-foreground">Date:</span> {format(new Date(r.created_at), 'dd MMM yy, hh:mm a')}</div>
                   <div><span className="text-muted-foreground">By:</span> {r.collected_by_name || '-'}</div>
                   {r.transaction_id && <div className="col-span-2"><span className="text-muted-foreground">Txn ID:</span> {r.transaction_id}</div>}
