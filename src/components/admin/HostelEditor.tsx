@@ -15,6 +15,7 @@ import MapPicker from "./MapPicker";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { HostelMessLinkManager } from './HostelMessLinkManager';
 
 function SectionBadge({ number, icon: Icon }: { number: number; icon: React.ElementType }) {
   return (
