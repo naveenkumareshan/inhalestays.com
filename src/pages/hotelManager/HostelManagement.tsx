@@ -35,6 +35,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [messLinksMap, setMessLinksMap] = useState<Record<string, { mess_id: string; mess_name: string; is_default: boolean }[]>>({});
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -59,6 +60,25 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
         data = await hostelService.getUserHostels();
       }
       setHostels(data || []);
+      // Fetch linked mess partners for all hostels
+      if (data && data.length > 0) {
+        const hostelIds = data.map((h: any) => h.id);
+        const { data: links } = await supabase
+          .from('hostel_mess_links' as any)
+          .select('hostel_id, mess_id, is_default, mess_partners:mess_id(name)')
+          .in('hostel_id', hostelIds);
+        const map: Record<string, { mess_id: string; mess_name: string; is_default: boolean }[]> = {};
+        (links || []).forEach((link: any) => {
+          const hostelId = link.hostel_id;
+          if (!map[hostelId]) map[hostelId] = [];
+          map[hostelId].push({
+            mess_id: link.mess_id,
+            mess_name: link.mess_partners?.name || 'Unknown',
+            is_default: link.is_default,
+          });
+        });
+        setMessLinksMap(map);
+      }
     } catch (error) {
       console.error('Error fetching hostels:', error);
       setError('Unable to fetch data. Please refresh.');
@@ -229,6 +249,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
                   onTogglePartnerVisible={handleTogglePartnerVisible}
                   onToggleStudentVisible={handleToggleStudentVisible}
                   onDownloadQr={onOpenQr}
+                  linkedMesses={messLinksMap[hostel.id]}
                 />
               ))}
             </div>

@@ -15,6 +15,12 @@ import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
+interface LinkedMess {
+  mess_id: string;
+  mess_name: string;
+  is_default: boolean;
+}
+
 interface HostelItemProps {
   hostel: any;
   onEdit: (hostel: any) => void;
@@ -27,9 +33,10 @@ interface HostelItemProps {
   onToggleStudentVisible?: (hostelId: string, isVisible: boolean) => void;
   partnerId?: string;
   onDownloadQr?: (hostelId: string, hostelName: string) => void;
+  linkedMesses?: LinkedMess[];
 }
 
-export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, onToggleStudentVisible, partnerId, onDownloadQr }: HostelItemProps) {
+export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, onToggleStudentVisible, partnerId, onDownloadQr, linkedMesses }: HostelItemProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
@@ -144,6 +151,11 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${hostel.is_student_visible === false ? "bg-orange-50 text-orange-700 border border-orange-200" : "bg-teal-50 text-teal-700 border border-teal-200"}`}>
                 {hostel.is_student_visible === false ? "● Student Hidden" : "● Student Visible"}
               </span>
+              {linkedMesses && linkedMesses.length > 0 && linkedMesses.map((m) => (
+                <Badge key={m.mess_id} variant="outline" className="text-[10px] gap-0.5 border-amber-300 text-amber-700 bg-amber-50">
+                  🍽️ {m.mess_name} {m.is_default && '★'}
+                </Badge>
+              ))}
             </div>
 
             <h3 className="font-semibold text-sm leading-snug text-foreground">{hostel.name}</h3>
