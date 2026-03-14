@@ -85,6 +85,7 @@ const AttendanceHistory: React.FC = () => {
     });
 
     setRecords(rows);
+    setCurrentPage(1);
     setLoading(false);
   };
 
