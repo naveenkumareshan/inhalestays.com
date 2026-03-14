@@ -304,6 +304,7 @@ const DueManagement: React.FC = () => {
                     const remaining = Number(due.due_amount) - Number(due.paid_amount);
                     return (
                       <TableRow key={due.id} className="text-[11px]">
+                        <TableCell className="py-2 text-[11px] text-muted-foreground">{getSerialNumber(idx, currentPage, pageSize)}</TableCell>
                         <TableCell className="py-2 text-[11px]">
                           {(due.bookings as any)?.start_date ? format(new Date((due.bookings as any).start_date), 'dd MMM yy') : '-'}
                         </TableCell>
