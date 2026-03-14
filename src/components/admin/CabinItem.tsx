@@ -169,9 +169,8 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
 
             {/* Actions */}
             <TooltipProvider delayDuration={300}>
-              <div className="border-t pt-2 mt-0.5 space-y-1.5">
-                {/* Row 1: Primary actions + QR */}
-                <div className="flex items-center gap-1.5">
+              <div className="border-t pt-2 mt-0.5">
+                <div className="flex flex-wrap items-center gap-2">
                   {isAdmin && (
                     <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onEdit(cabin)}>
                       <Edit className="h-3 w-3 mr-1" />Edit
@@ -182,76 +181,56 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
                       <Users className="h-3 w-3 mr-1" />Seats
                     </Button>
                   )}
-                  {onDownloadQr && (
+                  {isAdmin && onToggleActive && (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           size="icon"
                           variant="outline"
-                          className="h-7 w-7 ml-auto"
-                          onClick={() => onDownloadQr(cabin._id, cabin.name)}
+                          className={`h-7 w-7 ${cabin.isActive ? "text-red-600 border-red-200 hover:bg-red-50" : "text-emerald-600 border-emerald-200 hover:bg-emerald-50"}`}
+                          onClick={() => onToggleActive(cabin._id, !cabin.isActive)}
                         >
-                          <QrCode className="h-3.5 w-3.5 text-primary" />
+                          {cabin.isActive ? <FileMinus className="h-3.5 w-3.5" /> : <FilePlus className="h-3.5 w-3.5" />}
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Download QR Code</TooltipContent>
+                      <TooltipContent>{cabin.isActive ? 'Deactivate' : 'Activate'}</TooltipContent>
                     </Tooltip>
                   )}
-                </div>
-                {/* Row 2: Toggles + WhatsApp */}
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    {isAdmin && onToggleActive && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className={`h-7 w-7 ${cabin.isActive ? "text-red-600 border-red-200 hover:bg-red-50" : "text-emerald-600 border-emerald-200 hover:bg-emerald-50"}`}
-                            onClick={() => onToggleActive(cabin._id, !cabin.isActive)}
-                          >
-                            {cabin.isActive ? <FileMinus className="h-3.5 w-3.5" /> : <FilePlus className="h-3.5 w-3.5" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{cabin.isActive ? 'Deactivate' : 'Activate'}</TooltipContent>
-                      </Tooltip>
-                    )}
-                    {onToggleBooking && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            disabled={!cabin.isActive}
-                            className={`h-7 w-7 ${!cabin.isBookingActive ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
-                            onClick={() => onToggleBooking(cabin._id, !cabin.isBookingActive)}
-                          >
-                            {!cabin.isBookingActive ? <Globe className="h-3.5 w-3.5" /> : <GlobeLock className="h-3.5 w-3.5" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{!cabin.isBookingActive ? 'Turn Online On' : 'Turn Online Off'}</TooltipContent>
-                      </Tooltip>
-                    )}
-                    {onTogglePartnerVisible && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            disabled={!cabin.isActive}
-                            className={`h-7 w-7 ${cabin.isPartnerVisible === false ? "text-blue-600 border-blue-200 hover:bg-blue-50" : "text-muted-foreground border-border hover:bg-muted"}`}
-                            onClick={() => onTogglePartnerVisible(cabin._id, !(cabin.isPartnerVisible !== false))}
-                          >
-                            {cabin.isPartnerVisible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{cabin.isPartnerVisible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
+                  {onToggleBooking && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          disabled={!cabin.isActive}
+                          className={`h-7 w-7 ${!cabin.isBookingActive ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
+                          onClick={() => onToggleBooking(cabin._id, !cabin.isBookingActive)}
+                        >
+                          {!cabin.isBookingActive ? <Globe className="h-3.5 w-3.5" /> : <GlobeLock className="h-3.5 w-3.5" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{!cabin.isBookingActive ? 'Turn Online On' : 'Turn Online Off'}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {onTogglePartnerVisible && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          disabled={!cabin.isActive}
+                          className={`h-7 w-7 ${cabin.isPartnerVisible === false ? "text-blue-600 border-blue-200 hover:bg-blue-50" : "text-muted-foreground border-border hover:bg-muted"}`}
+                          onClick={() => onTogglePartnerVisible(cabin._id, !(cabin.isPartnerVisible !== false))}
+                        >
+                          {cabin.isPartnerVisible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{cabin.isPartnerVisible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
+                    </Tooltip>
+                  )}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="relative inline-block ml-auto">
+                      <div className="relative inline-block">
                         <Button
                           size="icon"
                           variant="outline"
@@ -269,6 +248,21 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
                     </TooltipTrigger>
                     <TooltipContent>WhatsApp Settings</TooltipContent>
                   </Tooltip>
+                  {onDownloadQr && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-7 w-7 ml-auto"
+                          onClick={() => onDownloadQr(cabin._id, cabin.name)}
+                        >
+                          <QrCode className="h-3.5 w-3.5 text-primary" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Download QR Code</TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
               </div>
             </TooltipProvider>

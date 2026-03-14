@@ -104,9 +104,8 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
 
           {/* Actions */}
           <TooltipProvider delayDuration={300}>
-            <div className="border-t pt-2 mt-0.5 space-y-1.5">
-              {/* Row 1: Primary actions */}
-              <div className="flex items-center gap-1.5">
+            <div className="border-t pt-2 mt-0.5">
+              <div className="flex flex-wrap items-center gap-2">
                 <ShareButton
                   title={mess.name}
                   text={`Check out ${mess.name} - ${badge.label} mess at ${mess.location}`}
@@ -124,9 +123,6 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
                   </TooltipTrigger>
                   <TooltipContent>Packages</TooltipContent>
                 </Tooltip>
-              </div>
-              {/* Row 2: Toggles */}
-              <div className="flex items-center gap-1">
                 {onToggleActive && (
                   <Tooltip>
                     <TooltipTrigger asChild>
