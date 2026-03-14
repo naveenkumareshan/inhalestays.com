@@ -17,8 +17,10 @@ import {
   getMyMessPartner, getMessSubscriptions, getMessAttendance, markAttendance,
 } from '@/api/messService';
 import { generateBrandedQrPng } from '@/utils/brandedQrGenerator';
-import { format, isSameDay, isFuture } from 'date-fns';
+import { format, isSameDay, isFuture, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+
+const todayStr = format(new Date(), 'yyyy-MM-dd');
 
 const MEALS = ['breakfast', 'lunch', 'dinner'] as const;
 const MEAL_LABELS: Record<string, string> = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
@@ -137,14 +139,31 @@ export default function MessAttendance() {
     a.click();
   };
 
-  // Derived stats
-  const activeSubsForAttendance = subscriptions.filter(s => s.status === 'active');
+  // Date-aware subscription filtering for stats
+  const activeSubsForDate = useMemo(() => {
+    return subscriptions.filter(s =>
+      s.status === 'active' &&
+      s.start_date <= selectedDateStr &&
+      s.end_date >= selectedDateStr
+    );
+  }, [subscriptions, selectedDateStr]);
+
   const uniqueStudentsOnDate = new Set(dateAttendance.map(a => a.user_id)).size;
-  const totalSubscribers = activeSubsForAttendance.length;
+  const totalSubscribers = activeSubsForDate.length;
   const absentOnDate = Math.max(0, totalSubscribers - uniqueStudentsOnDate);
 
-  // Filtered subscribers for manual correction
-  const filteredSubs = activeSubsForAttendance.filter(s =>
+  // Date-aware filtering for manual correction
+  const manualDateSubs = useMemo(() => {
+    return subscriptions.filter(s =>
+      s.status === 'active' &&
+      s.start_date <= manualDate &&
+      s.end_date >= manualDate
+    );
+  }, [subscriptions, manualDate]);
+
+  const isManualDateFuture = manualDate > todayStr;
+
+  const filteredSubs = manualDateSubs.filter(s =>
     !searchQuery || s.profiles?.name?.toLowerCase().includes(searchQuery.toLowerCase())
     || s.profiles?.phone?.includes(searchQuery)
   );
@@ -152,14 +171,14 @@ export default function MessAttendance() {
   // Meal stats per meal for selected date
   const mealStats = useMemo(() => {
     return MEALS.map(meal => {
-      const total = activeSubsForAttendance.filter(s =>
+      const total = activeSubsForDate.filter(s =>
         (s.mess_packages?.meal_types as string[])?.includes(meal)
       ).length;
       const consumed = isFutureDate ? 0 : dateAttendance.filter(a => a.meal_type === meal).length;
       const pct = total > 0 ? Math.round((consumed / total) * 100) : 0;
       return { meal, total, consumed, pct };
     });
-  }, [activeSubsForAttendance, dateAttendance, isFutureDate]);
+  }, [activeSubsForDate, dateAttendance, isFutureDate]);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[40vh]">
@@ -336,6 +355,7 @@ export default function MessAttendance() {
           <div className="flex gap-2 mt-2">
             <Input
               type="date"
+              max={todayStr}
               value={manualDate}
               onChange={e => setManualDate(e.target.value)}
               className="w-44"
@@ -354,7 +374,7 @@ export default function MessAttendance() {
         <CardContent>
           {filteredSubs.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {activeSubsForAttendance.length === 0 ? 'No active subscribers.' : 'No matching students.'}
+              {manualDateSubs.length === 0 ? 'No active subscribers for this date.' : 'No matching students.'}
             </p>
           ) : (
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
@@ -377,7 +397,7 @@ export default function MessAttendance() {
                             key={meal}
                             variant={marked ? 'default' : 'outline'}
                             size="sm"
-                            disabled={!!marked}
+                            disabled={!!marked || isManualDateFuture}
                             onClick={() => handleMarkAttendance(s.id, s.user_id, meal)}
                           >
                             {MEAL_LABELS[meal]} {marked ? '✓' : ''}
