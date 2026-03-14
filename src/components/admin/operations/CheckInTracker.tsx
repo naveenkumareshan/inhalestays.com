@@ -10,13 +10,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, subDays, parseISO } from 'date-fns';
-import { Search, AlertTriangle, CheckCircle2, Eye, Upload, Receipt, IndianRupee } from 'lucide-react';
+import { Search, AlertTriangle, CheckCircle2, Eye, Upload, Receipt, IndianRupee, QrCode, Download } from 'lucide-react';
 import CheckInUploadDialog from './CheckInUploadDialog';
 import ReportedTodaySection from './ReportedTodaySection';
 import CheckInViewDetailsDialog from './CheckInViewDetailsDialog';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { CollectDrawer, ReceiptsDialog, fmtAmt } from './CheckInFinancials';
 import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
+import QRCode from 'qrcode';
 
 type Module = 'reading_room' | 'hostel';
 
@@ -24,7 +26,7 @@ const CheckInTracker = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { hasReadingRooms, hasHostels, loading: propLoading } = usePartnerPropertyTypes();
+  const { hasReadingRooms, hasHostels, hasMess, loading: propLoading } = usePartnerPropertyTypes();
 
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
   const showRR = isAdmin || hasReadingRooms;
