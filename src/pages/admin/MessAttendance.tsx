@@ -209,11 +209,14 @@ export default function MessAttendance() {
             <p className="text-sm text-muted-foreground">No active subscribers.</p>
           ) : (
             <div className="space-y-2">
-              {activeSubsForAttendance.map((s: any) => {
+              {activeSubsForAttendance.map((s: any, idx: number) => {
                 const studentAtt = attendance.filter(a => a.subscription_id === s.id);
                 return (
                   <div key={s.id} className="p-3 border rounded">
-                    <p className="font-medium text-sm">{s.profiles?.name}</p>
+                    <p className="font-medium text-sm">
+                      <span className="text-[10px] text-muted-foreground mr-1">#{idx + 1}</span>
+                      {s.profiles?.name}
+                    </p>
                     <div className="flex gap-2 mt-2">
                       {((s.mess_packages?.meal_types as string[]) || MEALS).map(meal => {
                         const marked = studentAtt.find(a => a.meal_type === meal);

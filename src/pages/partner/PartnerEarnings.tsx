@@ -254,7 +254,7 @@ const PartnerEarnings: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {ledger.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-4 text-xs text-muted-foreground">No ledger entries yet</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center py-4 text-xs text-muted-foreground">No ledger entries yet</TableCell></TableRow>
                 ) : ledger.slice((ledgerPage - 1) * ledgerPageSize, ledgerPage * ledgerPageSize).map((e, idx) => (
                   <TableRow key={e.id} className="text-[10px]">
                     <TableCell className="px-2 py-1 text-muted-foreground">{getSerialNumber(idx, ledgerPage, ledgerPageSize)}</TableCell>

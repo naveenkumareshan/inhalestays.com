@@ -244,11 +244,12 @@ const ReviewManagement: React.FC = () => {
             onPageSizeChange={(s) => handleItemsPerPageChange(s.toString())}
           />
 
-          {filteredReviews.map((review) => (
+          {filteredReviews.map((review, idx) => (
             <Card key={review.id} className={`border-border/60 shadow-sm ${review.status === 'pending' ? "border-l-2 border-l-amber-400" : review.status === 'rejected' ? "border-l-2 border-l-red-400" : ""}`}>
               <CardHeader className="py-2 px-4">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-muted-foreground min-w-[24px]">#{getSerialNumber(idx, currentPage, itemsPerPage)}</span>
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={review.profiles?.profile_picture || undefined} alt={review.profiles?.name || ''} />
                       <AvatarFallback className="text-xs">
