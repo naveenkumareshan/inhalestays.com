@@ -127,6 +127,7 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
           isActive: cabin.is_active !== false,
           isBookingActive: cabin.is_booking_active !== false,
           isPartnerVisible: cabin.is_partner_visible !== false,
+          isStudentVisible: cabin.is_student_visible !== false,
           whatsapp_chat_enabled: cabin.whatsapp_chat_enabled || false,
           whatsapp_number: cabin.whatsapp_number || '',
         }));
