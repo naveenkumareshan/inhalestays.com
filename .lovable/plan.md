@@ -1,71 +1,41 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Speed Up Partner App Loading
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Root Causes Identified
+1. **SplashOverlay blocks for 2.1 seconds** — fixed 1500ms wait + 600ms fade, plus a DB call for branding on every app load
+2. **usePartnerPropertyTypes makes 4 DB calls** on every mount (cabins, hostels, laundry, mess) without caching — remounts on every route change
+3. **Auth `setTimeout` wrapper** in `onAuthStateChange` adds unnecessary async tick delay
+4. **Triple lazy-loading chain**: `PartnerResponsiveLayout` → `PartnerMobileLayout`/`AdminLayout` → page component, each with its own Suspense
 
-## Changes
+## Changes (no feature changes, only speed)
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### 1. Reduce SplashOverlay timers + cache branding locally
+**File**: `src/components/SplashOverlay.tsx`
+- Reduce timers: 800ms start fade, 1200ms remove (was 1500/2100)
+- Cache branding (name, logo, tagline) in `localStorage` so first paint uses cached values and DB fetch updates silently
+- Show cached values immediately, no visual flicker
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### 2. Convert `usePartnerPropertyTypes` to React Query
+**File**: `src/hooks/usePartnerPropertyTypes.ts`
+- Wrap in `useQuery` with `staleTime: 5min` so it caches across route changes
+- Currently re-fetches 4 tables on every component mount/navigation — this is the biggest source of repeated slowness
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### 3. Convert `usePartnerNavPreferences` query to have longer staleTime
+**File**: `src/hooks/usePartnerNavPreferences.ts`  
+- Already uses React Query but verify staleTime is sufficient (currently inherits 5min default — good, no change needed)
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### 4. Remove `setTimeout` wrapper in AuthContext
+**File**: `src/contexts/AuthContext.tsx`
+- The `setTimeout(async () => { ... }, 0)` in `onAuthStateChange` was added to avoid Supabase deadlock, but we can use a flag-based approach instead: set a ref and process in a `useEffect`, avoiding the extra async tick
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+### 5. Eagerly import PartnerMobileLayout
+**File**: `src/components/PartnerResponsiveLayout.tsx`
+- Remove lazy() for `PartnerMobileLayout` since it's small and always used on mobile partner routes — eliminates one Suspense layer
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+## Summary
+- ~1 second faster initial load (splash 2100→1200ms)
+- Eliminates repeated 4-query fetches on every navigation (React Query cache)
+- Removes one layer of lazy loading for mobile partners
+- All features remain exactly the same
 
