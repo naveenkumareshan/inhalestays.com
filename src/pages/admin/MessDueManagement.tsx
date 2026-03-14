@@ -67,7 +67,7 @@ const MessDueManagement: React.FC = () => {
       }
 
       // Fetch mess partners
-      let messQ = supabase.from('mess_partners').select('id, name').eq('is_active', true);
+      let messQ = supabase.from('mess_partners' as any).select('id, name').eq('is_active', true);
       if (ownerId) messQ = messQ.eq('created_by', ownerId);
       const { data: messData } = await messQ;
       setMessPartners(messData || []);
