@@ -39,7 +39,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { bookingEmailService } from '@/api/bookingEmailService';
 
 type ViewMode = 'grid' | 'table' | 'room';
-type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked';
+type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked' | 'present';
 
 interface HostelBed {
   id: string;
@@ -481,7 +481,11 @@ const HostelBedMap: React.FC = () => {
       result = result.filter(b => b.room_id === selectedRoom);
     }
     if (statusFilter !== 'all') {
-      result = result.filter(b => b.dateStatus === statusFilter);
+      if (statusFilter === 'present') {
+        result = result.filter(b => attendanceSet.has(b.id));
+      } else {
+        result = result.filter(b => b.dateStatus === statusFilter);
+      }
     }
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
@@ -497,7 +501,7 @@ const HostelBedMap: React.FC = () => {
       return a.bed_number - b.bed_number;
     });
     return result;
-  }, [beds, statusFilter, searchTerm, selectedFloor, selectedRoom]);
+  }, [beds, statusFilter, searchTerm, selectedFloor, selectedRoom, attendanceSet]);
 
   // Stats
   const stats = useMemo(() => {
@@ -1194,21 +1198,29 @@ const HostelBedMap: React.FC = () => {
       {/* ──── Stats Bar ──── */}
       <div className="flex items-center gap-0 border rounded-md bg-card overflow-hidden h-[52px]">
         {[
-          { label: 'Total', value: stats.total, icon: <LayoutGrid className="h-3.5 w-3.5 text-primary" /> },
-          { label: 'Booked', value: stats.booked, icon: <Users className="h-3.5 w-3.5 text-red-500" /> },
-          { label: 'Available', value: stats.available, icon: <CheckCircle className="h-3.5 w-3.5 text-emerald-500" /> },
-          { label: 'Future', value: stats.futureBooked, icon: <Clock className="h-3.5 w-3.5 text-violet-500" /> },
-          { label: 'Expiring', value: stats.expiring, icon: <AlertTriangle className="h-3.5 w-3.5 text-amber-500" /> },
-          { label: 'Blocked', value: stats.blocked, icon: <Ban className="h-3.5 w-3.5 text-muted-foreground" /> },
-          { label: 'Present', value: stats.present, icon: <UserCheck className="h-3.5 w-3.5 text-emerald-600" /> },
+          { label: 'Total', value: stats.total, icon: <LayoutGrid className="h-3.5 w-3.5 text-primary" />, filter: 'all' as StatusFilter },
+          { label: 'Booked', value: stats.booked, icon: <Users className="h-3.5 w-3.5 text-red-500" />, filter: 'booked' as StatusFilter },
+          { label: 'Available', value: stats.available, icon: <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />, filter: 'available' as StatusFilter },
+          { label: 'Future', value: stats.futureBooked, icon: <Clock className="h-3.5 w-3.5 text-violet-500" />, filter: 'future_booked' as StatusFilter },
+          { label: 'Expiring', value: stats.expiring, icon: <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />, filter: 'expiring_soon' as StatusFilter },
+          { label: 'Blocked', value: stats.blocked, icon: <Ban className="h-3.5 w-3.5 text-muted-foreground" />, filter: 'blocked' as StatusFilter },
+          { label: 'Present', value: stats.present, icon: <UserCheck className="h-3.5 w-3.5 text-emerald-600" />, filter: 'present' as StatusFilter },
         ].map((s, i) => (
-          <div key={s.label} className={cn("flex items-center gap-1.5 px-3 py-1 flex-1 justify-center", i > 0 && "border-l")}>
+          <button
+            key={s.label}
+            onClick={() => setStatusFilter(statusFilter === s.filter ? 'all' : s.filter)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1 flex-1 justify-center cursor-pointer transition-colors",
+              i > 0 && "border-l",
+              statusFilter === s.filter && "bg-primary/10 ring-1 ring-inset ring-primary/30"
+            )}
+          >
             {s.icon}
             <div className="text-center leading-tight">
               <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</div>
               <div className="text-sm font-semibold">{s.value}</div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -1277,6 +1289,7 @@ const HostelBedMap: React.FC = () => {
             <SelectItem value="future_booked" className="text-xs">Future Booked</SelectItem>
             <SelectItem value="expiring_soon" className="text-xs">Expiring Soon</SelectItem>
             <SelectItem value="blocked" className="text-xs">Blocked</SelectItem>
+            <SelectItem value="present" className="text-xs">Present</SelectItem>
           </SelectContent>
         </Select>
 
