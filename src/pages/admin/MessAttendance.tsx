@@ -38,6 +38,7 @@ export default function MessAttendance() {
   const [mess, setMess] = useState<any>(null);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [mealTimings, setMealTimings] = useState<any[]>([]);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
