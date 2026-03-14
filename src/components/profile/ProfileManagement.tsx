@@ -599,6 +599,26 @@ export const ProfileManagement = () => {
               </CardContent>
             </Card>
           </Link>
+          <Link to="/student/scan-attendance">
+            <Card className="rounded-2xl border hover:shadow-sm transition-shadow cursor-pointer">
+              <CardContent className="p-3 flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <QrCode className="h-4 w-4 text-emerald-600" />
+                </div>
+                <span className="text-[12px] font-medium text-foreground">Scan QR</span>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link to="/student/attendance-history">
+            <Card className="rounded-2xl border hover:shadow-sm transition-shadow cursor-pointer">
+              <CardContent className="p-3 flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
+                  <History className="h-4 w-4 text-purple-600" />
+                </div>
+                <span className="text-[12px] font-medium text-foreground">Attendance</span>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
 
