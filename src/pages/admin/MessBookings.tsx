@@ -344,16 +344,15 @@ export default function MessBookings() {
 
   const handlePackageSelect = (pkg: any) => {
     setSelectedPackage(pkg);
-    setPricePaid(pkg.price);
-    setAdvanceAmount(pkg.price);
-    recalcEndDate(startDate, pkg);
+    setPricePaid(pkg.price * durationCount);
+    setAdvanceAmount(pkg.price * durationCount);
+    recalcEndDate(startDate, durationType, durationCount);
   };
 
-  const recalcEndDate = (start: Date, pkg: any) => {
-    const count = pkg.duration_count || 1;
+  const recalcEndDate = (start: Date, type: string, count: number) => {
     let end: Date;
-    if (pkg.duration_type === 'daily') end = addDays(start, count - 1);
-    else if (pkg.duration_type === 'weekly') end = addDays(start, count * 7 - 1);
+    if (type === 'daily') end = addDays(start, count - 1);
+    else if (type === 'weekly') end = addDays(start, count * 7 - 1);
     else end = subDays(addMonths(start, count), 1);
     setEndDate(format(end, 'yyyy-MM-dd'));
   };
@@ -361,7 +360,26 @@ export default function MessBookings() {
   const handleStartDateChange = (d: Date) => {
     setStartDate(d);
     setStartDateOpen(false);
-    if (selectedPackage) recalcEndDate(d, selectedPackage);
+    recalcEndDate(d, durationType, durationCount);
+  };
+
+  const handleDurationTypeChange = (type: 'daily' | 'weekly' | 'monthly') => {
+    setDurationType(type);
+    setDurationCount(1);
+    if (selectedPackage) {
+      setPricePaid(selectedPackage.price * 1);
+      setAdvanceAmount(selectedPackage.price * 1);
+    }
+    recalcEndDate(startDate, type, 1);
+  };
+
+  const handleDurationCountChange = (count: number) => {
+    setDurationCount(count);
+    if (selectedPackage) {
+      setPricePaid(selectedPackage.price * count);
+      setAdvanceAmount(selectedPackage.price * count);
+    }
+    recalcEndDate(startDate, durationType, count);
   };
 
   const totalAfterDiscount = Math.max(0, pricePaid - discountAmount);
