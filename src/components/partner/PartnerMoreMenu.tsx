@@ -179,19 +179,6 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
           </SheetHeader>
         <ScrollArea className="h-[calc(85vh-70px)]">
           <div className="px-4 py-3 space-y-5">
-            {/* Customize Nav Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full justify-center gap-2"
-              onClick={() => {
-                onOpenChange(false);
-                setTimeout(() => setCustomizerOpen(true), 300);
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-              Customize Nav Bar
-            </Button>
 
             {sections.map((section) => {
               if (!section.show) return null;
