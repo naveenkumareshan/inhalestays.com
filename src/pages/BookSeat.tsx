@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { isUUID } from "@/utils/idUtils";
 import { MessageCircle } from "lucide-react";
 import { whatsappLeadService } from "@/api/whatsappLeadService";
+import { supabase } from "@/integrations/supabase/client";
 
 const SeatBookingForm = lazy(() =>
   import("@/components/seats/SeatBookingForm").then((m) => ({
@@ -116,6 +117,15 @@ const BookSeat = () => {
   useEffect(() => {
     if (cabinId) fetchCabinDetails();
   }, [cabinId]);
+
+  // Track property view
+  useEffect(() => {
+    if (!cabinId || !cabin) return;
+    const key = `pv_cabin_${cabin._id || cabin.id}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    supabase.from('property_views' as any).insert({ property_id: cabin._id || cabin.id, property_type: 'reading_room', user_id: user?.id || null }).then(() => {});
+  }, [cabin?.id]);
 
   // Collapse details when seat is selected
   useEffect(() => {

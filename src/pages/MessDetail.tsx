@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { MessageCircle } from 'lucide-react';
 import { whatsappLeadService } from '@/api/whatsappLeadService';
+import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft, CalendarIcon, Clock, IndianRupee, Loader2,
   MapPin, Star, UtensilsCrossed, Users,
@@ -97,6 +98,15 @@ export default function MessDetail() {
   useEffect(() => {
     if (id) loadDetail();
   }, [id]);
+
+  // Track property view
+  useEffect(() => {
+    if (!mess) return;
+    const key = `pv_mess_${mess.id}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    supabase.from('property_views' as any).insert({ property_id: mess.id, property_type: 'mess', user_id: user?.id || null }).then(() => {});
+  }, [mess?.id]);
 
   useEffect(() => {
     if (user?.id && mess) {

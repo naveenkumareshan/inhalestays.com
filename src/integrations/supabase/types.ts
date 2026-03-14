@@ -3523,6 +3523,30 @@ export type Database = {
           },
         ]
       }
+      property_views: {
+        Row: {
+          created_at: string | null
+          id: string
+          property_id: string
+          property_type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          property_id: string
+          property_type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          property_id?: string
+          property_type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       receipts: {
         Row: {
           amount: number
