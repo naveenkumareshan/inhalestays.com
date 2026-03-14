@@ -78,7 +78,7 @@ const QrCodesTab = () => {
       </div>
 
       <Dialog open={!!viewing} onOpenChange={() => setViewing(null)}>
-        <DialogContent className="sm:max-w-xs">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-sm">{viewing?.name}</DialogTitle>
           </DialogHeader>
