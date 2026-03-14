@@ -845,7 +845,7 @@ const VendorSeats: React.FC = () => {
             className={cn(
               "flex items-center gap-1.5 px-3 py-1 flex-1 justify-center cursor-pointer transition-colors",
               i > 0 && "border-l",
-              statusFilter === s.filter && "bg-primary/15 text-primary ring-1 ring-inset ring-primary/30 rounded-md"
+              statusFilter === s.filter && "bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-200 rounded-md"
             )}
           >
             {s.icon}
