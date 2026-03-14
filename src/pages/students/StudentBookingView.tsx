@@ -123,6 +123,7 @@ export default function StudentBookingView() {
   const [loading, setLoading] = useState(true);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [partnerInfo, setPartnerInfo] = useState<{ business_name: string; contact_person: string; phone: string; email: string } | null>(null);
+  const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
 
   // Detect if route is hostel
   const isHostelRoute = location.pathname.includes("/hostel-bookings/");
