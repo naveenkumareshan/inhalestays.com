@@ -112,6 +112,16 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
     }
   };
 
+  const handleToggleStudentVisible = async (hostelId: string, isVisible: boolean) => {
+    try {
+      await supabase.from('hostels').update({ is_student_visible: isVisible } as any).eq('id', hostelId);
+      toast({ title: "Success", description: `Hostel ${isVisible ? 'shown to' : 'hidden from'} students` });
+      fetchHostels();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update student visibility", variant: "destructive" });
+    }
+  };
+
   const handleManageBeds = (hostelId: string) => {
     const hostel = hostels.find(h => h.id === hostelId);
     navigate(`/admin/hostels/${hostel?.serial_number || hostelId}/rooms`);
