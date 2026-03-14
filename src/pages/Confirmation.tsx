@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { bookingsService } from "@/api/bookingsService";
+import { getMethodLabel } from "@/utils/paymentMethodLabels";
 
 const Confirmation = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
