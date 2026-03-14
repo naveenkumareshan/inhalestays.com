@@ -151,11 +151,19 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${hostel.is_student_visible === false ? "bg-orange-50 text-orange-700 border border-orange-200" : "bg-teal-50 text-teal-700 border border-teal-200"}`}>
                 {hostel.is_student_visible === false ? "● Student Hidden" : "● Student Visible"}
               </span>
-              {linkedMesses && linkedMesses.length > 0 && linkedMesses.map((m) => (
-                <Badge key={m.mess_id} variant="outline" className="text-[10px] gap-0.5 border-amber-300 text-amber-700 bg-amber-50">
-                  🍽️ {m.mess_name} {m.is_default && '★'}
-                </Badge>
-              ))}
+            </div>
+
+            {/* Linked Mess Partners */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-semibold text-muted-foreground">Mess:</span>
+              {linkedMesses && linkedMesses.length > 0 ? linkedMesses.map((m) => (
+                <span key={m.mess_id} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-300">
+                  🍽️ {m.mess_name}{m.is_default ? ' ★' : ''}
+                </span>
+              )) : (
+                <span className="text-[10px] text-muted-foreground italic">No mess linked</span>
+              )}
+            </div>
             </div>
 
             <h3 className="font-semibold text-sm leading-snug text-foreground">{hostel.name}</h3>
