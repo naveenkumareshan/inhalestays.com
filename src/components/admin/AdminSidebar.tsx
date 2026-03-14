@@ -211,13 +211,15 @@ export function AdminSidebar() {
       }
     }
 
-    readingRoomSubItems.push({
-      title: 'Attendance',
-      url: `${routePrefix}/property-attendance?type=reading_room`,
-      icon: UserCheck,
-      roles: ['admin', 'vendor', 'vendor_employee'],
-      permissions: ['seats_available_map']
-    });
+    if (user?.role === 'admin' || user?.role === 'vendor' || hasPermission('view_attendance')) {
+      readingRoomSubItems.push({
+        title: 'Attendance',
+        url: `${routePrefix}/property-attendance?type=reading_room`,
+        icon: UserCheck,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_attendance']
+      });
+    }
 
     if (readingRoomSubItems.length > 0) {
       menuItems.push({
@@ -296,13 +298,13 @@ export function AdminSidebar() {
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_hostel_bookings']
       },
-      {
+      ...(user?.role === 'admin' || user?.role === 'vendor' || hasPermission('view_attendance') ? [{
         title: 'Attendance',
         url: `${routePrefix}/property-attendance?type=hostel`,
         icon: UserCheck,
         roles: ['admin', 'vendor', 'vendor_employee'],
-        permissions: ['view_bed_map']
-      },
+        permissions: ['view_attendance']
+      }] : []) as MenuItem[],
     ];
 
     // Approvals moved to Partners section

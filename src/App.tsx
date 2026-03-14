@@ -84,6 +84,7 @@ const StudentLaundryOrders = lazy(() => import("./pages/StudentLaundryOrders"));
 const Reconciliation = lazy(() => import("./pages/admin/Reconciliation"));
 const PropertyAttendance = lazy(() => import("./pages/admin/PropertyAttendance"));
 const ScanAttendance = lazy(() => import("./pages/student/ScanAttendance"));
+const AttendanceHistory = lazy(() => import("./pages/student/AttendanceHistory"));
 const BankManagement = lazy(() => import("./pages/admin/BankManagement"));
 const LaundryPartnerDashboard = lazy(() => import("./pages/LaundryPartnerDashboard"));
 const ExpiringBookingsPage = lazy(() => import("./pages/admin/ExpiringBookingsPage"));
@@ -389,6 +390,10 @@ function App() {
               <Route
                 path="/student/scan-attendance"
                 element={<ProtectedRoute><StudentSuspense><ScanAttendance /></StudentSuspense></ProtectedRoute>}
+              />
+              <Route
+                path="/student/attendance-history"
+                element={<ProtectedRoute><StudentSuspense><AttendanceHistory /></StudentSuspense></ProtectedRoute>}
               />
               <Route
                 path="/student/mess"

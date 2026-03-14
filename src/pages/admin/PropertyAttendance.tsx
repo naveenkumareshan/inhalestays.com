@@ -191,7 +191,7 @@ const PropertyAttendance: React.FC = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className={`grid gap-2 ${typeFilter === 'all' ? 'grid-cols-3' : 'grid-cols-2'}`}>
         <Card>
           <CardContent className="p-3 flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -203,28 +203,32 @@ const PropertyAttendance: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-3 flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-              <Building className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground">Reading Room</p>
-              <p className="text-lg font-bold">{readingRoomCount}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center">
-              <Hotel className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground">Hostel</p>
-              <p className="text-lg font-bold">{hostelCount}</p>
-            </div>
-          </CardContent>
-        </Card>
+        {(typeFilter === 'all' || typeFilter === 'reading_room') && (
+          <Card>
+            <CardContent className="p-3 flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                <Building className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground">Reading Room</p>
+                <p className="text-lg font-bold">{readingRoomCount}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {(typeFilter === 'all' || typeFilter === 'hostel') && (
+          <Card>
+            <CardContent className="p-3 flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center">
+                <Hotel className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground">Hostel</p>
+                <p className="text-lg font-bold">{hostelCount}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Filters */}
@@ -278,7 +282,7 @@ const PropertyAttendance: React.FC = () => {
                 <TableHead className="text-xs">Phone</TableHead>
                 <TableHead className="text-xs">Seat / Bed</TableHead>
                 <TableHead className="text-xs">Check-in</TableHead>
-                <TableHead className="text-xs">Type</TableHead>
+                {typeFilter === 'all' && <TableHead className="text-xs">Type</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -293,11 +297,13 @@ const PropertyAttendance: React.FC = () => {
                   <TableCell className="text-xs">
                     {r.check_in_time ? format(new Date(r.check_in_time), 'hh:mm a') : '-'}
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-[9px]">
-                      {r.property_type === 'reading_room' ? 'Room' : 'Hostel'}
-                    </Badge>
-                  </TableCell>
+                  {typeFilter === 'all' && (
+                    <TableCell>
+                      <Badge variant="secondary" className="text-[9px]">
+                        {r.property_type === 'reading_room' ? 'Room' : 'Hostel'}
+                      </Badge>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

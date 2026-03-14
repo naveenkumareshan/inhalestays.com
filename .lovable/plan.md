@@ -1,45 +1,71 @@
 
 
-# Attendance System Fixes & Student History
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
+
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
 ## Changes
 
-### 1. Employee Permission Gating for Attendance
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-**File: `src/hooks/useVendorEmployeePermissions.ts`**
-- Add `view_attendance` and `manage_attendance` permissions to `PartnerEmployeePermissions` interface and `ALL_PERMISSION_KEYS` array.
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-**File: `src/components/admin/AdminSidebar.tsx`**
-- Change attendance sidebar items' `permissions` from `['seats_available_map']` / `['view_bed_map']` to `['view_attendance']`.
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-**File: `src/components/vendor/VendorEmployeeForm.tsx`** (or wherever permissions checkboxes are rendered)
-- Add "Attendance" as a permission option under the relevant sections so partners can grant/deny access per employee.
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-### 2. Fix Attendance Page — Show Only Relevant Type
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-**File: `src/pages/admin/PropertyAttendance.tsx`**
-- When `typeFilter` is `reading_room`, only show the "Total Present" and "Reading Room" summary cards (hide "Hostel" card). Vice versa for hostel.
-- Only show the "Reading Room" or "Hostel" summary card when `typeFilter` is specific, alongside "Total Present". Show all 3 only when `typeFilter === 'all'`.
-- Remove the "Type" column from the table when a specific type filter is active (it's redundant).
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-### 3. Student Attendance History Page
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-**New file: `src/pages/student/AttendanceHistory.tsx`**
-- A simple page showing the student's own attendance records in a table/list: Date, Time, Property Name, Seat/Bed.
-- Fetches from `property_attendance` where `student_id = auth.uid()` (already allowed by existing RLS).
-- Date filter (defaults to current month).
-- Styled consistent with student app pages.
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-**File: `src/pages/StudentDashboard.tsx`**
-- Add an "Attendance History" button/link near the existing "Scan QR" button.
+**Reviews section**: Shown below the booking flow (not in a tab)
 
-**File: `src/App.tsx`**
-- Add route `/student/attendance-history` → `AttendanceHistory`.
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
 
-### 4. RLS Review
-- Existing RLS is correct: students read own, partners/employees read via `is_partner_or_employee_of`, admins read all. No changes needed to RLS policies.
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
 
-### Summary of Files
-- **Edit**: `useVendorEmployeePermissions.ts`, `AdminSidebar.tsx`, `PropertyAttendance.tsx`, `StudentDashboard.tsx`, `App.tsx`, employee form (permissions UI)
-- **New**: `src/pages/student/AttendanceHistory.tsx`
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

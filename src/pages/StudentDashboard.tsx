@@ -14,7 +14,7 @@ import { reviewsService } from '@/api/reviewsService';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, differenceInDays, isPast } from 'date-fns';
-import { Building, Calendar, Check, ArrowUp, ArrowDown, MapPin, Clock, Receipt, CheckCircle2, XCircle, AlertCircle, Wallet, Star, MessageSquare, QrCode } from 'lucide-react';
+import { Building, Calendar, Check, ArrowUp, ArrowDown, MapPin, Clock, Receipt, CheckCircle2, XCircle, AlertCircle, Wallet, Star, MessageSquare, QrCode, History } from 'lucide-react';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useNavigate } from 'react-router-dom';
 import { BookingExpiryDetails } from '@/pages/students/BookingExpiryDetails';
@@ -349,6 +349,9 @@ const StudentDashboard: React.FC = () => {
                      <Button onClick={() => navigate('/cabins')}>Book New Reading Room</Button>
                      <Button variant="outline" className="gap-1.5" onClick={() => navigate('/student/scan-attendance')}>
                        <QrCode className="h-4 w-4" /> Scan QR
+                     </Button>
+                     <Button variant="outline" className="gap-1.5" onClick={() => navigate('/student/attendance-history')}>
+                       <History className="h-4 w-4" /> Attendance
                      </Button>
                    </div>
                 </div>
