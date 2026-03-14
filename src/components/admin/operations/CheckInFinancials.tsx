@@ -20,6 +20,7 @@ import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { HostelDuePaymentHistory } from '@/components/booking/HostelDuePaymentHistory';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { bookingEmailService } from '@/api/bookingEmailService';
+import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 
 type Module = 'reading_room' | 'hostel';
 
