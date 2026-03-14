@@ -98,6 +98,7 @@ export const cabinsService = {
         .from('cabins')
         .select('*')
         .eq('is_active', true)
+        .eq('is_student_visible', true)
         .eq('category', category);
       return { success: !error, data: data || [] };
     } catch (error) {

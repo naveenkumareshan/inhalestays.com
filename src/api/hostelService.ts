@@ -68,6 +68,8 @@ export const hostelService = {
     let query = supabase
       .from('hostels')
       .select('*, states(name), cities(name), areas(name), hostel_rooms(hostel_sharing_options(price_monthly))')
+      .eq('is_active', true)
+      .eq('is_student_visible', true)
       .order('created_at', { ascending: false });
 
     if (filters?.city_id) query = query.eq('city_id', filters.city_id);

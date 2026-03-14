@@ -174,6 +174,22 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
                     <TooltipContent>{mess.is_partner_visible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
                   </Tooltip>
                 )}
+                {onToggleStudentVisible && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        disabled={!mess.is_active}
+                        className={`h-7 w-7 ${mess.is_student_visible === false ? "text-teal-600 border-teal-200 hover:bg-teal-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
+                        onClick={() => onToggleStudentVisible(mess.id, !(mess.is_student_visible !== false))}
+                      >
+                        {mess.is_student_visible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{mess.is_student_visible === false ? 'Show to Students' : 'Hide from Students'}</TooltipContent>
+                  </Tooltip>
+                )}
               </div>
             </div>
           </TooltipProvider>

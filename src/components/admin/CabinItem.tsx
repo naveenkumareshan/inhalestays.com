@@ -232,6 +232,22 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
                       <TooltipContent>{cabin.isPartnerVisible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
                     </Tooltip>
                   )}
+                  {isAdmin && onToggleStudentVisible && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          disabled={!cabin.isActive}
+                          className={`h-7 w-7 ${(cabin as any).isStudentVisible === false ? "text-teal-600 border-teal-200 hover:bg-teal-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
+                          onClick={() => onToggleStudentVisible(cabin._id, !((cabin as any).isStudentVisible !== false))}
+                        >
+                          {(cabin as any).isStudentVisible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{(cabin as any).isStudentVisible === false ? 'Show to Students' : 'Hide from Students'}</TooltipContent>
+                    </Tooltip>
+                  )}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="relative inline-block">

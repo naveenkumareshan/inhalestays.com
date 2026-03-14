@@ -4,7 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 export const getMessPartners = async (filters?: { approved?: boolean; active?: boolean }) => {
   let q = supabase.from('mess_partners' as any).select('*, profiles:user_id(name, email, phone)');
   if (filters?.approved !== undefined) q = q.eq('is_approved', filters.approved);
-  if (filters?.active !== undefined) q = q.eq('is_active', filters.active);
+  if (filters?.active !== undefined) {
+    q = q.eq('is_active', filters.active);
+    if (filters.active) q = q.eq('is_student_visible', true);
+  }
   const { data, error } = await q.order('created_at', { ascending: false });
   if (error) throw error;
   return data as any[];
