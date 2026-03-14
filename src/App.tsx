@@ -78,6 +78,7 @@ const AdminEmployees = lazy(() => import("./pages/admin/AdminEmployees"));
 const BookingActivityLog = lazy(() => import("./pages/admin/BookingActivityLog"));
 const MessManagement = lazy(() => import("./pages/admin/MessManagement"));
 const MessBookings = lazy(() => import("./pages/admin/MessBookings"));
+const ManualMessBooking = lazy(() => import("./pages/admin/ManualMessBooking"));
 const MessReceipts = lazy(() => import("./pages/admin/MessReceipts"));
 const MessAttendance = lazy(() => import("./pages/admin/MessAttendance"));
 const StudentLaundryOrders = lazy(() => import("./pages/StudentLaundryOrders"));
