@@ -227,6 +227,7 @@ function App() {
               <Route path="booking-activity-log" element={<BookingActivityLog />} />
               <Route path="mess" element={<MessManagement />} />
               <Route path="mess-bookings" element={<MessBookings />} />
+              <Route path="mess-manual-booking" element={<ManualMessBooking />} />
               <Route path="mess-receipts" element={<MessReceipts />} />
               <Route path="mess-attendance" element={<MessAttendance />} />
               <Route path="reconciliation" element={<Reconciliation />} />
