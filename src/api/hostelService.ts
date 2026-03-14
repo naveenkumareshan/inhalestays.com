@@ -49,6 +49,7 @@ export interface HostelFilters {
   gender?: string;
   is_approved?: boolean;
   search?: string;
+  admin?: boolean;
 }
 
 const UUID_FIELDS = ['state_id', 'city_id', 'area_id', 'created_by', 'vendor_id'];
