@@ -23,7 +23,7 @@ interface HostelManagementProps {
   onOpenQr?: (propertyId: string, propertyName: string) => void;
 }
 
-const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTriggerConsumed }) => {
+const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTriggerConsumed, onOpenQr }) => {
   const [hostels, setHostels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
