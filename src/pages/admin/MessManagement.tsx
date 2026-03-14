@@ -227,6 +227,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
                   onToggleBooking={handleToggleBooking}
                   onTogglePartnerVisible={handleTogglePartnerVisible}
                   onToggleStudentVisible={handleToggleStudentVisible}
+                  onDownloadQr={onOpenQr ? (mess: any) => onOpenQr(mess.id, mess.name) : undefined}
                 />
               ))}
             </div>
