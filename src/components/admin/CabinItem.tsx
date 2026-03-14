@@ -46,8 +46,20 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
   const isAdmin = user?.role === 'admin';
   const [waDialogOpen, setWaDialogOpen] = useState(false);
   const [subDialogOpen, setSubDialogOpen] = useState(false);
+  const [waClickCount, setWaClickCount] = useState(0);
   const propertyId = cabin._id || cabin.id;
   const { hasSubscription, daysRemaining, isExpired, isInTrial, trialDaysRemaining, currentPlan } = useSubscriptionAccess(propertyId, 'reading_room', partnerId);
+
+  useEffect(() => {
+    const fetchClickCount = async () => {
+      const { count } = await supabase
+        .from('whatsapp_clicks' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('property_id', propertyId);
+      setWaClickCount(count || 0);
+    };
+    fetchClickCount();
+  }, [propertyId]);
 
   const renderSubscriptionBadge = () => {
     if (isAdmin) return null;
