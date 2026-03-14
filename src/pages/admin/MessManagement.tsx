@@ -39,6 +39,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const { user } = useAuth();
+  const [hostelLinksMap, setHostelLinksMap] = useState<Record<string, { hostel_id: string; hostel_name: string; is_default: boolean }[]>>({});
 
   // Packages state
   const [packages, setPackages] = useState<any[]>([]);
@@ -67,6 +68,25 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
       const { data, error: err } = await query.order('created_at', { ascending: false });
       if (err) throw err;
       setMesses(data || []);
+
+      // Fetch linked hostels for all messes
+      if (data && data.length > 0) {
+        const messIds = data.map((m: any) => m.id);
+        const { data: links } = await supabase
+          .from('hostel_mess_links' as any)
+          .select('mess_id, hostel_id, is_default, hostels:hostel_id(name)')
+          .in('mess_id', messIds);
+        const map: Record<string, { hostel_id: string; hostel_name: string; is_default: boolean }[]> = {};
+        (links || []).forEach((l: any) => {
+          if (!map[l.mess_id]) map[l.mess_id] = [];
+          map[l.mess_id].push({
+            hostel_id: l.hostel_id,
+            hostel_name: l.hostels?.name || 'Unknown',
+            is_default: l.is_default,
+          });
+        });
+        setHostelLinksMap(map);
+      }
     } catch (err) {
       console.error('Error fetching mess places:', err);
       setError('Unable to fetch data. Please refresh.');
