@@ -345,7 +345,12 @@ const StudentDashboard: React.FC = () => {
                     <CardTitle className="text-3xl font-bold">Student Dashboard</CardTitle>
                     <CardDescription>Welcome back, {user?.name}</CardDescription>
                   </div>
-                  <Button onClick={() => navigate('/cabins')}>Book New Reading Room</Button>
+                   <div className="flex gap-2">
+                     <Button onClick={() => navigate('/cabins')}>Book New Reading Room</Button>
+                     <Button variant="outline" className="gap-1.5" onClick={() => navigate('/student/scan-attendance')}>
+                       <QrCode className="h-4 w-4" /> Scan QR
+                     </Button>
+                   </div>
                 </div>
               </CardHeader>
               
