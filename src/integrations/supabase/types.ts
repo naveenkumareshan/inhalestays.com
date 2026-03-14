@@ -473,6 +473,7 @@ export type Database = {
           opening_time: string
           payment_proof_required: boolean | null
           price: number | null
+          property_number: number | null
           room_elements: Json | null
           room_height: number
           room_width: number
@@ -525,6 +526,7 @@ export type Database = {
           opening_time?: string
           payment_proof_required?: boolean | null
           price?: number | null
+          property_number?: number | null
           room_elements?: Json | null
           room_height?: number
           room_width?: number
@@ -577,6 +579,7 @@ export type Database = {
           opening_time?: string
           payment_proof_required?: boolean | null
           price?: number | null
+          property_number?: number | null
           room_elements?: Json | null
           room_height?: number
           room_width?: number
@@ -1922,6 +1925,7 @@ export type Database = {
           name: string
           payment_proof_required: boolean | null
           payment_window_days: number
+          property_number: number | null
           refund_policy: string | null
           review_count: number
           security_deposit: number
@@ -1976,6 +1980,7 @@ export type Database = {
           name: string
           payment_proof_required?: boolean | null
           payment_window_days?: number
+          property_number?: number | null
           refund_policy?: string | null
           review_count?: number
           security_deposit?: number
@@ -2030,6 +2035,7 @@ export type Database = {
           name?: string
           payment_proof_required?: boolean | null
           payment_window_days?: number
+          property_number?: number | null
           refund_policy?: string | null
           review_count?: number
           security_deposit?: number
@@ -2301,6 +2307,7 @@ export type Database = {
           id: string
           is_active: boolean
           phone: string
+          property_number: number | null
           serial_number: string | null
           service_area: string
           status: string
@@ -2317,6 +2324,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           phone?: string
+          property_number?: number | null
           serial_number?: string | null
           service_area?: string
           status?: string
@@ -2333,6 +2341,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           phone?: string
+          property_number?: number | null
           serial_number?: string | null
           service_area?: string
           status?: string
@@ -2725,6 +2734,7 @@ export type Database = {
           logo_image: string | null
           name: string
           opening_days: Json
+          property_number: number | null
           review_count: number | null
           serial_number: string | null
           starting_price: number | null
@@ -2751,6 +2761,7 @@ export type Database = {
           logo_image?: string | null
           name: string
           opening_days?: Json
+          property_number?: number | null
           review_count?: number | null
           serial_number?: string | null
           starting_price?: number | null
@@ -2777,6 +2788,7 @@ export type Database = {
           logo_image?: string | null
           name?: string
           opening_days?: Json
+          property_number?: number | null
           review_count?: number | null
           serial_number?: string | null
           starting_price?: number | null
@@ -4675,6 +4687,15 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      generate_property_serial: {
+        Args: {
+          p_entity_code: string
+          p_property_id: string
+          p_property_table: string
+          p_type_code: string
+        }
+        Returns: string
       }
       generate_serial_number: {
         Args: { p_entity_type: string }
