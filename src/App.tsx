@@ -392,6 +392,10 @@ function App() {
                 element={<ProtectedRoute><StudentSuspense><ScanAttendance /></StudentSuspense></ProtectedRoute>}
               />
               <Route
+                path="/student/attendance-history"
+                element={<ProtectedRoute><StudentSuspense><AttendanceHistory /></StudentSuspense></ProtectedRoute>}
+              />
+              <Route
                 path="/student/mess"
                 element={<ProtectedRoute><StudentSuspense><MessDashboard /></StudentSuspense></ProtectedRoute>}
               />

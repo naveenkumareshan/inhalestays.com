@@ -107,6 +107,12 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
     ]
   },
   {
+    group: 'Attendance',
+    modules: [
+      { label: 'Attendance', viewKey: 'view_attendance', editKey: 'manage_attendance' },
+    ]
+  },
+  {
     group: 'Management',
     modules: [
       { label: 'Employees', viewKey: 'view_employees', editKey: 'manage_employees' },

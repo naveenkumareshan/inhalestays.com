@@ -282,7 +282,7 @@ const PropertyAttendance: React.FC = () => {
                 <TableHead className="text-xs">Phone</TableHead>
                 <TableHead className="text-xs">Seat / Bed</TableHead>
                 <TableHead className="text-xs">Check-in</TableHead>
-                <TableHead className="text-xs">Type</TableHead>
+                {typeFilter === 'all' && <TableHead className="text-xs">Type</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -297,11 +297,13 @@ const PropertyAttendance: React.FC = () => {
                   <TableCell className="text-xs">
                     {r.check_in_time ? format(new Date(r.check_in_time), 'hh:mm a') : '-'}
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-[9px]">
-                      {r.property_type === 'reading_room' ? 'Room' : 'Hostel'}
-                    </Badge>
-                  </TableCell>
+                  {typeFilter === 'all' && (
+                    <TableCell>
+                      <Badge variant="secondary" className="text-[9px]">
+                        {r.property_type === 'reading_room' ? 'Room' : 'Hostel'}
+                      </Badge>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

@@ -350,6 +350,9 @@ const StudentDashboard: React.FC = () => {
                      <Button variant="outline" className="gap-1.5" onClick={() => navigate('/student/scan-attendance')}>
                        <QrCode className="h-4 w-4" /> Scan QR
                      </Button>
+                     <Button variant="outline" className="gap-1.5" onClick={() => navigate('/student/attendance-history')}>
+                       <History className="h-4 w-4" /> Attendance
+                     </Button>
                    </div>
                 </div>
               </CardHeader>

@@ -104,6 +104,8 @@ const ALL_PERMISSION_KEYS: (keyof PartnerEmployeePermissions)[] = [
   // Finance
   'view_reconciliation', 'manage_reconciliation',
   'view_banks', 'manage_banks',
+  // Attendance
+  'view_attendance', 'manage_attendance',
   // Granular actions
   'can_create_booking', 'can_renew_booking', 'can_book_future',
   'can_cancel_booking', 'can_release_booking', 'can_transfer_booking',
