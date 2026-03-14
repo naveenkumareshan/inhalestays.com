@@ -1,6 +1,7 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building, Hotel, Plus, Shirt, Loader2, UtensilsCrossed, Crown, LayoutGrid } from 'lucide-react';
+import { Building, Hotel, Plus, Shirt, Loader2, UtensilsCrossed, Crown, LayoutGrid, QrCode, Download } from 'lucide-react';
+import QRCode from 'qrcode';
 import PlansComparisonDialog from '@/components/partner/PlansComparisonDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
