@@ -53,6 +53,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
     try {
       setLoading(true);
       setError(null);
+      setMessLinksMap({});
       let data;
       if (user?.role === 'admin') {
         data = await hostelService.getAllHostels({ admin: true });
@@ -63,21 +64,28 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
       // Fetch linked mess partners for all hostels
       if (data && data.length > 0) {
         const hostelIds = data.map((h: any) => h.id);
-        const { data: links } = await supabase
-          .from('hostel_mess_links' as any)
-          .select('hostel_id, mess_id, is_default, mess_partners:mess_id(name)')
-          .in('hostel_id', hostelIds);
-        const map: Record<string, { mess_id: string; mess_name: string; is_default: boolean }[]> = {};
-        (links || []).forEach((link: any) => {
-          const hostelId = link.hostel_id;
-          if (!map[hostelId]) map[hostelId] = [];
-          map[hostelId].push({
-            mess_id: link.mess_id,
-            mess_name: link.mess_partners?.name || 'Unknown',
-            is_default: link.is_default,
+        try {
+          const { data: links, error: linkErr } = await supabase
+            .from('hostel_mess_links' as any)
+            .select('hostel_id, mess_id, is_default, mess_partners:mess_id(name)')
+            .in('hostel_id', hostelIds);
+          if (linkErr) {
+            console.error('Error fetching mess links:', linkErr);
+          }
+          const map: Record<string, { mess_id: string; mess_name: string; is_default: boolean }[]> = {};
+          (links || []).forEach((link: any) => {
+            const hostelId = link.hostel_id;
+            if (!map[hostelId]) map[hostelId] = [];
+            map[hostelId].push({
+              mess_id: link.mess_id,
+              mess_name: link.mess_partners?.name || 'Unknown',
+              is_default: link.is_default,
+            });
           });
-        });
-        setMessLinksMap(map);
+          setMessLinksMap(map);
+        } catch (linkError) {
+          console.error('Error fetching mess links:', linkError);
+        }
       }
     } catch (error) {
       console.error('Error fetching hostels:', error);

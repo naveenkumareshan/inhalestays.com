@@ -96,11 +96,18 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
             <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${mess.is_student_visible === false ? "bg-orange-50 text-orange-700 border border-orange-200" : "bg-teal-50 text-teal-700 border border-teal-200"}`}>
               {mess.is_student_visible === false ? "● Student Hidden" : "● Student Visible"}
             </span>
-            {linkedHostels && linkedHostels.length > 0 && linkedHostels.map(lh => (
-              <span key={lh.hostel_id} className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+          </div>
+
+          {/* Linked Hostels */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] font-semibold text-muted-foreground">Hostels:</span>
+            {linkedHostels && linkedHostels.length > 0 ? linkedHostels.map(lh => (
+              <span key={lh.hostel_id} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
                 🏨 {lh.hostel_name}{lh.is_default ? ' ★' : ''}
               </span>
-            ))}
+            )) : (
+              <span className="text-[10px] text-muted-foreground italic">No hostel linked</span>
+            )}
           </div>
 
           <h3 className="font-semibold text-sm leading-snug text-foreground">{mess.name}</h3>
