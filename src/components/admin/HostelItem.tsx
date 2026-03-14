@@ -163,9 +163,8 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
 
             {/* Actions */}
             <TooltipProvider delayDuration={300}>
-              <div className="border-t pt-2 mt-0.5 space-y-1.5">
-                {/* Row 1: Primary actions + QR */}
-                <div className="flex items-center gap-1.5">
+              <div className="border-t pt-2 mt-0.5">
+                <div className="flex flex-wrap items-center gap-2">
                   {(() => {
                     const shareData = generateHostelShareText({
                       id: hostel.id,
@@ -196,86 +195,66 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
                       <Bed className="h-3 w-3 mr-1" />Beds
                     </Button>
                   )}
-                  {onDownloadQr && (
+                  {isAdmin && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onManagePackages(hostel)}>
+                          <Package className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Packages</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {isAdmin && onToggleActive && (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           size="icon"
                           variant="outline"
-                          className="h-7 w-7 ml-auto"
-                          onClick={() => onDownloadQr(hostel.id, hostel.name)}
+                          className={`h-7 w-7 ${hostel.is_active ? "text-red-600 border-red-200 hover:bg-red-50" : "text-emerald-600 border-emerald-200 hover:bg-emerald-50"}`}
+                          onClick={() => onToggleActive(hostel.id, !hostel.is_active)}
                         >
-                          <QrCode className="h-3.5 w-3.5 text-primary" />
+                          {hostel.is_active ? <FileMinus className="h-3.5 w-3.5" /> : <FilePlus className="h-3.5 w-3.5" />}
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Download QR Code</TooltipContent>
+                      <TooltipContent>{hostel.is_active ? 'Deactivate' : 'Activate'}</TooltipContent>
                     </Tooltip>
                   )}
-                </div>
-                {/* Row 2: Toggles + WhatsApp */}
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    {isAdmin && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onManagePackages(hostel)}>
-                            <Package className="h-3.5 w-3.5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Packages</TooltipContent>
-                      </Tooltip>
-                    )}
-                    {isAdmin && onToggleActive && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className={`h-7 w-7 ${hostel.is_active ? "text-red-600 border-red-200 hover:bg-red-50" : "text-emerald-600 border-emerald-200 hover:bg-emerald-50"}`}
-                            onClick={() => onToggleActive(hostel.id, !hostel.is_active)}
-                          >
-                            {hostel.is_active ? <FileMinus className="h-3.5 w-3.5" /> : <FilePlus className="h-3.5 w-3.5" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{hostel.is_active ? 'Deactivate' : 'Activate'}</TooltipContent>
-                      </Tooltip>
-                    )}
-                    {onToggleBooking && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            disabled={!hostel.is_active}
-                            className={`h-7 w-7 ${!hostel.is_booking_active ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
-                            onClick={() => onToggleBooking(hostel.id, !hostel.is_booking_active)}
-                          >
-                            {!hostel.is_booking_active ? <Globe className="h-3.5 w-3.5" /> : <GlobeLock className="h-3.5 w-3.5" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{!hostel.is_booking_active ? 'Turn Online On' : 'Turn Online Off'}</TooltipContent>
-                      </Tooltip>
-                    )}
-                    {onTogglePartnerVisible && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            disabled={!hostel.is_active}
-                            className={`h-7 w-7 ${hostel.is_partner_visible === false ? "text-blue-600 border-blue-200 hover:bg-blue-50" : "text-muted-foreground border-border hover:bg-muted"}`}
-                            onClick={() => onTogglePartnerVisible(hostel.id, !(hostel.is_partner_visible !== false))}
-                          >
-                            {hostel.is_partner_visible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{hostel.is_partner_visible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
+                  {onToggleBooking && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          disabled={!hostel.is_active}
+                          className={`h-7 w-7 ${!hostel.is_booking_active ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
+                          onClick={() => onToggleBooking(hostel.id, !hostel.is_booking_active)}
+                        >
+                          {!hostel.is_booking_active ? <Globe className="h-3.5 w-3.5" /> : <GlobeLock className="h-3.5 w-3.5" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{!hostel.is_booking_active ? 'Turn Online On' : 'Turn Online Off'}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {onTogglePartnerVisible && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          disabled={!hostel.is_active}
+                          className={`h-7 w-7 ${hostel.is_partner_visible === false ? "text-blue-600 border-blue-200 hover:bg-blue-50" : "text-muted-foreground border-border hover:bg-muted"}`}
+                          onClick={() => onTogglePartnerVisible(hostel.id, !(hostel.is_partner_visible !== false))}
+                        >
+                          {hostel.is_partner_visible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{hostel.is_partner_visible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
+                    </Tooltip>
+                  )}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="relative inline-block ml-auto">
+                      <div className="relative inline-block">
                         <Button
                           size="icon"
                           variant="outline"
@@ -293,6 +272,21 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
                     </TooltipTrigger>
                     <TooltipContent>WhatsApp Settings</TooltipContent>
                   </Tooltip>
+                  {onDownloadQr && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-7 w-7 ml-auto"
+                          onClick={() => onDownloadQr(hostel.id, hostel.name)}
+                        >
+                          <QrCode className="h-3.5 w-3.5 text-primary" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Download QR Code</TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
               </div>
             </TooltipProvider>
