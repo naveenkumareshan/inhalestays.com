@@ -230,6 +230,7 @@ function App() {
               <Route path="mess-bookings" element={<MessBookings />} />
               <Route path="mess-receipts" element={<MessReceipts />} />
               <Route path="mess-attendance" element={<MessAttendance />} />
+              <Route path="mess-due-management" element={<MessDueManagement />} />
               <Route path="reconciliation" element={<Reconciliation />} />
               <Route path="expiring-bookings" element={<ExpiringBookingsPage />} />
               <Route path="hostel-expiring-bookings" element={<HostelExpiringBookingsPage />} />
