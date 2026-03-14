@@ -114,7 +114,6 @@ export default function MessBookings() {
   const [advanceAmount, setAdvanceAmount] = useState(0);
   const [paymentProofUrl, setPaymentProofUrl] = useState('');
   const [collectedByName, setCollectedByName] = useState('');
-  const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [partnerId, setPartnerId] = useState('');
 
