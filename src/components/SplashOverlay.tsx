@@ -40,8 +40,8 @@ const SplashOverlay = () => {
       } catch { /* Use defaults/cached */ }
     })();
 
-    const timer = setTimeout(() => setFadeOut(true), 800);
-    const removeTimer = setTimeout(() => setVisible(false), 1200);
+    const timer = setTimeout(() => setFadeOut(true), 1500);
+    const removeTimer = setTimeout(() => setVisible(false), 2100);
     return () => { clearTimeout(timer); clearTimeout(removeTimer); };
   }, []);
 

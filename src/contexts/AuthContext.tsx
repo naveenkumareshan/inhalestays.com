@@ -123,20 +123,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let isMounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!isMounted) return;
-      if (session?.user) {
-        const appUser = await buildUser(session.user);
-        if (isMounted) {
-          setUser(appUser);
+      // setTimeout breaks out of Supabase's internal auth lock to avoid deadlock when querying DB
+      setTimeout(async () => {
+        if (!isMounted) return;
+        if (session?.user) {
+          const appUser = await buildUser(session.user);
+          if (isMounted) {
+            setUser(appUser);
+            setIsLoading(false);
+            setAuthChecked(true);
+          }
+        } else {
+          setUser(null);
           setIsLoading(false);
           setAuthChecked(true);
         }
-      } else {
-        setUser(null);
-        setIsLoading(false);
-        setAuthChecked(true);
-      }
+      }, 0);
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
