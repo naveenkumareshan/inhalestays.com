@@ -48,7 +48,8 @@ export const cabinsService = {
       const { data, error, count } = await supabase
         .from('cabins')
         .select('*', { count: 'exact' })
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('is_student_visible', true);
       return {
         success: !error,
         data: data || [],
