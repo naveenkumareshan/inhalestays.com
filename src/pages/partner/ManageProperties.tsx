@@ -82,6 +82,36 @@ const ManageProperties: React.FC = () => {
 
   const handleTriggerConsumed = () => setTriggerNew(false);
 
+  // Fetch properties for QR dialog
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      const props: { id: string; name: string; type: string }[] = [];
+      const { data: cabins } = await supabase.from('cabins').select('id, name').eq('created_by', user.id).eq('is_active', true);
+      (cabins || []).forEach((c: any) => props.push({ id: c.id, name: c.name, type: 'reading_room' }));
+      const { data: hostels } = await supabase.from('hostels').select('id, name').eq('created_by', user.id).eq('is_active', true);
+      (hostels || []).forEach((h: any) => props.push({ id: h.id, name: h.name, type: 'hostel' }));
+      setQrProperties(props);
+    })();
+  }, [user?.id]);
+
+  const handleOpenQr = async (propertyId: string, propertyType: string, propertyName: string) => {
+    setQrPropertyId(propertyId);
+    setQrPropertyType(propertyType);
+    setQrPropertyName(propertyName);
+    const qrData = JSON.stringify({ propertyId, type: propertyType });
+    const url = await QRCode.toDataURL(qrData, { width: 400, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
+    setQrDataUrl(url);
+    setShowQrDialog(true);
+  };
+
+  const handleDownloadQr = () => {
+    const a = document.createElement('a');
+    a.href = qrDataUrl;
+    a.download = `qr-${qrPropertyName.replace(/\s+/g, '-').toLowerCase()}.png`;
+    a.click();
+  };
+
   const LoadingFallback = () => (
     <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
   );
