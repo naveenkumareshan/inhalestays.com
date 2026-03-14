@@ -259,6 +259,9 @@ Deno.serve(async (req) => {
 
           // Create monthly cycle dues
           await createMonthlyCycleDues(bookingId, booking);
+
+          // Auto-create mess subscription if food included
+          await createMessSubscriptionForHostelBooking(bookingId, booking);
         }
       }
 
