@@ -302,6 +302,7 @@ export default function MessBookings() {
     setSelectedUserId(''); setSelectedStudentName('');
     setShowNewStudent(false); setNewName(''); setNewEmail(''); setNewPhone('');
     setSelectedMess(null); setPackages([]); setSelectedPackage(null);
+    setDurationType('monthly'); setDurationCount(1);
     setStartDate(new Date()); setEndDate('');
     setPaymentMethod(''); setTransactionId('');
     setPricePaid(0); setDiscountAmount(0); setAdvanceAmount(0);
