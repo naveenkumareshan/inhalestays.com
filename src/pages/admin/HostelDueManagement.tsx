@@ -331,7 +331,8 @@ const HostelDueManagement: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="text-[10px]">
-                    <TableHead className="text-[10px]">Booking Date</TableHead>
+                     <TableHead className="text-[10px]">S.No.</TableHead>
+                     <TableHead className="text-[10px]">Booking Date</TableHead>
                     <TableHead className="text-[10px]">Student</TableHead>
                     <TableHead className="text-[10px]">Hostel / Bed</TableHead>
                      <TableHead className="text-[10px]">Booking</TableHead>
