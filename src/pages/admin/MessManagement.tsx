@@ -25,6 +25,7 @@ const MEAL_LABELS: Record<string, string> = { breakfast: 'Breakfast', lunch: 'Lu
 interface MessManagementProps {
   autoCreateNew?: boolean;
   onTriggerConsumed?: () => void;
+  onOpenQr?: (propertyId: string, propertyName: string) => void;
 }
 
 export default function MessManagement({ autoCreateNew, onTriggerConsumed }: MessManagementProps = {}) {
