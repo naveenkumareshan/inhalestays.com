@@ -46,9 +46,10 @@ interface Vendor {
 interface RoomManagementProps {
   autoCreateNew?: boolean;
   onTriggerConsumed?: () => void;
+  onOpenQr?: (propertyId: string, propertyName: string) => void;
 }
 
-const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTriggerConsumed }) => {
+const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTriggerConsumed, onOpenQr }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -461,6 +462,7 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
                       onEdit={() => handleEditCabin(cabin)}
                       onDelete={() => handleDeleteCabin(cabin._id)}
                       onManageSeats={() => handleManageSeats(cabin._id)}
+                      onDownloadQr={onOpenQr}
                     />
                   ))}
                 </div>

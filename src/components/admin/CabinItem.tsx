@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Edit, FileMinus, FilePlus, Users, MessageCircle, CreditCard, Eye, EyeOff, Globe, GlobeLock } from 'lucide-react';
+import { Edit, FileMinus, FilePlus, Users, MessageCircle, CreditCard, Eye, EyeOff, Globe, GlobeLock, QrCode } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { WhatsAppPropertyDialog } from './WhatsAppPropertyDialog';
 import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
@@ -37,9 +37,10 @@ interface CabinItemProps {
   onToggleBooking?: (cabinId: string, isActive: boolean) => void;
   onTogglePartnerVisible?: (cabinId: string, isVisible: boolean) => void;
   partnerId?: string;
+  onDownloadQr?: (cabinId: string, cabinName: string) => void;
 }
 
-export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBooking, onTogglePartnerVisible, onManageSeats, partnerId }: CabinItemProps) {
+export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBooking, onTogglePartnerVisible, onManageSeats, partnerId, onDownloadQr }: CabinItemProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [waDialogOpen, setWaDialogOpen] = useState(false);
@@ -204,6 +205,21 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>{cabin.isPartnerVisible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
+                  </Tooltip>
+                )}
+                {onDownloadQr && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-7 w-7"
+                        onClick={() => onDownloadQr(cabin._id, cabin.name)}
+                      >
+                        <QrCode className="h-3.5 w-3.5 text-primary" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Download QR Code</TooltipContent>
                   </Tooltip>
                 )}
                 <Tooltip>

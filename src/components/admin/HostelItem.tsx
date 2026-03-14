@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Edit, FileMinus, FilePlus, Bed, Package, MessageCircle, CreditCard, Eye, EyeOff, Globe, GlobeLock } from 'lucide-react';
+import { Edit, FileMinus, FilePlus, Bed, Package, MessageCircle, CreditCard, Eye, EyeOff, Globe, GlobeLock, QrCode } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShareButton } from '@/components/ShareButton';
 import { generateHostelShareText } from '@/utils/shareUtils';
@@ -24,9 +24,10 @@ interface HostelItemProps {
   onToggleBooking?: (hostelId: string, isBookingActive: boolean) => void;
   onTogglePartnerVisible?: (hostelId: string, isVisible: boolean) => void;
   partnerId?: string;
+  onDownloadQr?: (hostelId: string, hostelName: string) => void;
 }
 
-export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, partnerId }: HostelItemProps) {
+export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, partnerId, onDownloadQr }: HostelItemProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
@@ -228,6 +229,21 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>{hostel.is_partner_visible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
+                  </Tooltip>
+                )}
+                {onDownloadQr && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-7 w-7"
+                        onClick={() => onDownloadQr(hostel.id, hostel.name)}
+                      >
+                        <QrCode className="h-3.5 w-3.5 text-primary" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Download QR Code</TooltipContent>
                   </Tooltip>
                 )}
                 <Tooltip>
