@@ -521,7 +521,7 @@ const HostelBedMap: React.FC = () => {
     }, 500);
   };
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+  const handleTouchMove = (e: React.TouchEvent) => {
     if (!touchStartPosRef.current) return;
     const touch = e.touches[0];
     const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
@@ -530,14 +530,17 @@ const HostelBedMap: React.FC = () => {
       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
-  }, []);
+  };
 
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
-  }, []);
+    if (isLongPressRef.current) {
+      e.preventDefault(); // Suppress synthetic click after long-press
+    }
+  };
 
   const handleBedCardClick = useCallback((bed: HostelBed) => {
     if (isLongPressRef.current) {
