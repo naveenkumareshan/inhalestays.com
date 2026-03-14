@@ -387,6 +387,10 @@ function App() {
                 element={<ProtectedRoute><StudentSuspense><SupportPage /></StudentSuspense></ProtectedRoute>}
               />
               <Route
+                path="/student/scan-attendance"
+                element={<ProtectedRoute><StudentSuspense><ScanAttendance /></StudentSuspense></ProtectedRoute>}
+              />
+              <Route
                 path="/student/mess"
                 element={<ProtectedRoute><StudentSuspense><MessDashboard /></StudentSuspense></ProtectedRoute>}
               />
