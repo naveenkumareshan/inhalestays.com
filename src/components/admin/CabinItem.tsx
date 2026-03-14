@@ -117,6 +117,11 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-200" />
             </div>
+            {viewCount > 0 && (
+              <span className="absolute top-2 left-12 bg-background/90 text-foreground text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 border border-border/60">
+                <EyeView className="h-2.5 w-2.5" />{viewCount}
+              </span>
+            )}
             <span className={`absolute top-2 right-2 capitalize text-xs font-medium px-2 py-0.5 rounded-full ${getCategoryBadgeStyle(cabin.category)}`}>
               {cabin.category}
             </span>
