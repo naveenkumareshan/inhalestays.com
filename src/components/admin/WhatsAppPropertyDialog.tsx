@@ -53,6 +53,12 @@ export const WhatsAppPropertyDialog: React.FC<WhatsAppPropertyDialogProps> = ({
           setNumber((data as any).whatsapp_number || '');
           setEnabled((data as any).whatsapp_chat_enabled || false);
         }
+        // Fetch click count
+        const { count } = await supabase
+          .from('whatsapp_clicks' as any)
+          .select('*', { count: 'exact', head: true })
+          .eq('property_id', propertyId);
+        setClickCount(count || 0);
       } catch {
         // fallback to props
         setNumber(initialNumber);
