@@ -17,8 +17,10 @@ import {
   getMyMessPartner, getMessSubscriptions, getMessAttendance, markAttendance,
 } from '@/api/messService';
 import { generateBrandedQrPng } from '@/utils/brandedQrGenerator';
-import { format, isSameDay, isFuture } from 'date-fns';
+import { format, isSameDay, isFuture, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+
+const todayStr = format(new Date(), 'yyyy-MM-dd');
 
 const MEALS = ['breakfast', 'lunch', 'dinner'] as const;
 const MEAL_LABELS: Record<string, string> = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
