@@ -83,7 +83,8 @@ const MessDueManagement: React.FC = () => {
       // Fetch dues
       let duesQ = supabase.from('mess_dues' as any).select('*').in('mess_id', messIds).order('created_at', { ascending: false });
       if (filterMess !== 'all') duesQ = duesQ.eq('mess_id', filterMess);
-      if (filterStatus !== 'all') duesQ = duesQ.eq('status', filterStatus);
+      if (filterStatus === 'pending') duesQ = duesQ.neq('status', 'paid');
+      else if (filterStatus === 'paid') duesQ = duesQ.eq('status', 'paid');
       const { data: duesData } = await duesQ;
       let rows = (duesData || []) as any[];
 
