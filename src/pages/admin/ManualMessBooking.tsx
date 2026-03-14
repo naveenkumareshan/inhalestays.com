@@ -153,7 +153,7 @@ export default function ManualMessBooking() {
     if (!selectedUserId || !selectedMess || !selectedPackage) return;
     setSubmitting(true);
     try {
-      const sub = await createMessSubscription({
+      const { data: sub, error: subErr } = await supabase.from('mess_subscriptions' as any).insert({
         user_id: selectedUserId,
         mess_id: selectedMess.id,
         package_id: selectedPackage.id,
@@ -170,7 +170,8 @@ export default function ManualMessBooking() {
         created_by: user?.id,
         collected_by_name: collectedByName || user?.name || '',
         payment_proof_url: paymentProofUrl || null,
-      });
+      }).select().single();
+      if (subErr) throw subErr;
 
       // Create receipt
       await createMessReceipt({
