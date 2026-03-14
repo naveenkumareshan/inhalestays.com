@@ -16,6 +16,7 @@ interface MessItemProps {
   onToggleActive?: (messId: string, isActive: boolean) => void;
   onToggleBooking?: (messId: string, isBookingActive: boolean) => void;
   onTogglePartnerVisible?: (messId: string, isVisible: boolean) => void;
+  onToggleStudentVisible?: (messId: string, isVisible: boolean) => void;
 }
 
 const FOOD_BADGES: Record<string, { label: string; cls: string }> = {
@@ -24,7 +25,7 @@ const FOOD_BADGES: Record<string, { label: string; cls: string }> = {
   both: { label: '🟡 Both', cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
 };
 
-export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible }: MessItemProps) {
+export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, onToggleStudentVisible }: MessItemProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const badge = FOOD_BADGES[mess.food_type] || FOOD_BADGES.both;
@@ -89,6 +90,9 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
             </span>
             <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${mess.is_partner_visible === false ? "bg-muted text-muted-foreground border border-border" : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
               {mess.is_partner_visible === false ? "● Emp Hidden" : "● Emp Visible"}
+            </span>
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${mess.is_student_visible === false ? "bg-orange-50 text-orange-700 border border-orange-200" : "bg-teal-50 text-teal-700 border border-teal-200"}`}>
+              {mess.is_student_visible === false ? "● Student Hidden" : "● Student Visible"}
             </span>
           </div>
 
@@ -168,6 +172,22 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>{mess.is_partner_visible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
+                  </Tooltip>
+                )}
+                {onToggleStudentVisible && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        disabled={!mess.is_active}
+                        className={`h-7 w-7 ${mess.is_student_visible === false ? "text-teal-600 border-teal-200 hover:bg-teal-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
+                        onClick={() => onToggleStudentVisible(mess.id, !(mess.is_student_visible !== false))}
+                      >
+                        {mess.is_student_visible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{mess.is_student_visible === false ? 'Show to Students' : 'Hide from Students'}</TooltipContent>
                   </Tooltip>
                 )}
               </div>

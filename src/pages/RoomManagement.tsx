@@ -372,6 +372,29 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
     }
   };
 
+  const onToggleStudentVisible = async (roomId: string, isVisible: boolean) => {
+    try {
+      const roomToUpdate = cabins.find(room => room._id === roomId);
+      if (!roomToUpdate || !roomToUpdate._id) return;
+      
+      const response = await adminRoomsService.toggleStudentVisible(roomToUpdate._id, isVisible);
+      if (!response.success) throw new Error(response.message);
+      
+      toast({
+        title: isVisible ? "Visible to Students" : "Hidden from Students",
+        description: `${roomToUpdate.name} is now ${isVisible ? 'visible' : 'hidden'} from students`
+      });
+      fetchCabins();
+    } catch (error) {
+      console.error('Error toggling student visibility:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update student visibility",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Filter cabins based on search query (client-side for current page)
   const filteredCabins = cabins.filter(cabin => 
     cabin.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -461,6 +484,7 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
                       onToggleActive={handleToggleActive}
                       onToggleBooking={onToggleBooking}
                       onTogglePartnerVisible={onTogglePartnerVisible}
+                      onToggleStudentVisible={onToggleStudentVisible}
                       onEdit={() => handleEditCabin(cabin)}
                       onDelete={() => handleDeleteCabin(cabin._id)}
                       onManageSeats={() => handleManageSeats(cabin._id)}

@@ -24,11 +24,12 @@ interface HostelItemProps {
   onToggleActive?: (hostelId: string, isActive: boolean) => void;
   onToggleBooking?: (hostelId: string, isBookingActive: boolean) => void;
   onTogglePartnerVisible?: (hostelId: string, isVisible: boolean) => void;
+  onToggleStudentVisible?: (hostelId: string, isVisible: boolean) => void;
   partnerId?: string;
   onDownloadQr?: (hostelId: string, hostelName: string) => void;
 }
 
-export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, partnerId, onDownloadQr }: HostelItemProps) {
+export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, onToggleStudentVisible, partnerId, onDownloadQr }: HostelItemProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
@@ -140,6 +141,9 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${hostel.is_partner_visible === false ? "bg-muted text-muted-foreground border border-border" : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
                 {hostel.is_partner_visible === false ? "● Emp Hidden" : "● Emp Visible"}
               </span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${hostel.is_student_visible === false ? "bg-orange-50 text-orange-700 border border-orange-200" : "bg-teal-50 text-teal-700 border border-teal-200"}`}>
+                {hostel.is_student_visible === false ? "● Student Hidden" : "● Student Visible"}
+              </span>
             </div>
 
             <h3 className="font-semibold text-sm leading-snug text-foreground">{hostel.name}</h3>
@@ -250,6 +254,22 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>{hostel.is_partner_visible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {isAdmin && onToggleStudentVisible && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          disabled={!hostel.is_active}
+                          className={`h-7 w-7 ${hostel.is_student_visible === false ? "text-teal-600 border-teal-200 hover:bg-teal-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
+                          onClick={() => onToggleStudentVisible(hostel.id, !(hostel.is_student_visible !== false))}
+                        >
+                          {hostel.is_student_visible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{hostel.is_student_visible === false ? 'Show to Students' : 'Hide from Students'}</TooltipContent>
                     </Tooltip>
                   )}
                   <Tooltip>

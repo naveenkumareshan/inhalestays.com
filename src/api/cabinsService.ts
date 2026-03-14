@@ -14,7 +14,7 @@ export interface CabinFilters {
 export const cabinsService = {
   getAllCabins: async (filters?: CabinFilters) => {
     try {
-      let query = supabase.from('cabins').select('*', { count: 'exact' }).eq('is_active', true);
+      let query = supabase.from('cabins').select('*', { count: 'exact' }).eq('is_active', true).eq('is_student_visible', true);
 
       if (filters?.category) query = query.eq('category', filters.category);
       if (filters?.search) query = query.ilike('name', `%${filters.search}%`);
@@ -48,7 +48,8 @@ export const cabinsService = {
       const { data, error, count } = await supabase
         .from('cabins')
         .select('*', { count: 'exact' })
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('is_student_visible', true);
       return {
         success: !error,
         data: data || [],
@@ -67,6 +68,7 @@ export const cabinsService = {
         .from('cabins')
         .select('*')
         .eq('is_active', true)
+        .eq('is_student_visible', true)
         .order('created_at', { ascending: false })
         .limit(6);
       return { success: !error, data: data || [] };
@@ -96,6 +98,7 @@ export const cabinsService = {
         .from('cabins')
         .select('*')
         .eq('is_active', true)
+        .eq('is_student_visible', true)
         .eq('category', category);
       return { success: !error, data: data || [] };
     } catch (error) {

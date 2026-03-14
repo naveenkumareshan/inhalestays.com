@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { hostelService } from '@/api/hostelService';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
@@ -53,7 +54,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
       setError(null);
       let data;
       if (user?.role === 'admin') {
-        data = await hostelService.getAllHostels();
+        data = await hostelService.getAllHostels({ admin: true });
       } else {
         data = await hostelService.getUserHostels();
       }
@@ -109,6 +110,16 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
       fetchHostels();
     } catch (error) {
       toast({ title: "Error", description: "Failed to update visibility", variant: "destructive" });
+    }
+  };
+
+  const handleToggleStudentVisible = async (hostelId: string, isVisible: boolean) => {
+    try {
+      await supabase.from('hostels').update({ is_student_visible: isVisible } as any).eq('id', hostelId);
+      toast({ title: "Success", description: `Hostel ${isVisible ? 'shown to' : 'hidden from'} students` });
+      fetchHostels();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update student visibility", variant: "destructive" });
     }
   };
 
@@ -216,6 +227,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
                   onToggleActive={handleToggleActive}
                   onToggleBooking={handleToggleBooking}
                   onTogglePartnerVisible={handleTogglePartnerVisible}
+                  onToggleStudentVisible={handleToggleStudentVisible}
                   onDownloadQr={onOpenQr}
                 />
               ))}

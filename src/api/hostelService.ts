@@ -49,6 +49,7 @@ export interface HostelFilters {
   gender?: string;
   is_approved?: boolean;
   search?: string;
+  admin?: boolean;
 }
 
 const UUID_FIELDS = ['state_id', 'city_id', 'area_id', 'created_by', 'vendor_id'];
@@ -69,6 +70,10 @@ export const hostelService = {
       .from('hostels')
       .select('*, states(name), cities(name), areas(name), hostel_rooms(hostel_sharing_options(price_monthly))')
       .order('created_at', { ascending: false });
+
+    if (!filters?.admin) {
+      query = query.eq('is_active', true).eq('is_student_visible', true);
+    }
 
     if (filters?.city_id) query = query.eq('city_id', filters.city_id);
     if (filters?.state_id) query = query.eq('state_id', filters.state_id);

@@ -101,6 +101,14 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed }: Mes
     } catch { toast({ title: "Error", description: "Failed to update visibility", variant: "destructive" }); }
   };
 
+  const handleToggleStudentVisible = async (messId: string, isVisible: boolean) => {
+    try {
+      await supabase.from('mess_partners' as any).update({ is_student_visible: isVisible }).eq('id', messId);
+      toast({ title: "Success", description: `Mess ${isVisible ? 'shown to' : 'hidden from'} students` });
+      fetchMesses();
+    } catch { toast({ title: "Error", description: "Failed to update student visibility", variant: "destructive" }); }
+  };
+
   const handleDeleteMess = async (messId: string) => {
     try {
       await supabase.from('mess_partners' as any).delete().eq('id', messId);
@@ -217,6 +225,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed }: Mes
                   onToggleActive={handleToggleActive}
                   onToggleBooking={handleToggleBooking}
                   onTogglePartnerVisible={handleTogglePartnerVisible}
+                  onToggleStudentVisible={handleToggleStudentVisible}
                 />
               ))}
             </div>

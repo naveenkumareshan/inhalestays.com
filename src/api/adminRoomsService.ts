@@ -57,4 +57,21 @@ export const adminRoomsService = {
       return { success: false, message: error instanceof Error ? error.message : 'Failed to update visibility' };
     }
   },
+
+  toggleStudentVisible: async (id: string, isVisible: boolean) => {
+    try {
+      const { data, error } = await supabase
+        .from('cabins')
+        .update({ is_student_visible: isVisible } as any)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error toggling student visibility:', error);
+      return { success: false, message: error instanceof Error ? error.message : 'Failed to update student visibility' };
+    }
+  },
 };

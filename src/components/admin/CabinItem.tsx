@@ -37,11 +37,12 @@ interface CabinItemProps {
   onToggleActive?: (cabinId: string, isActive: boolean) => void;
   onToggleBooking?: (cabinId: string, isActive: boolean) => void;
   onTogglePartnerVisible?: (cabinId: string, isVisible: boolean) => void;
+  onToggleStudentVisible?: (cabinId: string, isVisible: boolean) => void;
   partnerId?: string;
   onDownloadQr?: (cabinId: string, cabinName: string) => void;
 }
 
-export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBooking, onTogglePartnerVisible, onManageSeats, partnerId, onDownloadQr }: CabinItemProps) {
+export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBooking, onTogglePartnerVisible, onToggleStudentVisible, onManageSeats, partnerId, onDownloadQr }: CabinItemProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [waDialogOpen, setWaDialogOpen] = useState(false);
@@ -153,6 +154,9 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${cabin.isPartnerVisible === false ? "bg-muted text-muted-foreground border border-border" : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
                 {cabin.isPartnerVisible === false ? "● Emp Hidden" : "● Emp Visible"}
               </span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${(cabin as any).isStudentVisible === false ? "bg-orange-50 text-orange-700 border border-orange-200" : "bg-teal-50 text-teal-700 border border-teal-200"}`}>
+                {(cabin as any).isStudentVisible === false ? "● Student Hidden" : "● Student Visible"}
+              </span>
             </div>
 
             <h3 className="font-semibold text-sm leading-snug text-foreground">{cabin.name}</h3>
@@ -226,6 +230,22 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>{cabin.isPartnerVisible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {isAdmin && onToggleStudentVisible && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          disabled={!cabin.isActive}
+                          className={`h-7 w-7 ${(cabin as any).isStudentVisible === false ? "text-teal-600 border-teal-200 hover:bg-teal-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
+                          onClick={() => onToggleStudentVisible(cabin._id, !((cabin as any).isStudentVisible !== false))}
+                        >
+                          {(cabin as any).isStudentVisible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{(cabin as any).isStudentVisible === false ? 'Show to Students' : 'Hide from Students'}</TooltipContent>
                     </Tooltip>
                   )}
                   <Tooltip>
