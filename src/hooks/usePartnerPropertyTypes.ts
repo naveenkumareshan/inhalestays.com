@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -12,44 +12,36 @@ interface PartnerPropertyTypes {
 
 export function usePartnerPropertyTypes(): PartnerPropertyTypes {
   const { user } = useAuth();
-  const [state, setState] = useState<PartnerPropertyTypes>({
-    hasReadingRooms: false,
-    hasHostels: false,
-    hasLaundry: false,
-    hasMess: false,
-    loading: true,
-  });
-
   const isPartner = user?.role === 'vendor' || user?.role === 'vendor_employee';
+  const userId = isPartner
+    ? (user?.role === 'vendor_employee' && user?.vendorId ? user.vendorId : user?.id)
+    : undefined;
 
-  useEffect(() => {
-    if (!isPartner || !user?.id) {
-      setState(prev => ({ ...prev, loading: false }));
-      return;
-    }
-
-    const fetchPropertyTypes = async () => {
-      // For vendor_employee, use the partner's user ID (vendorId) since properties are created by the partner
-      const userId = user.role === 'vendor_employee' && user.vendorId ? user.vendorId : user.id;
-
+  const { data, isLoading } = useQuery({
+    queryKey: ['partner-property-types', userId],
+    queryFn: async () => {
       const [cabinsRes, hostelsRes, laundryRes, messRes] = await Promise.all([
-        supabase.from('cabins').select('id').eq('created_by', userId).limit(1),
-        supabase.from('hostels').select('id').eq('created_by', userId).limit(1),
-        supabase.from('laundry_partners').select('id').eq('user_id', userId).limit(1),
-        supabase.from('mess_partners' as any).select('id').eq('user_id', userId).limit(1),
+        supabase.from('cabins').select('id').eq('created_by', userId!).limit(1),
+        supabase.from('hostels').select('id').eq('created_by', userId!).limit(1),
+        supabase.from('laundry_partners').select('id').eq('user_id', userId!).limit(1),
+        supabase.from('mess_partners' as any).select('id').eq('user_id', userId!).limit(1),
       ]);
-
-      setState({
+      return {
         hasReadingRooms: (cabinsRes.data?.length ?? 0) > 0,
         hasHostels: (hostelsRes.data?.length ?? 0) > 0,
         hasLaundry: (laundryRes.data?.length ?? 0) > 0,
         hasMess: (messRes.data?.length ?? 0) > 0,
-        loading: false,
-      });
-    };
+      };
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
 
-    fetchPropertyTypes();
-  }, [user?.id, user?.vendorId, isPartner]);
-
-  return state;
+  return {
+    hasReadingRooms: data?.hasReadingRooms ?? false,
+    hasHostels: data?.hasHostels ?? false,
+    hasLaundry: data?.hasLaundry ?? false,
+    hasMess: data?.hasMess ?? false,
+    loading: isLoading,
+  };
 }

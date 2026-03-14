@@ -1,16 +1,24 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+
+const CACHE_KEY = 'splash_branding';
+
+const getCached = () => {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+};
 
 const SplashOverlay = () => {
   const [visible, setVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
-  const [logo, setLogo] = useState('/splash-logo.png');
-  const [name, setName] = useState('InhaleStays');
-  const [tagline, setTagline] = useState('Reading Room Booking');
+  const cached = getCached();
+  const [logo, setLogo] = useState(cached?.logo || '/splash-logo.png');
+  const [name, setName] = useState(cached?.name || 'InhaleStays');
+  const [tagline, setTagline] = useState(cached?.tagline || 'Reading Room Booking');
 
   useEffect(() => {
-    // Fetch branding from DB
     (async () => {
       try {
         const { data } = await supabase
@@ -18,22 +26,22 @@ const SplashOverlay = () => {
           .select('key, value')
           .in('key', ['site_name', 'site_logo', 'site_tagline']);
         if (data) {
+          const branding: any = {};
           for (const row of data) {
             const v = row.value as any;
             switch (row.key) {
-              case 'site_name': if (v?.value) setName(v.value); break;
-              case 'site_logo': if (v?.url) setLogo(v.url); break;
-              case 'site_tagline': if (v?.value) setTagline(v.value); break;
+              case 'site_name': if (v?.value) { setName(v.value); branding.name = v.value; } break;
+              case 'site_logo': if (v?.url) { setLogo(v.url); branding.logo = v.url; } break;
+              case 'site_tagline': if (v?.value) { setTagline(v.value); branding.tagline = v.value; } break;
             }
           }
+          localStorage.setItem(CACHE_KEY, JSON.stringify(branding));
         }
-      } catch {
-        // Use defaults on error
-      }
+      } catch { /* Use defaults/cached */ }
     })();
 
-    const timer = setTimeout(() => setFadeOut(true), 1500);
-    const removeTimer = setTimeout(() => setVisible(false), 2100);
+    const timer = setTimeout(() => setFadeOut(true), 800);
+    const removeTimer = setTimeout(() => setVisible(false), 1200);
     return () => { clearTimeout(timer); clearTimeout(removeTimer); };
   }, []);
 
@@ -44,7 +52,7 @@ const SplashOverlay = () => {
       className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
       style={{
         backgroundColor: '#0f172a',
-        transition: 'opacity 0.6s ease-out',
+        transition: 'opacity 0.4s ease-out',
         opacity: fadeOut ? 0 : 1,
         pointerEvents: fadeOut ? 'none' : 'auto',
       }}
