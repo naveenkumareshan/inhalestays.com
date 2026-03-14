@@ -254,7 +254,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
                 <div key={p.id} className="flex items-center justify-between p-3 border rounded">
                   <div>
                     <p className="font-medium">{p.name}</p>
-                    <p className="text-xs text-muted-foreground">{(p.meal_types as string[])?.join(', ')} · {p.duration_count} {p.duration_type}</p>
+                    <p className="text-xs text-muted-foreground">{(p.meal_types as string[])?.join(', ')}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-bold">{formatCurrency(p.price)}</span>
