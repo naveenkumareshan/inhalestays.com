@@ -140,6 +140,42 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Helper: auto-create mess subscription for hostel bookings with food
+    async function createMessSubscriptionForHostelBooking(bookingId: string, booking: any) {
+      if (!booking.food_opted) return;
+
+      // Find default linked mess for this hostel
+      const { data: link } = await adminClient
+        .from('hostel_mess_links')
+        .select('mess_id')
+        .eq('hostel_id', booking.hostel_id)
+        .eq('is_default', true)
+        .maybeSingle();
+
+      if (!link) return;
+
+      // Check if subscription already exists for this booking
+      const { data: existing } = await adminClient
+        .from('mess_subscriptions')
+        .select('id')
+        .eq('hostel_booking_id', bookingId)
+        .maybeSingle();
+
+      if (existing) return;
+
+      await adminClient.from('mess_subscriptions').insert({
+        user_id: booking.user_id,
+        mess_id: link.mess_id,
+        start_date: booking.start_date,
+        end_date: booking.end_date,
+        status: 'active',
+        payment_status: 'completed',
+        price_paid: booking.food_amount || 0,
+        source_type: 'hostel_inclusive',
+        hostel_booking_id: bookingId,
+      });
+    }
+
     // Test mode: skip signature verification, directly confirm booking
     if (testMode) {
       const testTxnId = `test_pay_${Date.now()}`;
@@ -223,6 +259,9 @@ Deno.serve(async (req) => {
 
           // Create monthly cycle dues
           await createMonthlyCycleDues(bookingId, booking);
+
+          // Auto-create mess subscription if food included
+          await createMessSubscriptionForHostelBooking(bookingId, booking);
         }
       }
 
@@ -383,6 +422,9 @@ Deno.serve(async (req) => {
 
         // Create monthly cycle dues
         await createMonthlyCycleDues(bookingId, booking);
+
+        // Auto-create mess subscription if food included
+        await createMessSubscriptionForHostelBooking(bookingId, booking);
       }
     }
 

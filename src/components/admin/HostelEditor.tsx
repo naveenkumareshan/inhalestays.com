@@ -15,6 +15,7 @@ import MapPicker from "./MapPicker";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { HostelMessLinkManager } from './HostelMessLinkManager';
 
 function SectionBadge({ number, icon: Icon }: { number: number; icon: React.ElementType }) {
   return (
@@ -714,6 +715,11 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
                         existingImages={hostel.food_menu_image ? [hostel.food_menu_image] : []}
                       />
                     </div>
+
+                    {/* Hostel-Mess Link Manager */}
+                    {hostel.id && (
+                      <HostelMessLinkManager hostelId={hostel.id} />
+                    )}
                   </div>
                 )}
               </CardContent>

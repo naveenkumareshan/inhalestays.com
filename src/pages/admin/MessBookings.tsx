@@ -149,7 +149,7 @@ export default function MessBookings() {
       setLoading(true);
       let query = supabase
         .from('mess_subscriptions' as any)
-        .select('*, profiles:user_id(name, email, phone), mess_partners:mess_id(name), mess_packages:package_id(name, meal_types, duration_type)', { count: 'exact' })
+        .select('*, profiles:user_id(name, email, phone), mess_partners:mess_id(name), mess_packages:package_id(name, meal_types, duration_type), hostel_bookings:hostel_booking_id(hostel_id, hostels:hostel_id(name))', { count: 'exact' })
         .order('created_at', { ascending: false });
 
       if (status) query = query.eq('status', status);
@@ -496,7 +496,7 @@ export default function MessBookings() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      {['S.No.', 'ID', 'Student', 'Mess', 'Package', 'Start', 'End', 'Amount', 'Status', 'Actions'].map(h => (
+                    {['S.No.', 'ID', 'Student', 'Mess', 'Package', 'Source', 'Start', 'End', 'Amount', 'Status', 'Actions'].map(h => (
                         <TableHead key={h} className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider py-2 px-2">{h}</TableHead>
                       ))}
                     </TableRow>
@@ -517,6 +517,21 @@ export default function MessBookings() {
                           <TableCell className="py-1 px-2 text-[11px]">
                             <div>{s.mess_packages?.name || '-'}</div>
                             <div className="text-[10px] text-muted-foreground">{(s.mess_packages?.meal_types as string[])?.join(', ')}</div>
+                          </TableCell>
+                          <TableCell className="py-1 px-2 text-[11px]">
+                            {s.source_type === 'hostel_inclusive' ? (
+                              <span className="inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                Hostel Package{s.hostel_bookings?.hostels?.name ? ` · ${s.hostel_bookings.hostels.name}` : ''}
+                              </span>
+                            ) : s.source_type === 'addon_purchase' ? (
+                              <span className="inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                                Addon{s.hostel_bookings?.hostels?.name ? ` · ${s.hostel_bookings.hostels.name}` : ''}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium bg-muted text-muted-foreground border border-border">
+                                Manual
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">{fmtDate(s.start_date)}</TableCell>
                           <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">{fmtDate(s.end_date)}</TableCell>

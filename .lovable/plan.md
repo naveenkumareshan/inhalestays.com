@@ -1,85 +1,71 @@
 
 
-# Hostel-Mess Linking: Plan
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Overview
-Create a linking system between hostel properties and mess properties, so when a hostel booking includes food, a `mess_subscription` is auto-created. Track subscription source (hostel_inclusive, addon_purchase, manual) and show it in the admin UI.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-## Database Migration
+## Changes
 
-### 1. `hostel_mess_links` table
-```sql
-CREATE TABLE public.hostel_mess_links (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  hostel_id uuid NOT NULL REFERENCES public.hostels(id) ON DELETE CASCADE,
-  mess_id uuid NOT NULL REFERENCES public.mess_partners(id) ON DELETE CASCADE,
-  is_default boolean NOT NULL DEFAULT false,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(hostel_id, mess_id)
-);
-```
-- RLS: Admin + partner (via `is_partner_or_employee_of`) full access
-- Trigger: When `is_default = true` is set, unset other defaults for the same hostel
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-### 2. Add `source_type` and `hostel_booking_id` to `mess_subscriptions`
-```sql
-ALTER TABLE public.mess_subscriptions
-  ADD COLUMN IF NOT EXISTS source_type text NOT NULL DEFAULT 'manual',
-  ADD COLUMN IF NOT EXISTS hostel_booking_id uuid REFERENCES public.hostel_bookings(id) ON DELETE SET NULL;
-```
-- `source_type` values: `manual`, `hostel_inclusive`, `addon_purchase`
-- `package_id` becomes nullable (hostel_inclusive subscriptions may not have a mess package)
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-### 3. Make `package_id` nullable
-```sql
-ALTER TABLE public.mess_subscriptions ALTER COLUMN package_id DROP NOT NULL;
-```
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-## Edge Function Update: `razorpay-verify-payment/index.ts`
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-After a hostel booking is confirmed with `food_opted = true`:
-1. Look up default `hostel_mess_links` for that hostel
-2. If a linked mess exists, insert a `mess_subscription`:
-   - `user_id`, `mess_id`, `start_date`, `end_date` from hostel booking
-   - `source_type = 'hostel_inclusive'`
-   - `hostel_booking_id = bookingId`
-   - `status = 'active'`, `payment_status = 'completed'`
-   - `price_paid = food_amount`
-3. This runs in both test mode and real payment mode
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-## Admin UI: Hostel-Mess Link Management
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-### `src/components/admin/HostelMessLinkManager.tsx` (new)
-- Shown inside Hostel Editor (new collapsible section under Food Policy)
-- Lists linked mess properties with "Default" toggle
-- "Link Mess" button → dropdown of available mess partners
-- Remove link button
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-### `src/components/admin/HostelEditor.tsx`
-- Import and render `HostelMessLinkManager` inside the Food section (only when editing an existing hostel, not creating)
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-## Admin UI: Show Source in Mess Bookings
+**Reviews section**: Shown below the booking flow (not in a tab)
 
-### `src/pages/admin/MessBookings.tsx`
-- Add "Source" column to the subscriptions table
-- Display:
-  - `hostel_inclusive` → Badge "Hostel Package" + hostel name (join via `hostel_booking_id → hostel_bookings → hostels.name`)
-  - `addon_purchase` → Badge "Addon" + hostel name
-  - `manual` → Badge "Manual"
-- Update `fetchSubs` query to join `hostel_bookings:hostel_booking_id(hostel_id, hostels:hostel_id(name))`
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
 
-## Attendance: No Changes Needed
-The existing `mark_qr_attendance` RPC already checks `mess_subscriptions` for active subscriptions by `user_id + mess_id + date range`. Since hostel_inclusive subscriptions are inserted into the same table with `status = 'active'`, attendance works automatically for all source types.
-
-The `MessAttendance.tsx` page also queries `mess_subscriptions` generically — no source_type filter needed.
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
 
 ## File Summary
 
 | File | Change |
 |------|--------|
-| DB Migration | Create `hostel_mess_links`, add `source_type` + `hostel_booking_id` to `mess_subscriptions`, make `package_id` nullable |
-| `supabase/functions/razorpay-verify-payment/index.ts` | Auto-create mess subscription when hostel booking with food is confirmed |
-| `src/components/admin/HostelMessLinkManager.tsx` | New component for linking hostels to mess properties |
-| `src/components/admin/HostelEditor.tsx` | Add HostelMessLinkManager section |
-| `src/pages/admin/MessBookings.tsx` | Add Source column showing subscription origin |
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

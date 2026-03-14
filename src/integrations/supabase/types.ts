@@ -1543,6 +1543,45 @@ export type Database = {
           },
         ]
       }
+      hostel_mess_links: {
+        Row: {
+          created_at: string
+          hostel_id: string
+          id: string
+          is_default: boolean
+          mess_id: string
+        }
+        Insert: {
+          created_at?: string
+          hostel_id: string
+          id?: string
+          is_default?: boolean
+          mess_id: string
+        }
+        Update: {
+          created_at?: string
+          hostel_id?: string
+          id?: string
+          is_default?: boolean
+          mess_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostel_mess_links_hostel_id_fkey"
+            columns: ["hostel_id"]
+            isOneToOne: false
+            referencedRelation: "hostels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostel_mess_links_mess_id_fkey"
+            columns: ["mess_id"]
+            isOneToOne: false
+            referencedRelation: "mess_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hostel_receipts: {
         Row: {
           amount: number
@@ -2894,10 +2933,11 @@ export type Database = {
           created_by: string | null
           discount_amount: number | null
           end_date: string
+          hostel_booking_id: string | null
           id: string
           mess_id: string
           notes: string | null
-          package_id: string
+          package_id: string | null
           pause_end: string | null
           pause_start: string | null
           payment_method: string
@@ -2905,6 +2945,7 @@ export type Database = {
           payment_status: string
           price_paid: number
           serial_number: string | null
+          source_type: string
           start_date: string
           status: string
           transaction_id: string
@@ -2918,10 +2959,11 @@ export type Database = {
           created_by?: string | null
           discount_amount?: number | null
           end_date: string
+          hostel_booking_id?: string | null
           id?: string
           mess_id: string
           notes?: string | null
-          package_id: string
+          package_id?: string | null
           pause_end?: string | null
           pause_start?: string | null
           payment_method?: string
@@ -2929,6 +2971,7 @@ export type Database = {
           payment_status?: string
           price_paid?: number
           serial_number?: string | null
+          source_type?: string
           start_date: string
           status?: string
           transaction_id?: string
@@ -2942,10 +2985,11 @@ export type Database = {
           created_by?: string | null
           discount_amount?: number | null
           end_date?: string
+          hostel_booking_id?: string | null
           id?: string
           mess_id?: string
           notes?: string | null
-          package_id?: string
+          package_id?: string | null
           pause_end?: string | null
           pause_start?: string | null
           payment_method?: string
@@ -2953,6 +2997,7 @@ export type Database = {
           payment_status?: string
           price_paid?: number
           serial_number?: string | null
+          source_type?: string
           start_date?: string
           status?: string
           transaction_id?: string
@@ -2965,6 +3010,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_subscriptions_hostel_booking_id_fkey"
+            columns: ["hostel_booking_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_bookings"
             referencedColumns: ["id"]
           },
           {
