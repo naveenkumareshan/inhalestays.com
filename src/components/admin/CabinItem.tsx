@@ -37,6 +37,7 @@ interface CabinItemProps {
   onToggleActive?: (cabinId: string, isActive: boolean) => void;
   onToggleBooking?: (cabinId: string, isActive: boolean) => void;
   onTogglePartnerVisible?: (cabinId: string, isVisible: boolean) => void;
+  onToggleStudentVisible?: (cabinId: string, isVisible: boolean) => void;
   partnerId?: string;
   onDownloadQr?: (cabinId: string, cabinName: string) => void;
 }
