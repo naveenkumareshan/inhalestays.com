@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,8 +33,34 @@ export const WhatsAppPropertyDialog: React.FC<WhatsAppPropertyDialogProps> = ({
   const [number, setNumber] = useState(initialNumber);
   const [enabled, setEnabled] = useState(initialEnabled);
   const [saving, setSaving] = useState(false);
+  const [loadingState, setLoadingState] = useState(false);
 
   const table = propertyType === 'cabin' ? 'cabins' : propertyType === 'hostel' ? 'hostels' : 'mess_partners';
+
+  // Fetch fresh data from DB when dialog opens
+  useEffect(() => {
+    if (!open) return;
+    const fetchCurrent = async () => {
+      setLoadingState(true);
+      try {
+        const { data } = await supabase
+          .from(table)
+          .select('whatsapp_number, whatsapp_chat_enabled')
+          .eq('id', propertyId)
+          .maybeSingle();
+        if (data) {
+          setNumber((data as any).whatsapp_number || '');
+          setEnabled((data as any).whatsapp_chat_enabled || false);
+        }
+      } catch {
+        // fallback to props
+        setNumber(initialNumber);
+        setEnabled(initialEnabled);
+      }
+      setLoadingState(false);
+    };
+    fetchCurrent();
+  }, [open, propertyId]);
 
   const handleSave = async () => {
     setSaving(true);
