@@ -326,7 +326,7 @@ export default function MessBookings() {
     const res = await vendorSeatsService.createStudent(newName, newEmail, newPhone);
     if (res.success && res.userId) {
       setSelectedUserId(res.userId);
-      setSelectedStudentName(`${newName} (${newEmail})`);
+      setSelectedStudentName(newName);
       setShowNewStudent(false);
       toast({ title: res.existing ? 'Existing student selected' : 'Student created' });
     } else { toast({ title: 'Error', description: res.error, variant: 'destructive' }); }
