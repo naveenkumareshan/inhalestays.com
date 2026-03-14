@@ -121,16 +121,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    // Set up auth state listener BEFORE calling getSession
+    let isMounted = true;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
       if (session?.user) {
-        // Defer Supabase calls to avoid deadlock in onAuthStateChange
-        setTimeout(async () => {
-          const appUser = await buildUser(session.user);
+        const appUser = await buildUser(session.user);
+        if (isMounted) {
           setUser(appUser);
           setIsLoading(false);
           setAuthChecked(true);
-        }, 0);
+        }
       } else {
         setUser(null);
         setIsLoading(false);
@@ -138,15 +139,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
+      if (!session && isMounted) {
         setIsLoading(false);
         setAuthChecked(true);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => { isMounted = false; subscription.unsubscribe(); };
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
