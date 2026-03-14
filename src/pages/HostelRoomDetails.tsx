@@ -55,7 +55,8 @@ import { FoodMenuModal } from "@/components/hostels/FoodMenuModal";
 import { ShareButton } from "@/components/ShareButton";
 import { generateHostelShareText } from "@/utils/shareUtils";
 import { isUUID } from "@/utils/idUtils";
-import { WhatsAppChatButton } from "@/components/WhatsAppChatButton";
+import { MessageCircle } from "lucide-react";
+import { whatsappLeadService } from "@/api/whatsappLeadService";
 /* ─── Skeleton ─── */
 const HostelDetailSkeleton = () => (
   <div className="min-h-screen bg-background pb-24">
