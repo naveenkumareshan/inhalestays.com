@@ -506,18 +506,22 @@ const HostelBedMap: React.FC = () => {
   }, [selectedBed, hostels]);
 
   // Long-press touch handlers for mobile context menu
-  const handleTouchStart = useCallback((e: React.TouchEvent, bed: HostelBed) => {
+  const handleTouchStart = (e: React.TouchEvent, bed: HostelBed) => {
     const touch = e.touches[0];
     touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
     isLongPressRef.current = false;
     longPressTimerRef.current = setTimeout(() => {
       isLongPressRef.current = true;
       setContextMenuBed(bed);
-      setContextMenuPosition({ x: touch.clientX, y: touch.clientY });
+      // Use pageX/pageY for scroll-aware positioning, clamped to viewport
+      const menuW = 200, menuH = 180;
+      const x = Math.min(touch.pageX, window.innerWidth - menuW - 8);
+      const y = Math.min(touch.pageY, window.scrollY + window.innerHeight - menuH - 8);
+      setContextMenuPosition({ x, y });
     }, 500);
-  }, []);
+  };
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+  const handleTouchMove = (e: React.TouchEvent) => {
     if (!touchStartPosRef.current) return;
     const touch = e.touches[0];
     const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
@@ -526,22 +530,25 @@ const HostelBedMap: React.FC = () => {
       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
-  }, []);
+  };
 
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
-  }, []);
+    if (isLongPressRef.current) {
+      e.preventDefault(); // Suppress synthetic click after long-press
+    }
+  };
 
-  const handleBedCardClick = useCallback((bed: HostelBed) => {
+  const handleBedCardClick = (bed: HostelBed) => {
     if (isLongPressRef.current) {
       isLongPressRef.current = false;
       return; // Long press fired, don't open sheet
     }
     handleBedClick(bed);
-  }, []);
+  };
 
   const closeContextMenu = useCallback(() => {
     setContextMenuBed(null);
@@ -1303,6 +1310,7 @@ const HostelBedMap: React.FC = () => {
               onTouchStart={(e) => handleTouchStart(e, bed)}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
+              style={{ touchAction: 'manipulation' }}
               className={cn(
                 "relative border rounded cursor-pointer p-1 flex flex-col items-center justify-center text-center transition-all hover:shadow-md group min-h-[72px] max-w-[90px] overflow-hidden select-none",
                 statusColors(bed.dateStatus)
@@ -1381,6 +1389,7 @@ const HostelBedMap: React.FC = () => {
                       onTouchStart={(e) => handleTouchStart(e, bed)}
                       onTouchMove={handleTouchMove}
                       onTouchEnd={handleTouchEnd}
+                      style={{ touchAction: 'manipulation' }}
                       className={cn(
                         "relative border rounded cursor-pointer p-1.5 flex flex-col items-center justify-center text-center transition-all hover:shadow-md group w-[76px] min-h-[64px] overflow-hidden select-none",
                         statusColors(bed.dateStatus)
@@ -1550,10 +1559,11 @@ const HostelBedMap: React.FC = () => {
         <>
           <div className="fixed inset-0 z-50" onClick={closeContextMenu} onTouchEnd={closeContextMenu} />
           <div
-            className="fixed z-50 bg-popover border rounded-lg shadow-lg p-2 min-w-[180px]"
+            className="absolute z-[60] bg-popover border rounded-lg shadow-lg p-2 min-w-[180px]"
             style={{
-              left: Math.min(contextMenuPosition.x, window.innerWidth - 200),
-              top: Math.min(contextMenuPosition.y - 10, window.innerHeight - 200),
+              position: 'fixed',
+              left: Math.max(8, Math.min(contextMenuPosition.x - 90, window.innerWidth - 200)),
+              top: Math.max(8, Math.min(contextMenuPosition.y - window.scrollY - 10, window.innerHeight - 200)),
             }}
           >
             <div className="text-xs font-semibold px-2 py-1 border-b mb-1 text-foreground">
