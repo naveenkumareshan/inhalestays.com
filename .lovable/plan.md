@@ -1,71 +1,67 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Improve Property Card Button Layout & Add Property View Tracking
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## 1. Better Button Layout with Spacing & QR Repositioned
 
-## Changes
+**Problem**: All action buttons are crammed together in a single `flex-wrap gap-1` row, making it confusing to distinguish between different button groups.
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+**Solution**: Reorganize the actions area into two visual rows with logical groupings:
+- **Row 1**: Primary actions (Edit, Seats/Beds) on the left, QR button pushed to the far right using `ml-auto`
+- **Row 2**: Toggle buttons (Activate, Online, Employee Visibility) grouped together with `gap-2` between logical groups, WhatsApp at the end
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+**Files**: `CabinItem.tsx`, `HostelItem.tsx`, `MessItem.tsx`
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+## 2. Track Student Property Page Views & Show Count Badge
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+**Problem**: Partners have no visibility into how many students are viewing their property pages.
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+**Solution**: Create a `property_views` table to log each student visit to a property detail page, then display the view count as a badge on the property card image (top-right area, similar to the WhatsApp click badge).
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### Database Migration
+```sql
+CREATE TABLE public.property_views (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  property_id uuid NOT NULL,
+  property_type text NOT NULL,
+  user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at timestamptz DEFAULT now()
+);
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+CREATE INDEX idx_property_views_property ON property_views(property_id);
+ALTER TABLE property_views ENABLE ROW LEVEL SECURITY;
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+-- Anyone authenticated can insert (students viewing pages)
+CREATE POLICY "Authenticated users can insert views"
+  ON property_views FOR INSERT TO authenticated
+  WITH CHECK (true);
 
-**Reviews section**: Shown below the booking flow (not in a tab)
+-- Partners/admins can read view counts
+CREATE POLICY "Authenticated users can read views"
+  ON property_views FOR SELECT TO authenticated
+  USING (true);
+```
 
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
+### Track Views on Student Pages
+- **`BookSeat.tsx`** — insert into `property_views` on page load (once per session per property)
+- **`HostelRoomDetails.tsx`** — same pattern
+- **`MessDetail.tsx`** — same pattern
 
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
+Use `sessionStorage` to avoid duplicate inserts within the same browser session.
 
-## File Summary
+### Show View Count Badge on Property Cards
+- **`CabinItem.tsx`** — fetch count from `property_views` where `property_id = cabin._id`, show as a small badge (e.g., eye icon with count) on the card image top-right corner
+- **`HostelItem.tsx`** — same pattern
+- **`MessItem.tsx`** — same pattern
 
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+Badge style: Small pill with eye icon + count, positioned on the property card image overlay area, only shown if count > 0.
+
+## Files Modified
+- `CabinItem.tsx` — button layout + view count badge
+- `HostelItem.tsx` — button layout + view count badge
+- `MessItem.tsx` — button layout + view count badge
+- `BookSeat.tsx` — track property view
+- `HostelRoomDetails.tsx` — track property view
+- `MessDetail.tsx` — track property view
+- New migration for `property_views` table
 
