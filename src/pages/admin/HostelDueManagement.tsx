@@ -347,7 +347,7 @@ const HostelDueManagement: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {dues.map((due: any) => {
+                  {paginatedDues.map((due: any, idx: number) => {
                     const remaining = Number(due.due_amount) - Number(due.paid_amount);
                     return (
                       <TableRow key={due.id} className="text-[11px]">
