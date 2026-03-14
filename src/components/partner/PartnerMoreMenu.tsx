@@ -48,6 +48,17 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
 
   const can = (perm: string) => isVendor || hasPermission(perm as any);
 
+  // Compute filtered nav options for the customizer
+  const filteredNavOptions = ALL_NAV_OPTIONS.filter((item) => {
+    if (item.category === 'vendor_only' && !isVendor) return false;
+    if (item.category === 'reading_rooms' && !hasReadingRooms) return false;
+    if (item.category === 'hostels' && !hasHostels) return false;
+    if (item.category === 'laundry' && !hasLaundry) return false;
+    if (item.category === 'mess' && !hasMess) return false;
+    if (item.permission && !can(item.permission)) return false;
+    return true;
+  });
+
   const sections: MenuSection[] = [
     {
       title: 'Account',
