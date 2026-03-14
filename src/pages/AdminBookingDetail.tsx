@@ -162,7 +162,9 @@ const AdminBookingDetail = () => {
     if (bookingType === 'hostel') {
       return `Room ${booking?.hostel_rooms?.room_number || '-'} / Bed #${booking?.hostel_beds?.bed_number || '-'}`;
     }
-    return `#${typeof booking?.seatId === 'object' ? booking.seatId?.number : '-'}`;
+    const seat = typeof booking?.seatId === 'object' ? booking.seatId : {};
+    const floor = seat?.floor;
+    return `${floor ? `Floor ${floor} · ` : ''}Seat #${seat?.number || '-'}`;
   };
 
   const getBookingId = () => {
