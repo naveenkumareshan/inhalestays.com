@@ -7,7 +7,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { useLocations } from '@/hooks/useLocations';
-import { State, City, Area } from '@/api/locationsService';
+import { City, Area } from '@/api/locationsService';
 
 interface LocationSelectorProps {
   selectedCountry?: string;
@@ -25,7 +25,7 @@ interface LocationSelectorProps {
   disabled?: boolean;
 }
 
-const LocationSelectorComponent: React.FC<LocationSelectorProps> = ({
+export const LocationSelector: React.FC<LocationSelectorProps> = ({
   selectedState,
   selectedCity,
   selectedArea,
@@ -44,27 +44,19 @@ const LocationSelectorComponent: React.FC<LocationSelectorProps> = ({
 
   useEffect(() => {
     if (selectedState) {
-      loadCities(selectedState);
+      getCitiesByState(selectedState).then(setLocalCities);
+    } else {
+      setLocalCities([]);
     }
   }, [selectedState]);
 
   useEffect(() => {
     if (selectedCity) {
-      loadAreas(selectedCity);
+      getAreasByCity(selectedCity).then(setLocalAreas);
     } else {
       setLocalAreas([]);
     }
   }, [selectedCity]);
-
-  const loadCities = async (stateId: string) => {
-    const citiesData = await getCitiesByState(stateId);
-    setLocalCities(citiesData);
-  };
-
-  const loadAreas = async (cityId: string) => {
-    const areasData = await getAreasByCity(cityId);
-    setLocalAreas(areasData);
-  };
 
   const handleStateChange = (stateId: string) => {
     onStateChange?.(stateId);
@@ -105,11 +97,15 @@ const LocationSelectorComponent: React.FC<LocationSelectorProps> = ({
               <SelectValue placeholder="Select city" />
             </SelectTrigger>
             <SelectContent>
-              {localCities.map((city) => (
-                <SelectItem key={city.id} value={city.id}>
-                  {city.name}
-                </SelectItem>
-              ))}
+              {localCities.length === 0 ? (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">No cities found</div>
+              ) : (
+                localCities.map((city) => (
+                  <SelectItem key={city.id} value={city.id}>
+                    {city.name}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -123,11 +119,17 @@ const LocationSelectorComponent: React.FC<LocationSelectorProps> = ({
               <SelectValue placeholder="Select area" />
             </SelectTrigger>
             <SelectContent>
-              {localAreas.map((area) => (
-                <SelectItem key={area.id} value={area.id}>
-                  {area.name}
-                </SelectItem>
-              ))}
+              {localAreas.length === 0 ? (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                  {selectedCity ? 'No areas found — add areas in Location Management' : 'Select a city first'}
+                </div>
+              ) : (
+                localAreas.map((area) => (
+                  <SelectItem key={area.id} value={area.id}>
+                    {area.name}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -135,6 +137,3 @@ const LocationSelectorComponent: React.FC<LocationSelectorProps> = ({
     </div>
   );
 };
-
-// Memoized export
-export const LocationSelector = React.memo(LocationSelectorComponent);
