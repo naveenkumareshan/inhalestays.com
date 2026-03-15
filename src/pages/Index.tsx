@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   BookOpen, Hotel, Wifi, Shield, Clock, Coffee,
   Star, Users, ChevronRight, Leaf, CheckCircle,
-  ClipboardList, Shirt, BookMarked,
+  ClipboardList, Shirt, BookMarked, UtensilsCrossed,
 } from 'lucide-react';
 
 const WHY_FEATURES = [
