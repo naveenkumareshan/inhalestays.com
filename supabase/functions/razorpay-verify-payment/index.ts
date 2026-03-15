@@ -381,7 +381,7 @@ Deno.serve(async (req) => {
     }
 
     // For reading room bookings, detect advance payment by comparing Razorpay order amount vs total_price
-    if (!isHostel && !isLaundry) {
+    if (!isHostel && !isLaundry && !isMess) {
       try {
         const RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
         const orderRes = await fetch(`https://api.razorpay.com/v1/orders/${razorpay_order_id}`, {
