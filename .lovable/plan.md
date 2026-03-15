@@ -1,71 +1,56 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+## Redesign "Manage Laundry" Page to Match Mess Pattern
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+The current `/admin/laundry` (AdminLaundry.tsx) uses raw table tabs (Orders, Items, Partners, Slots) — nothing like the Mess management pattern. It needs a complete redesign.
 
-## Changes
+### What the Mess Pattern Looks Like
+- **Header**: "Manage Mess Places" with count badge + "Add Mess" button
+- **Search bar** for filtering
+- **Property cards** in a responsive grid (MessItem cards with image, name, status, toggles, action buttons)
+- **AdminTablePagination** at bottom
+- Clicking Edit opens a full-page editor (MessEditor)
+- Packages managed via dialog per property
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### Plan
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+**1. Create `LaundryItem.tsx`** — property card component (mirrors MessItem)
+- Shows: business name, serial number, contact person, phone, service area, delivery time, operating hours
+- Status badges: Active/Inactive, Approved/Pending
+- Action row: Edit, Items (count badge), Slots (count badge), toggles (Activate, Online Booking)
+- No image for now (laundry properties don't typically have images)
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+**2. Create `LaundryEditor.tsx`** — full-page creation/edit form (mirrors MessEditor)
+- All laundry_partners fields: business_name, description, contact_person, phone, email, address, city, state, service_area, delivery_time_hours, operating_hours
+- For partners: pre-fills `user_id` from current user
+- For admin: includes a user selector (or user_id input)
+- Save creates/updates via `laundryCloudService`
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+**3. Rewrite `AdminLaundry.tsx`** — property list page (mirrors MessManagement)
+- Header: "Manage Laundry" with count badge + "Add Laundry" button
+- Search bar filtering by name/serial_number/service_area
+- Grid of LaundryItem cards
+- AdminTablePagination
+- Clicking Edit → shows LaundryEditor (full-page, same as Mess)
+- "Items" button → dialog showing item CRUD for that partner
+- "Slots" button → dialog showing slot CRUD for that partner
+- Remove the Orders tab entirely (separate page exists at `/admin/laundry-orders` or `/partner/laundry-orders`)
+- Remove the Partners tab (partners ARE the property cards now)
+- Admin sees ALL laundry partners; partner/employee sees only their own
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+**4. Update routes** — `/partner/laundry-orders` should render a dedicated LaundryOrders page (or reuse the orders tab as standalone). Currently both `/partner/laundry` and `/partner/laundry-orders` render `LaundryPartnerDashboard`. Split them:
+- `/partner/laundry` → `AdminLaundry` (same component, scoped by role)
+- `/partner/laundry-orders` → keep separate orders view
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+**5. Update `LaundryPartnerDashboard.tsx`** — This becomes the creation-only flow (when partner has no laundry property). Once created, redirect to the main Manage Laundry page. Remove the tabs (Details, Items, Slots, Orders) since those are now handled by AdminLaundry + dialogs.
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+### Files to Create/Modify
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+| File | Changes |
+|------|---------|
+| `src/components/admin/LaundryItem.tsx` | **New** — property card matching MessItem pattern |
+| `src/components/admin/LaundryEditor.tsx` | **New** — full-page property editor matching MessEditor |
+| `src/pages/admin/AdminLaundry.tsx` | **Rewrite** — property grid with search, pagination, item/slot dialogs |
+| `src/pages/admin/LaundryOrders.tsx` | **New** — extract Orders tab as standalone page |
+| `src/App.tsx` | Update `/partner/laundry-orders` route to `LaundryOrders` |
 
