@@ -54,7 +54,7 @@ const ComplaintsPage = () => {
     setCurrentUserId(user.id);
 
     const [complaintsRes, cabinBookingsRes, hostelBookingsRes, messSubsRes] = await Promise.all([
-      supabase.from('complaints').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('complaints').select('*, cabins:cabin_id(name), hostels:hostel_id(name), mess_partners:mess_id(name)').eq('user_id', user.id).order('created_at', { ascending: false }),
       bookingsService.getCurrentBookings(),
       hostelBookingService.getUserBookings(),
       getMyMessSubscriptions(user.id).catch(() => []),
@@ -155,6 +155,11 @@ const ComplaintsPage = () => {
           <button onClick={() => setSelectedComplaint(null)} className="p-1"><ArrowLeft className="h-5 w-5" /></button>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-semibold truncate">{selectedComplaint.subject}</p>
+            {(selectedComplaint.cabins?.name || selectedComplaint.hostels?.name || selectedComplaint.mess_partners?.name) && (
+              <p className="text-[11px] text-muted-foreground truncate">
+                {selectedComplaint.cabins?.name || selectedComplaint.hostels?.name || selectedComplaint.mess_partners?.name}
+              </p>
+            )}
             <div className="flex items-center gap-2">
               {selectedComplaint.serial_number && <span className="text-[10px] font-mono text-muted-foreground">{selectedComplaint.serial_number}</span>}
               <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusBadge[selectedComplaint.status] || ''}`}>
@@ -264,6 +269,9 @@ const ComplaintsPage = () => {
                     <div className="flex-1 min-w-0 space-y-1">
                       {c.serial_number && <p className="text-[10px] font-mono text-muted-foreground">{c.serial_number}</p>}
                       <p className="text-[13px] font-semibold text-foreground">{c.subject}</p>
+                      {(c.cabins?.name || c.hostels?.name || c.mess_partners?.name) && (
+                        <p className="text-[11px] text-muted-foreground">{c.cabins?.name || c.hostels?.name || c.mess_partners?.name}</p>
+                      )}
                       <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">{c.category}</Badge>
                         <span>{format(new Date(c.created_at), 'd MMM yyyy')}</span>
