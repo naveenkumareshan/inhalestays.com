@@ -1,71 +1,40 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+## Fix Complaints: Missing FK, Partner Scoping, Property & Booking Details
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+### Issues Found
 
-## Changes
+1. **`ticket_messages` has zero foreign keys** -- the `profiles:sender_id(name)` join returns 400 on every message load (both partner and student sides). This is why no chat threads are visible.
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+2. **`complaints.hostel_id` has no FK to `hostels`** -- can't join hostel names in the query.
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+3. **Partner scoping missing** -- `ComplaintsManagement.tsx` fetches ALL complaints (`select *`) without filtering by partner's properties. Partners see every complaint across the platform.
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+4. **No property/booking details shown** -- the complaints table (both admin and partner views) doesn't display property name, floor/seat/bed, or booking serial number.
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+---
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+### Changes
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+#### 1. Database Migration
+- Add FK `ticket_messages.sender_id → profiles.id` (fixes 400 error on all chat views)
+- Add FK `complaints.hostel_id → hostels.id ON DELETE SET NULL` (enables hostel name joins)
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+#### 2. `ComplaintsManagement.tsx` -- Partner Scoping + Property Details
+- Use `getEffectiveOwnerId` to detect if current user is a partner/employee
+- Check `user_roles` for admin role; admins see all complaints, partners see only their property complaints
+- Update query to join: `cabins:cabin_id(name)`, `hostels:hostel_id(name)`, `mess_partners:mess_id(name)`, `bookings:booking_id(serial_number, seat_number, seats:seat_id(number, floor))`
+- For partners: filter complaints client-side by matching `cabin_id`, `hostel_id`, or `mess_id` against the partner's owned properties (fetched via separate queries)
+- Add columns to the table: **Property Name**, **Booking #**, **Location** (floor/seat/bed)
+- Show same details in the complaint detail dialog
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+#### 3. `ComplaintTracker.tsx` (Operations Hub - admin only)
+- Update query to include property and booking joins same as above
+- Add Property and Booking columns to the table
+- Show property details in the chat dialog header
 
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+### Files to Modify
+- **Database migration** -- 2 foreign keys
+- `src/components/admin/ComplaintsManagement.tsx` -- scoping + property details
+- `src/components/admin/operations/ComplaintTracker.tsx` -- property details in table
 
