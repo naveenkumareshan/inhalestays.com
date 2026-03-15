@@ -709,6 +709,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "complaints_hostel_id_fkey"
+            columns: ["hostel_id"]
+            isOneToOne: false
+            referencedRelation: "hostels"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "complaints_mess_id_fkey"
             columns: ["mess_id"]
             isOneToOne: false
@@ -4620,7 +4627,15 @@ export type Database = {
           ticket_id?: string
           ticket_type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ticket_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

@@ -9,9 +9,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO } from 'date-fns';
-import { Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import TicketChat from '@/components/shared/TicketChat';
+
+const getPropertyName = (c: any) =>
+  c.cabins?.name || c.hostels?.name || c.mess_partners?.name || '—';
+
+const getBookingSerial = (c: any) =>
+  c.bookings?.serial_number || '—';
+
+const getLocation = (c: any) => {
+  if (c.bookings?.seats) {
+    const s = c.bookings.seats;
+    return `Floor ${s.floor}, Seat ${s.number}`;
+  }
+  if (c.bookings?.seat_number) {
+    return `Seat ${c.bookings.seat_number}`;
+  }
+  return '—';
+};
 
 const ComplaintTracker = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -28,7 +45,14 @@ const ComplaintTracker = () => {
     queryFn: async () => {
       let query = supabase
         .from('complaints')
-        .select('*, profiles:user_id(name, phone, email)')
+        .select(`
+          *,
+          profiles:user_id(name, phone, email),
+          cabins:cabin_id(name),
+          hostels:hostel_id(name),
+          mess_partners:mess_id(name),
+          bookings:booking_id(serial_number, seat_number, seats:seat_id(number, floor))
+        `)
         .order('created_at', { ascending: false });
 
       if (statusFilter !== 'all') {
@@ -124,6 +148,9 @@ const ComplaintTracker = () => {
                 <th className="text-left py-2 px-3 font-medium">ID</th>
                 <th className="text-left py-2 px-3 font-medium">Subject</th>
                 <th className="text-left py-2 px-3 font-medium">Student</th>
+                <th className="text-left py-2 px-3 font-medium">Property</th>
+                <th className="text-left py-2 px-3 font-medium">Booking #</th>
+                <th className="text-left py-2 px-3 font-medium">Location</th>
                 <th className="text-left py-2 px-3 font-medium">Priority</th>
                 <th className="text-left py-2 px-3 font-medium">Status</th>
                 <th className="text-left py-2 px-3 font-medium">Date</th>
@@ -137,6 +164,9 @@ const ComplaintTracker = () => {
                   <td className="py-1.5 px-3 font-mono text-muted-foreground">{c.serial_number || c.id.slice(0, 8)}</td>
                   <td className="py-1.5 px-3 font-medium max-w-[200px] truncate">{c.subject}</td>
                   <td className="py-1.5 px-3">{c.profiles?.name || 'N/A'}</td>
+                  <td className="py-1.5 px-3">{getPropertyName(c)}</td>
+                  <td className="py-1.5 px-3 font-mono">{getBookingSerial(c)}</td>
+                  <td className="py-1.5 px-3">{getLocation(c)}</td>
                   <td className="py-1.5 px-3">
                     <Badge variant="outline" className="text-[10px] capitalize">{c.priority}</Badge>
                   </td>
@@ -195,7 +225,9 @@ const ComplaintTracker = () => {
               <div className="grid grid-cols-2 gap-2 text-xs shrink-0">
                 <div><span className="text-muted-foreground">Student:</span> {selectedComplaint.profiles?.name}</div>
                 <div><span className="text-muted-foreground">Phone:</span> {selectedComplaint.profiles?.phone || '—'}</div>
-                <div><span className="text-muted-foreground">Category:</span> <span className="capitalize">{selectedComplaint.category}</span></div>
+                <div><span className="text-muted-foreground">Property:</span> {getPropertyName(selectedComplaint)}</div>
+                <div><span className="text-muted-foreground">Booking #:</span> {getBookingSerial(selectedComplaint)}</div>
+                <div><span className="text-muted-foreground">Location:</span> {getLocation(selectedComplaint)}</div>
                 <div><span className="text-muted-foreground">Priority:</span> <span className="capitalize">{selectedComplaint.priority}</span></div>
               </div>
 

@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { MessageSquareWarning, Search, Send } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 
 const STATUSES = ['all', 'open', 'in_progress', 'resolved', 'closed'];
 const PRIORITIES = ['all', 'low', 'medium', 'high'];
@@ -29,6 +30,23 @@ const priorityBadge: Record<string, string> = {
   high: 'bg-red-100 text-red-700',
 };
 
+const getPropertyName = (c: any) =>
+  c.cabins?.name || c.hostels?.name || c.mess_partners?.name || '—';
+
+const getBookingSerial = (c: any) =>
+  c.bookings?.serial_number || '—';
+
+const getLocation = (c: any) => {
+  if (c.bookings?.seats) {
+    const s = c.bookings.seats;
+    return `Floor ${s.floor}, Seat ${s.number}`;
+  }
+  if (c.bookings?.seat_number) {
+    return `Seat ${c.bookings.seat_number}`;
+  }
+  return '—';
+};
+
 const ComplaintsManagement = () => {
   const [complaints, setComplaints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,9 +62,45 @@ const ComplaintsManagement = () => {
 
   const loadComplaints = async () => {
     setLoading(true);
-    let query = supabase.from('complaints').select('*, profiles:user_id(name, email, phone)').order('created_at', { ascending: false });
-    const { data } = await query;
-    setComplaints((data as any[]) || []);
+    try {
+      const { ownerId } = await getEffectiveOwnerId();
+
+      // Check if user is admin
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', ownerId);
+      const isAdmin = roles?.some(r => r.role === 'admin' || r.role === 'super_admin');
+
+      let query = supabase
+        .from('complaints')
+        .select(`
+          *,
+          profiles:user_id(name, email, phone),
+          cabins:cabin_id(name, created_by),
+          hostels:hostel_id(name, created_by),
+          mess_partners:mess_id(name, user_id),
+          bookings:booking_id(serial_number, seat_number, seats:seat_id(number, floor))
+        `)
+        .order('created_at', { ascending: false });
+
+      const { data } = await query;
+      let results = (data as any[]) || [];
+
+      // Partner scoping: only show complaints for their properties
+      if (!isAdmin) {
+        results = results.filter(c => {
+          if (c.cabins?.created_by === ownerId) return true;
+          if (c.hostels?.created_by === ownerId) return true;
+          if (c.mess_partners?.user_id === ownerId) return true;
+          return false;
+        });
+      }
+
+      setComplaints(results);
+    } catch (err) {
+      console.error('Failed to load complaints:', err);
+    }
     setLoading(false);
   };
 
@@ -122,8 +176,10 @@ const ComplaintsManagement = () => {
                     <TableHead className="text-xs">Serial #</TableHead>
                     <TableHead className="text-xs">Date</TableHead>
                     <TableHead className="text-xs">Student</TableHead>
+                    <TableHead className="text-xs">Property</TableHead>
+                    <TableHead className="text-xs">Booking #</TableHead>
+                    <TableHead className="text-xs">Location</TableHead>
                     <TableHead className="text-xs">Subject</TableHead>
-                    <TableHead className="text-xs">Category</TableHead>
                     <TableHead className="text-xs">Priority</TableHead>
                     <TableHead className="text-xs">Status</TableHead>
                     <TableHead className="text-xs">Action</TableHead>
@@ -137,10 +193,11 @@ const ComplaintsManagement = () => {
                       <TableCell className="text-xs">
                         <div className="font-medium">{(c.profiles as any)?.name || '—'}</div>
                         {(c.profiles as any)?.phone && <div className="text-[10px] text-muted-foreground">{(c.profiles as any)?.phone}</div>}
-                        {(c.profiles as any)?.email && <div className="text-[10px] text-muted-foreground">{(c.profiles as any)?.email}</div>}
                       </TableCell>
+                      <TableCell className="text-xs font-medium">{getPropertyName(c)}</TableCell>
+                      <TableCell className="text-xs font-mono">{getBookingSerial(c)}</TableCell>
+                      <TableCell className="text-xs">{getLocation(c)}</TableCell>
                       <TableCell className="text-xs max-w-[200px] truncate">{c.subject}</TableCell>
-                      <TableCell><Badge variant="outline" className="text-[10px] capitalize">{c.category}</Badge></TableCell>
                       <TableCell><span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${priorityBadge[c.priority] || ''}`}>{c.priority}</span></TableCell>
                       <TableCell><span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusBadge[c.status] || ''}`}>{c.status?.replace('_', ' ')}</span></TableCell>
                       <TableCell>
@@ -167,7 +224,9 @@ const ComplaintsManagement = () => {
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div><span className="text-muted-foreground">Student:</span> {(selected.profiles as any)?.name}</div>
                 <div><span className="text-muted-foreground">Email:</span> {(selected.profiles as any)?.email}</div>
-                <div><span className="text-muted-foreground">Category:</span> <span className="capitalize">{selected.category}</span></div>
+                <div><span className="text-muted-foreground">Property:</span> {getPropertyName(selected)}</div>
+                <div><span className="text-muted-foreground">Booking #:</span> {getBookingSerial(selected)}</div>
+                <div><span className="text-muted-foreground">Location:</span> {getLocation(selected)}</div>
                 <div><span className="text-muted-foreground">Priority:</span> <span className="capitalize">{selected.priority}</span></div>
               </div>
               <div>
