@@ -266,6 +266,7 @@ export default function AdminLaundry({ autoCreateNew, onTriggerConsumed }: Admin
                   onToggleBooking={handleToggleBooking}
                   onTogglePartnerVisible={handleTogglePartnerVisible}
                   onToggleStudentVisible={handleToggleStudentVisible}
+                  onWhatsAppConfig={setWhatsAppPartner}
                   itemCount={itemCounts[p.id] || 0}
                   slotCount={slotCounts[p.id] || 0}
                 />
