@@ -62,12 +62,16 @@ const TicketChat: React.FC<TicketChatProps> = ({
 
   const loadMessages = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('ticket_messages')
       .select('*, profiles:sender_id(name)')
       .eq('ticket_id', ticketId)
       .eq('ticket_type', ticketType)
       .order('created_at', { ascending: true });
+    if (error) {
+      console.error('Failed to load ticket messages:', error);
+      toast({ title: 'Error', description: 'Failed to load messages', variant: 'destructive' });
+    }
     setMessages((data as any[]) || []);
     setLoading(false);
   };
