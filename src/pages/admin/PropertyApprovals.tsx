@@ -93,15 +93,15 @@ const PropertyApprovals = () => {
           commission_percentage: h.commission_percentage,
           created_at: h.created_at,
         })),
-        ...(messes).map(m => ({
-          id: m.id, name: (m as any).name, type: 'Mess' as const,
+        ...(messes as any[]).map((m: any) => ({
+          id: m.id, name: m.name, type: 'Mess' as const,
           serial_number: m.serial_number,
-          location: [(m as any).city, (m as any).state].filter(Boolean).join(', ') || '—',
-          partner_name: partnerMap[(m as any).user_id || ''] || '—',
-          partner_id: (m as any).user_id || '',
-          is_approved: (m as any).is_approved ?? false,
+          location: m.location || '—',
+          partner_name: partnerMap[m.user_id || ''] || '—',
+          partner_id: m.user_id || '',
+          is_approved: m.is_approved ?? false,
           is_active: m.is_active,
-          commission_percentage: (m as any).commission_percentage,
+          commission_percentage: m.commission_percentage,
           created_at: m.created_at,
         })),
         ...(laundries).map(l => ({
