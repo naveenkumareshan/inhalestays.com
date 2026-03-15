@@ -286,8 +286,8 @@ function App() {
               <Route path="promotions" element={<MyPromotions />} />
               <Route path="business-performance" element={<BusinessPerformance />} />
               <Route path="my-subscriptions" element={<MySubscriptions />} />
-              <Route path="laundry" element={<LaundryPartnerDashboard />} />
-              <Route path="laundry-orders" element={<LaundryPartnerDashboard />} />
+              <Route path="laundry" element={<AdminLaundry />} />
+              <Route path="laundry-orders" element={<LaundryOrders />} />
               <Route path="booking-activity-log" element={<BookingActivityLog />} />
               <Route path="mess" element={<MessManagement />} />
               <Route path="mess-bookings" element={<MessBookings />} />
