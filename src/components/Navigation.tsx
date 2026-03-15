@@ -77,11 +77,11 @@ export function Navigation() {
   const logoSrc = settings.logoUrl || inhalestaysLogo;
 
   const navLinks = [
-    { href: "/", label: "Home", show: true },
-    { href: "/cabins", label: "Reading Rooms", show: settings.enabledMenus.bookings, matchPaths: ["/cabins", "/book-seat"] },
-    { href: "/hostels", label: "Hostels", show: settings.enabledMenus.hostel, matchPaths: ["/hostels"] },
-    { href: "/mess", label: "Food / Mess", show: true, matchPaths: ["/mess"] },
-    { href: "/about", label: "About", show: settings.enabledMenus.about },
+    { href: "/", label: "Home", show: true, enabled: true },
+    { href: "/cabins", label: "Reading Rooms", show: true, enabled: settings.enabledMenus.bookings, matchPaths: ["/cabins", "/book-seat"] },
+    { href: "/hostels", label: "Hostels", show: true, enabled: settings.enabledMenus.hostel, matchPaths: ["/hostels"] },
+    { href: "/mess", label: "Food / Mess", show: true, enabled: settings.enabledMenus.mess, matchPaths: ["/mess"] },
+    { href: "/about", label: "About", show: true, enabled: settings.enabledMenus.about },
   ];
 
   const isActive = (link: typeof navLinks[0]) => {
