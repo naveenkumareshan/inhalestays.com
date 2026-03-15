@@ -27,6 +27,27 @@ export const laundryCloudService = {
     return data;
   },
 
+  // ── Single partner lookup ──
+  getPartnerById: async (id: string) => {
+    const { data, error } = await supabase
+      .from('laundry_partners')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  getPartnerBySerialNumber: async (serialNumber: string) => {
+    const { data, error } = await supabase
+      .from('laundry_partners')
+      .select('*')
+      .eq('serial_number', serialNumber)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   // ── Active partners for student marketplace ──
   getActivePartners: async () => {
     const { data, error } = await supabase
