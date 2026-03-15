@@ -38,7 +38,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const { user } = useAuth();
+  const { user, authChecked } = useAuth();
   const [hostelLinksMap, setHostelLinksMap] = useState<Record<string, { hostel_id: string; hostel_name: string; is_default: boolean }[]>>({});
 
   // Packages state
@@ -46,7 +46,12 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
   const [pkgForm, setPkgForm] = useState({ name: '', meal_types: ['breakfast', 'lunch', 'dinner'], price: '' });
   const [mealCheckboxes, setMealCheckboxes] = useState({ breakfast: true, lunch: true, dinner: true });
 
-  useEffect(() => { fetchMesses(); }, []);
+  // Only fetch after auth is ready
+  useEffect(() => {
+    if (authChecked && user?.id) {
+      fetchMesses();
+    }
+  }, [authChecked, user?.id]);
 
   // Auto-create new when triggered from parent
   useEffect(() => {
