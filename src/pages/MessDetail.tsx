@@ -93,6 +93,7 @@ export default function MessDetail() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [pendingSubId, setPendingSubId] = useState<string | null>(null);
+  const pendingSubIdRef = useRef<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
   // Reviews
