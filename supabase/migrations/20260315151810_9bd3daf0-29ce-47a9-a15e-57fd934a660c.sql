@@ -1,0 +1,8 @@
+
+ALTER TABLE public.laundry_partners
+  ADD COLUMN IF NOT EXISTS whatsapp_number TEXT,
+  ADD COLUMN IF NOT EXISTS whatsapp_chat_enabled BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS is_booking_active BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS is_partner_visible BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS is_student_visible BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS is_approved BOOLEAN NOT NULL DEFAULT false;

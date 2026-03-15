@@ -333,6 +333,12 @@ export function AdminSidebar() {
         icon: Shirt,
         roles: ['admin', 'vendor', 'vendor_employee'],
       },
+      {
+        title: 'Laundry Operations',
+        url: `${routePrefix}/laundry-operations`,
+        icon: Activity,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      },
     ];
     menuItems.push({
       title: 'Laundry',

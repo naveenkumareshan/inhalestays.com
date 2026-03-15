@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from '@/hooks/use-toast';
 import { LaundryItem } from '@/components/admin/LaundryItem';
 import { LaundryEditor } from '@/components/admin/LaundryEditor';
-import { Plus, Shirt, Search, Loader2, Trash2, Pencil } from 'lucide-react';
+import { Plus, Shirt, Search, Loader2, Trash2, Pencil, MessageCircle } from 'lucide-react';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AdminTablePagination } from '@/components/admin/AdminTablePagination';
 import { laundryCloudService } from '@/api/laundryCloudService';
 import { supabase } from '@/integrations/supabase/client';
+import { WhatsAppPropertyDialog } from '@/components/admin/WhatsAppPropertyDialog';
 
 const DEFAULT_PAGE_SIZE = 9;
 
@@ -43,8 +44,8 @@ export default function AdminLaundry({ autoCreateNew, onTriggerConsumed }: Admin
 
   // Item form
   const [itemForm, setItemForm] = useState({ name: '', icon: '👕', price: '', category: 'clothing' });
-  // Slot form
   const [slotForm, setSlotForm] = useState({ slot_name: '', start_time: '09:00', end_time: '12:00', max_orders: '10' });
+  const [whatsAppPartner, setWhatsAppPartner] = useState<any>(null);
 
   useEffect(() => {
     if (authChecked && user?.id) fetchPartners();
@@ -265,6 +266,7 @@ export default function AdminLaundry({ autoCreateNew, onTriggerConsumed }: Admin
                   onToggleBooking={handleToggleBooking}
                   onTogglePartnerVisible={handleTogglePartnerVisible}
                   onToggleStudentVisible={handleToggleStudentVisible}
+                  onWhatsAppConfig={setWhatsAppPartner}
                   itemCount={itemCounts[p.id] || 0}
                   slotCount={slotCounts[p.id] || 0}
                 />
@@ -358,6 +360,20 @@ export default function AdminLaundry({ autoCreateNew, onTriggerConsumed }: Admin
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* WhatsApp Dialog */}
+        {whatsAppPartner && (
+          <WhatsAppPropertyDialog
+            open={!!whatsAppPartner}
+            onOpenChange={(open) => { if (!open) setWhatsAppPartner(null); }}
+            propertyId={whatsAppPartner.id}
+            propertyType="laundry"
+            propertyName={whatsAppPartner.business_name}
+            initialNumber={whatsAppPartner.whatsapp_number || ''}
+            initialEnabled={whatsAppPartner.whatsapp_chat_enabled || false}
+            onSaved={fetchPartners}
+          />
+        )}
       </div>
     </ErrorBoundary>
   );

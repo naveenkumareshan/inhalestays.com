@@ -26,7 +26,7 @@ import { PartnerPayoutSettingsDialog } from './PartnerPayoutSettingsDialog';
 interface PropertyInfo {
   id: string;
   name: string;
-  type: 'Reading Room' | 'Hostel';
+  type: 'Reading Room' | 'Hostel' | 'Mess' | 'Laundry';
   city: string;
   state: string;
   capacity: number;
@@ -81,13 +81,17 @@ const VendorApproval: React.FC = () => {
     if (partnerUserIds.length === 0) return;
     setPropertiesLoading(true);
     try {
-      const [cabinsRes, hostelsRes, bookingsRes, hostelBookingsRes, seatsRes, bedsRes] = await Promise.all([
+      const [cabinsRes, hostelsRes, bookingsRes, hostelBookingsRes, seatsRes, bedsRes, messRes, laundryRes, messSubsRes, laundryOrdersRes] = await Promise.all([
         supabase.from('cabins').select('id, name, city, state, capacity, is_active, is_approved, created_by, whatsapp_chat_enabled'),
         supabase.from('hostels').select('id, name, location, is_active, is_approved, created_by, whatsapp_chat_enabled'),
         supabase.from('bookings').select('cabin_id, id').in('payment_status', ['confirmed', 'paid']),
         supabase.from('hostel_bookings').select('hostel_id, id').in('status', ['confirmed', 'active']),
         supabase.from('seats').select('cabin_id, id, is_available'),
         supabase.from('hostel_beds').select('room_id, id, is_available').eq('is_blocked', false),
+        supabase.from('mess_partners').select('id, name, location, is_active, is_approved, user_id, whatsapp_chat_enabled'),
+        supabase.from('laundry_partners').select('id, business_name, city, state, is_active, is_approved, user_id, whatsapp_chat_enabled'),
+        supabase.from('mess_subscriptions').select('mess_id, id').eq('status', 'active'),
+        supabase.from('laundry_orders').select('partner_id, id').in('status', ['pending', 'confirmed', 'processing', 'picked_up']),
       ]);
 
       const cabins = cabinsRes.data || [];
@@ -183,6 +187,50 @@ const VendorApproval: React.FC = () => {
         const existing = map.get(h.created_by) || [];
         existing.push(prop);
         map.set(h.created_by, existing);
+      });
+
+      // Mess properties
+      const messPartners = messRes.data || [];
+      const messSubCounts = new Map<string, number>();
+      (messSubsRes.data || []).forEach((s: any) => {
+        if (s.mess_id) messSubCounts.set(s.mess_id, (messSubCounts.get(s.mess_id) || 0) + 1);
+      });
+
+      messPartners.forEach((m: any) => {
+        if (!m.user_id) return;
+        const prop: PropertyInfo = {
+          id: m.id, name: m.name, type: 'Mess',
+          city: m.location || '', state: '', capacity: 0,
+          is_active: m.is_active ?? false, is_approved: m.is_approved ?? false,
+          activeBookings: messSubCounts.get(m.id) || 0,
+          totalSeatsOrBeds: 0, occupiedSeatsOrBeds: 0,
+          whatsapp_chat_enabled: m.whatsapp_chat_enabled ?? false,
+        };
+        const existing = map.get(m.user_id) || [];
+        existing.push(prop);
+        map.set(m.user_id, existing);
+      });
+
+      // Laundry properties
+      const laundryPartners = laundryRes.data || [];
+      const laundryOrderCounts = new Map<string, number>();
+      (laundryOrdersRes.data || []).forEach((o: any) => {
+        if (o.partner_id) laundryOrderCounts.set(o.partner_id, (laundryOrderCounts.get(o.partner_id) || 0) + 1);
+      });
+
+      laundryPartners.forEach((l: any) => {
+        if (!l.user_id) return;
+        const prop: PropertyInfo = {
+          id: l.id, name: l.business_name, type: 'Laundry',
+          city: l.city || '', state: l.state || '', capacity: 0,
+          is_active: l.is_active ?? false, is_approved: l.is_approved ?? false,
+          activeBookings: laundryOrderCounts.get(l.id) || 0,
+          totalSeatsOrBeds: 0, occupiedSeatsOrBeds: 0,
+          whatsapp_chat_enabled: l.whatsapp_chat_enabled ?? false,
+        };
+        const existing = map.get(l.user_id) || [];
+        existing.push(prop);
+        map.set(l.user_id, existing);
       });
 
       setPropertiesMap(map);
@@ -284,18 +332,24 @@ const VendorApproval: React.FC = () => {
 
   const getPropertyTypeBadge = (type: string) => {
     if (type === 'Reading Room') return <Badge className="bg-blue-50 text-blue-700 border-blue-200 border text-[10px]">Reading Room</Badge>;
-    return <Badge className="bg-purple-50 text-purple-700 border-purple-200 border text-[10px]">Hostel</Badge>;
+    if (type === 'Hostel') return <Badge className="bg-purple-50 text-purple-700 border-purple-200 border text-[10px]">Hostel</Badge>;
+    if (type === 'Mess') return <Badge className="bg-orange-50 text-orange-700 border-orange-200 border text-[10px]">Mess</Badge>;
+    return <Badge className="bg-teal-50 text-teal-700 border-teal-200 border text-[10px]">Laundry</Badge>;
   };
 
   const getPropertyCountPills = (userId: string) => {
     const props = propertiesMap.get(userId) || [];
     const cabinCount = props.filter(p => p.type === 'Reading Room').length;
     const hostelCount = props.filter(p => p.type === 'Hostel').length;
-    if (cabinCount === 0 && hostelCount === 0) return <span className="text-[10px] text-muted-foreground">No properties</span>;
+    const messCount = props.filter(p => p.type === 'Mess').length;
+    const laundryCount = props.filter(p => p.type === 'Laundry').length;
+    if (cabinCount === 0 && hostelCount === 0 && messCount === 0 && laundryCount === 0) return <span className="text-[10px] text-muted-foreground">No properties</span>;
     return (
       <div className="flex items-center gap-1.5">
         {cabinCount > 0 && <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 px-1.5 py-0">{cabinCount} Reading Room{cabinCount > 1 ? 's' : ''}</Badge>}
         {hostelCount > 0 && <Badge variant="outline" className="text-[10px] border-purple-200 text-purple-600 px-1.5 py-0">{hostelCount} Hostel{hostelCount > 1 ? 's' : ''}</Badge>}
+        {messCount > 0 && <Badge variant="outline" className="text-[10px] border-orange-200 text-orange-600 px-1.5 py-0">{messCount} Mess</Badge>}
+        {laundryCount > 0 && <Badge variant="outline" className="text-[10px] border-teal-200 text-teal-600 px-1.5 py-0">{laundryCount} Laundry</Badge>}
       </div>
     );
   };
@@ -371,7 +425,7 @@ const VendorApproval: React.FC = () => {
                     <Switch
                       checked={p.whatsapp_chat_enabled}
                       onCheckedChange={async (checked) => {
-                        const propType = p.type === 'Reading Room' ? 'cabin' : 'hostel';
+                        const propType = p.type === 'Reading Room' ? 'cabin' : p.type === 'Hostel' ? 'hostel' : p.type === 'Mess' ? 'mess' : 'laundry';
                         const ok = await whatsappLeadService.setPropertyWhatsappEnabled(propType as any, p.id, checked);
                         if (ok) {
                           setPropertiesMap(prev => {
@@ -431,7 +485,7 @@ const VendorApproval: React.FC = () => {
                       <Switch
                         checked={p.whatsapp_chat_enabled}
                         onCheckedChange={async (checked) => {
-                          const propType = p.type === 'Reading Room' ? 'cabin' : 'hostel';
+                          const propType = p.type === 'Reading Room' ? 'cabin' : p.type === 'Hostel' ? 'hostel' : p.type === 'Mess' ? 'mess' : 'laundry';
                           const ok = await whatsappLeadService.setPropertyWhatsappEnabled(propType as any, p.id, checked);
                           if (ok) {
                             setPropertiesMap(prev => {

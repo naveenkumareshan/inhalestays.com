@@ -2388,6 +2388,10 @@ export type Database = {
           id: string
           images: string[] | null
           is_active: boolean
+          is_approved: boolean
+          is_booking_active: boolean
+          is_partner_visible: boolean
+          is_student_visible: boolean
           latitude: number | null
           longitude: number | null
           operating_hours: Json | null
@@ -2400,6 +2404,8 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string
+          whatsapp_chat_enabled: boolean
+          whatsapp_number: string | null
         }
         Insert: {
           address?: string | null
@@ -2415,6 +2421,10 @@ export type Database = {
           id?: string
           images?: string[] | null
           is_active?: boolean
+          is_approved?: boolean
+          is_booking_active?: boolean
+          is_partner_visible?: boolean
+          is_student_visible?: boolean
           latitude?: number | null
           longitude?: number | null
           operating_hours?: Json | null
@@ -2427,6 +2437,8 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id: string
+          whatsapp_chat_enabled?: boolean
+          whatsapp_number?: string | null
         }
         Update: {
           address?: string | null
@@ -2442,6 +2454,10 @@ export type Database = {
           id?: string
           images?: string[] | null
           is_active?: boolean
+          is_approved?: boolean
+          is_booking_active?: boolean
+          is_partner_visible?: boolean
+          is_student_visible?: boolean
           latitude?: number | null
           longitude?: number | null
           operating_hours?: Json | null
@@ -2454,6 +2470,8 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+          whatsapp_chat_enabled?: boolean
+          whatsapp_number?: string | null
         }
         Relationships: []
       }

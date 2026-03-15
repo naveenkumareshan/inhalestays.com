@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Edit, FileMinus, FilePlus, Package, Clock, Eye, EyeOff, Globe, GlobeLock } from 'lucide-react';
+import { Edit, FileMinus, FilePlus, Package, Clock, Eye, EyeOff, Globe, GlobeLock, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
@@ -15,14 +15,17 @@ interface LaundryItemProps {
   onToggleBooking?: (id: string, isBookingActive: boolean) => void;
   onTogglePartnerVisible?: (id: string, isVisible: boolean) => void;
   onToggleStudentVisible?: (id: string, isVisible: boolean) => void;
+  onWhatsAppConfig?: (partner: any) => void;
   itemCount?: number;
   slotCount?: number;
+  whatsappClickCount?: number;
 }
 
 export function LaundryItem({
   partner, onEdit, onManageItems, onManageSlots,
   onToggleActive, onToggleBooking, onTogglePartnerVisible, onToggleStudentVisible,
-  itemCount = 0, slotCount = 0,
+  onWhatsAppConfig,
+  itemCount = 0, slotCount = 0, whatsappClickCount = 0,
 }: LaundryItemProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
@@ -43,8 +46,8 @@ export function LaundryItem({
             <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${partner.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
               {partner.is_active ? '● Active' : '● Inactive'}
             </span>
-            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${partner.status === 'active' || partner.status === 'approved' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-              {partner.status === 'active' || partner.status === 'approved' ? '✓ Approved' : '⏳ Pending'}
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${partner.is_approved ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+              {partner.is_approved ? '✓ Approved' : '⏳ Pending'}
             </span>
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -57,6 +60,12 @@ export function LaundryItem({
             <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${partner.is_student_visible === false ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'bg-teal-50 text-teal-700 border border-teal-200'}`}>
               {partner.is_student_visible === false ? '● Student Hidden' : '● Student Visible'}
             </span>
+            {partner.whatsapp_chat_enabled && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-50 text-green-700 border border-green-200">
+                💬 WhatsApp
+                {whatsappClickCount > 0 && <span className="ml-1">({whatsappClickCount})</span>}
+              </span>
+            )}
           </div>
         </div>
 
@@ -75,9 +84,6 @@ export function LaundryItem({
           </div>
           {partner.description && (
             <p className="text-xs text-muted-foreground line-clamp-2 flex-1">{partner.description}</p>
-          )}
-          {partner.commission_percentage > 0 && (
-            <span className="text-[10px] text-muted-foreground">Commission: {partner.commission_percentage}%</span>
           )}
 
           {/* Actions */}
@@ -105,6 +111,16 @@ export function LaundryItem({
                   </TooltipTrigger>
                   <TooltipContent>Manage pickup slots</TooltipContent>
                 </Tooltip>
+                {onWhatsAppConfig && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="sm" variant="outline" className={`h-7 px-2 text-xs ${partner.whatsapp_chat_enabled ? 'text-green-600 border-green-200' : ''}`} onClick={() => onWhatsAppConfig(partner)}>
+                        <MessageCircle className="h-3 w-3 mr-1" />WA
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>WhatsApp Settings</TooltipContent>
+                  </Tooltip>
+                )}
                 {onToggleActive && (
                   <Tooltip>
                     <TooltipTrigger asChild>

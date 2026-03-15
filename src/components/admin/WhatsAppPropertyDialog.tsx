@@ -12,7 +12,7 @@ interface WhatsAppPropertyDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   propertyId: string;
-  propertyType: 'cabin' | 'hostel' | 'mess';
+  propertyType: 'cabin' | 'hostel' | 'mess' | 'laundry';
   propertyName: string;
   initialNumber: string;
   initialEnabled: boolean;
@@ -36,7 +36,7 @@ export const WhatsAppPropertyDialog: React.FC<WhatsAppPropertyDialogProps> = ({
   const [loadingState, setLoadingState] = useState(false);
   const [clickCount, setClickCount] = useState<number>(0);
 
-  const table = propertyType === 'cabin' ? 'cabins' : propertyType === 'hostel' ? 'hostels' : 'mess_partners';
+  const table = propertyType === 'cabin' ? 'cabins' : propertyType === 'hostel' ? 'hostels' : propertyType === 'laundry' ? 'laundry_partners' : 'mess_partners';
 
   // Fetch fresh data from DB when dialog opens
   useEffect(() => {
