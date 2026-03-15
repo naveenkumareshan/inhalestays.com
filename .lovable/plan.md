@@ -1,71 +1,41 @@
 
+Root cause identified from live backend state:
+- The link exists in database (`hostel_mess_links` has a row for your mess + hostel).
+- UI is showing “No hostel linked” because RLS currently allows `hostel_mess_links` access only to hostel owner/admin, not the linked mess owner.
+- In `MessManagement.tsx`, link fetch also has no error handling, so any policy/embed failure silently becomes an empty map.
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+Plan to fix
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+1) Fix backend access rules (primary fix)
+- Add a new **SELECT-only** policy on `public.hostel_mess_links` so a mess owner (or their employee) can read links where:
+  - `hostel_mess_links.mess_id = mess_partners.id`
+  - `is_partner_or_employee_of(mess_partners.user_id)` is true
+- Keep insert/update/delete restricted to hostel side/admin (no privilege expansion).
 
-## Changes
+2) Ensure hostel names can always be read for linked rows
+- Add a targeted `hostels` SELECT policy for linked mess owners (only rows linked to their mess), so embed name fetch does not return null on private/unapproved hostels.
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+3) Harden frontend query in Manage Mess
+- File: `src/pages/admin/MessManagement.tsx`
+- Use explicit FK embed for reliability:
+  - `hostels!hostel_mess_links_hostel_id_fkey(name)`
+- Add proper error handling + logging for link fetch.
+- Keep map update deterministic (only overwrite with valid fetched results).
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+4) Keep hostel side consistent
+- File: `src/pages/hotelManager/HostelManagement.tsx`
+- Use explicit FK embed:
+  - `mess_partners!hostel_mess_links_mess_id_fkey(name)`
+- Add matching error handling so both screens behave consistently.
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+5) Verify end-to-end
+- Link hostel ↔ mess from hostel side.
+- Open Manage Mess as that mess user: linked hostel name must display (not “No hostel linked”).
+- Validate linked subscription + attendance flow still works:
+  - booking with food creates active mess subscription
+  - attendance marks against active subscription and source type remains correct.
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
-
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
-
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
-
+Technical notes
+- This is primarily an RLS visibility issue, not missing data.
+- No destructive schema change needed; only policy additions/adjustments + frontend query hardening.
+- Security remains tight by granting only required SELECT scope to linked records.
