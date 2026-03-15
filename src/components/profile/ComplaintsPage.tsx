@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FaWhatsapp } from 'react-icons/fa';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -161,6 +162,19 @@ const ComplaintsPage = () => {
               </span>
             </div>
           </div>
+          {partnerWhatsapp && (
+            <button
+              onClick={() => {
+                const text = encodeURIComponent(`Hi, I have a complaint: ${selectedComplaint.subject}${selectedComplaint.serial_number ? ` (${selectedComplaint.serial_number})` : ''}`);
+                window.open(`https://wa.me/${partnerWhatsapp.replace(/[^0-9]/g, '')}?text=${text}`, '_blank');
+              }}
+              className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 transition-transform hover:scale-105"
+              style={{ backgroundColor: '#25D366' }}
+              aria-label="Chat with Property on WhatsApp"
+            >
+              <FaWhatsapp className="h-4 w-4 text-white" />
+            </button>
+          )}
         </div>
         <div className="flex-1">
           <TicketChat
