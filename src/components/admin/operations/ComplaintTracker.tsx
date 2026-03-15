@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO } from 'date-fns';
-import { Search } from 'lucide-react';
+import { Search, Clock } from 'lucide-react';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import TicketChat from '@/components/shared/TicketChat';
+import { getElapsedDisplay, getElapsedBadgeClass } from '@/utils/complaintTimerUtils';
 
 const getPropertyName = (c: any) =>
-  c.cabins?.name || c.hostels?.name || c.mess_partners?.name || '—';
+  c.cabins?.name || c.hostels?.name || c.mess_partners?.name || (c as any).laundry_partners?.business_name || '—';
 
 const getBookingSerial = (c: any) =>
   c.bookings?.serial_number || '—';
@@ -31,19 +32,27 @@ const getLocation = (c: any) => {
 };
 
 const ComplaintTracker = () => {
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [viewTab, setViewTab] = useState<'pending' | 'resolved'>('pending');
   const [search, setSearch] = useState('');
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [, setTick] = useState(0);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  // Live timer refresh every 60s for pending
+  useEffect(() => {
+    if (viewTab !== 'pending') return;
+    const interval = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(interval);
+  }, [viewTab]);
+
   const { data: complaints = [], isLoading } = useQuery({
-    queryKey: ['ops-complaints', statusFilter],
+    queryKey: ['ops-complaints'],
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from('complaints')
         .select(`
           *,
@@ -55,11 +64,6 @@ const ComplaintTracker = () => {
         `)
         .order('created_at', { ascending: false });
 
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
@@ -82,7 +86,11 @@ const ComplaintTracker = () => {
     },
   });
 
+  const isPending = (c: any) => c.status === 'open' || c.status === 'in_progress';
+
   const filtered = complaints.filter((c: any) => {
+    const matchesTab = viewTab === 'pending' ? isPending(c) : !isPending(c);
+    if (!matchesTab) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -91,6 +99,9 @@ const ComplaintTracker = () => {
       c.serial_number?.toLowerCase().includes(q)
     );
   });
+
+  // Reset page on filter change
+  useEffect(() => { setCurrentPage(1); }, [viewTab, search]);
 
   const statusColor = (s: string) => {
     switch (s) {
@@ -108,22 +119,31 @@ const ComplaintTracker = () => {
     setSelectedComplaint({ ...selectedComplaint, status: newStatus });
   };
 
+  const pendingCount = complaints.filter(isPending).length;
+  const resolvedCount = complaints.filter(c => !isPending(c)).length;
+
   return (
     <div className="space-y-4">
-      {/* Filters */}
+      {/* Pending / Resolved toggle */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40 h-8 text-xs">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="open">Open</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="resolved">Resolved</SelectItem>
-            <SelectItem value="closed">Closed</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={viewTab === 'pending' ? 'default' : 'outline'}
+            className="h-8 text-xs rounded-xl gap-1"
+            onClick={() => setViewTab('pending')}
+          >
+            Pending <Badge variant="secondary" className="ml-1 text-[10px] h-4 px-1.5">{pendingCount}</Badge>
+          </Button>
+          <Button
+            size="sm"
+            variant={viewTab === 'resolved' ? 'default' : 'outline'}
+            className="h-8 text-xs rounded-xl gap-1"
+            onClick={() => setViewTab('resolved')}
+          >
+            Resolved <Badge variant="secondary" className="ml-1 text-[10px] h-4 px-1.5">{resolvedCount}</Badge>
+          </Button>
+        </div>
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
@@ -138,7 +158,7 @@ const ComplaintTracker = () => {
       {isLoading ? (
         <div className="text-center py-8 text-sm text-muted-foreground">Loading...</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-8 text-sm text-muted-foreground">No complaints found.</div>
+        <div className="text-center py-8 text-sm text-muted-foreground">No {viewTab} complaints found.</div>
       ) : (
         <div className="border rounded-lg overflow-hidden">
           <table className="w-full text-[11px]">
@@ -153,6 +173,7 @@ const ComplaintTracker = () => {
                 <th className="text-left py-2 px-3 font-medium">Location</th>
                 <th className="text-left py-2 px-3 font-medium">Priority</th>
                 <th className="text-left py-2 px-3 font-medium">Status</th>
+                <th className="text-left py-2 px-3 font-medium">Elapsed</th>
                 <th className="text-left py-2 px-3 font-medium">Date</th>
                 <th className="text-right py-2 px-3 font-medium">Actions</th>
               </tr>
@@ -175,10 +196,16 @@ const ComplaintTracker = () => {
                       {c.status?.replace('_', ' ')}
                     </Badge>
                   </td>
+                  <td className="py-1.5 px-3">
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${getElapsedBadgeClass(c.status)}`}>
+                      <Clock className="h-2.5 w-2.5" />
+                      {getElapsedDisplay(c.created_at, c.resolved_at)}
+                    </span>
+                  </td>
                   <td className="py-1.5 px-3">{format(parseISO(c.created_at), 'dd MMM yyyy')}</td>
                   <td className="py-1.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-1 justify-end">
-                      {c.status !== 'resolved' && (
+                      {c.status !== 'resolved' && c.status !== 'closed' && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -229,11 +256,18 @@ const ComplaintTracker = () => {
                 <div><span className="text-muted-foreground">Booking #:</span> {getBookingSerial(selectedComplaint)}</div>
                 <div><span className="text-muted-foreground">Location:</span> {getLocation(selectedComplaint)}</div>
                 <div><span className="text-muted-foreground">Priority:</span> <span className="capitalize">{selectedComplaint.priority}</span></div>
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">Elapsed:</span>{' '}
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${getElapsedBadgeClass(selectedComplaint.status)}`}>
+                    <Clock className="h-2.5 w-2.5" />
+                    {getElapsedDisplay(selectedComplaint.created_at, selectedComplaint.resolved_at)}
+                  </span>
+                </div>
               </div>
 
               {/* Status actions */}
               <div className="flex gap-2 shrink-0">
-                {selectedComplaint.status !== 'resolved' && (
+                {selectedComplaint.status !== 'resolved' && selectedComplaint.status !== 'closed' && (
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleDialogStatusUpdate('resolved')}>
                     Mark Resolved
                   </Button>
@@ -243,7 +277,7 @@ const ComplaintTracker = () => {
                     In Progress
                   </Button>
                 )}
-                {selectedComplaint.status === 'resolved' && (
+                {(selectedComplaint.status === 'resolved' || selectedComplaint.status === 'closed') && (
                   <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleDialogStatusUpdate('open')}>
                     Reopen
                   </Button>
