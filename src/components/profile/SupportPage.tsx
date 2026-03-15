@@ -126,7 +126,17 @@ const SupportPage = () => {
       <div className="bg-card border-b px-3 py-3 flex items-center gap-3 sticky top-0 z-10">
         <button onClick={() => navigate(-1)} className="p-1"><ArrowLeft className="h-5 w-5" /></button>
         <h1 className="text-[15px] font-semibold">Customer Support</h1>
-        <Button size="sm" className="ml-auto h-8 text-[12px] rounded-xl gap-1" onClick={() => setShowForm(!showForm)}>
+        {adminWhatsapp && (
+          <button
+            onClick={() => window.open(`https://wa.me/${adminWhatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hello, I need support with my account.')}`, '_blank')}
+            className="ml-auto h-8 w-8 rounded-full flex items-center justify-center transition-transform hover:scale-105"
+            style={{ backgroundColor: '#25D366' }}
+            aria-label="Chat on WhatsApp"
+          >
+            <MessageCircle className="h-4 w-4 text-white" fill="#fff" />
+          </button>
+        )}
+        <Button size="sm" className={`${adminWhatsapp ? 'ml-2' : 'ml-auto'} h-8 text-[12px] rounded-xl gap-1`} onClick={() => setShowForm(!showForm)}>
           <Plus className="h-3.5 w-3.5" /> New Ticket
         </Button>
       </div>
