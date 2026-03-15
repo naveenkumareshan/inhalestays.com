@@ -129,12 +129,20 @@ export function SiteSettingsForm() {
     );
   }
 
-  const menuItems: { key: keyof EnabledMenus; label: string; desc: string }[] = [
+  const navMenuItems: { key: keyof EnabledMenus; label: string; desc: string }[] = [
     { key: 'bookings', label: 'Cabin Booking', desc: 'Reading rooms / cabin bookings menu' },
     { key: 'hostel', label: 'Hostels', desc: 'Hostel listings and booking menu' },
-    { key: 'laundry', label: 'Laundry', desc: 'Laundry service menu' },
-    { key: 'roomSharing', label: 'Room Sharing', desc: 'Room sharing listings' },
+    { key: 'mess', label: 'Mess / Food', desc: 'Mess marketplace and food services' },
     { key: 'about', label: 'About', desc: 'About page in navigation' },
+  ];
+
+  const featureItems: { key: keyof EnabledMenus; label: string; desc: string }[] = [
+    { key: 'laundry', label: 'Laundry', desc: 'Laundry service menu' },
+    { key: 'laundryOrders', label: 'Laundry Orders', desc: 'Student laundry orders section' },
+    { key: 'complaints', label: 'Complaints', desc: 'Student complaints module' },
+    { key: 'attendance', label: 'Attendance', desc: 'QR scan attendance tracking' },
+    { key: 'support', label: 'Support', desc: 'Student support tickets' },
+    { key: 'roomSharing', label: 'Room Sharing', desc: 'Room sharing listings' },
   ];
 
   return (
