@@ -19,7 +19,7 @@ export function SocialLoginButtons({ onLoginSuccess, onLoginError }: SocialLogin
   const handleOAuthLogin = async (provider: 'google' | 'apple') => {
     setIsLoading(provider);
     try {
-      const isCapacitor = !!(window as any).Capacitor;
+      const isCapacitor = !!(window as any).Capacitor?.isNativePlatform?.();
 
       if (isCapacitor) {
         const { error } = await supabase.auth.signInWithOAuth({
