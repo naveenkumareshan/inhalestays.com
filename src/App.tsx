@@ -231,6 +231,7 @@ function App() {
               <Route path="laundry" element={<AdminLaundry />} />
               <Route path="laundry-orders" element={<LaundryOrders />} />
               <Route path="laundry-operations" element={<LaundryOperations />} />
+              <Route path="laundry-receipts" element={<LaundryReceipts />} />
               <Route path="admin-employees" element={<AdminEmployees />} />
               <Route path="booking-activity-log" element={<BookingActivityLog />} />
               <Route path="mess" element={<MessManagement />} />
