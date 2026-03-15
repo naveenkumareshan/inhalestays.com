@@ -269,6 +269,9 @@ const ComplaintsPage = () => {
                     <div className="flex-1 min-w-0 space-y-1">
                       {c.serial_number && <p className="text-[10px] font-mono text-muted-foreground">{c.serial_number}</p>}
                       <p className="text-[13px] font-semibold text-foreground">{c.subject}</p>
+                      {(c.cabins?.name || c.hostels?.name || c.mess_partners?.name) && (
+                        <p className="text-[11px] text-muted-foreground">{c.cabins?.name || c.hostels?.name || c.mess_partners?.name}</p>
+                      )}
                       <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">{c.category}</Badge>
                         <span>{format(new Date(c.created_at), 'd MMM yyyy')}</span>
