@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
       }
 
       // Create receipt for reading room/cabin bookings in test mode
-      if (!isHostel && !isLaundry) {
+      if (!isHostel && !isLaundry && !isMess) {
         const { data: booking } = await adminClient
           .from("bookings")
           .select("cabin_id, seat_id, user_id, total_price")
