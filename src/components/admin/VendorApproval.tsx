@@ -26,7 +26,7 @@ import { PartnerPayoutSettingsDialog } from './PartnerPayoutSettingsDialog';
 interface PropertyInfo {
   id: string;
   name: string;
-  type: 'Reading Room' | 'Hostel';
+  type: 'Reading Room' | 'Hostel' | 'Mess' | 'Laundry';
   city: string;
   state: string;
   capacity: number;
