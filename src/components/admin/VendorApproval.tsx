@@ -332,18 +332,24 @@ const VendorApproval: React.FC = () => {
 
   const getPropertyTypeBadge = (type: string) => {
     if (type === 'Reading Room') return <Badge className="bg-blue-50 text-blue-700 border-blue-200 border text-[10px]">Reading Room</Badge>;
-    return <Badge className="bg-purple-50 text-purple-700 border-purple-200 border text-[10px]">Hostel</Badge>;
+    if (type === 'Hostel') return <Badge className="bg-purple-50 text-purple-700 border-purple-200 border text-[10px]">Hostel</Badge>;
+    if (type === 'Mess') return <Badge className="bg-orange-50 text-orange-700 border-orange-200 border text-[10px]">Mess</Badge>;
+    return <Badge className="bg-teal-50 text-teal-700 border-teal-200 border text-[10px]">Laundry</Badge>;
   };
 
   const getPropertyCountPills = (userId: string) => {
     const props = propertiesMap.get(userId) || [];
     const cabinCount = props.filter(p => p.type === 'Reading Room').length;
     const hostelCount = props.filter(p => p.type === 'Hostel').length;
-    if (cabinCount === 0 && hostelCount === 0) return <span className="text-[10px] text-muted-foreground">No properties</span>;
+    const messCount = props.filter(p => p.type === 'Mess').length;
+    const laundryCount = props.filter(p => p.type === 'Laundry').length;
+    if (cabinCount === 0 && hostelCount === 0 && messCount === 0 && laundryCount === 0) return <span className="text-[10px] text-muted-foreground">No properties</span>;
     return (
       <div className="flex items-center gap-1.5">
         {cabinCount > 0 && <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 px-1.5 py-0">{cabinCount} Reading Room{cabinCount > 1 ? 's' : ''}</Badge>}
         {hostelCount > 0 && <Badge variant="outline" className="text-[10px] border-purple-200 text-purple-600 px-1.5 py-0">{hostelCount} Hostel{hostelCount > 1 ? 's' : ''}</Badge>}
+        {messCount > 0 && <Badge variant="outline" className="text-[10px] border-orange-200 text-orange-600 px-1.5 py-0">{messCount} Mess</Badge>}
+        {laundryCount > 0 && <Badge variant="outline" className="text-[10px] border-teal-200 text-teal-600 px-1.5 py-0">{laundryCount} Laundry</Badge>}
       </div>
     );
   };
