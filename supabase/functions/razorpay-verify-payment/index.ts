@@ -363,6 +363,9 @@ Deno.serve(async (req) => {
     if (isHostel || isLaundry) {
       updateData.status = "confirmed";
     }
+    if (isMess) {
+      updateData.status = "active";
+    }
 
     // For hostel bookings with advance, check if it's advance_paid
     if (isHostel) {
