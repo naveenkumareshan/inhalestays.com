@@ -114,15 +114,22 @@ export function Navigation() {
             {navLinks.filter(link => link.show).map((link) => (
               <Link
                 key={link.href}
-                to={link.href}
+                to={link.enabled ? link.href : '#'}
+                onClick={link.enabled ? undefined : (e) => e.preventDefault()}
                 className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                  "px-4 py-2 text-sm font-medium rounded-lg transition-colors relative",
+                  !link.enabled && "opacity-60 cursor-default",
                   isActive(link) 
                     ? "bg-primary/10 text-primary" 
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )}
               >
                 {link.label}
+                {!link.enabled && (
+                  <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium align-middle">
+                    Soon
+                  </span>
+                )}
               </Link>
             ))}
             {isAuthenticated && (
