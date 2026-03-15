@@ -22,22 +22,21 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import inhalestaysLogo from '@/assets/inhalestays-logo.png';
 
+import { EnabledMenus } from '@/hooks/useEnabledMenus';
+
 interface SiteSettings {
   siteName: string;
   logoUrl: string;
-  enabledMenus: {
-    bookings: boolean;
-    hostel: boolean;
-    laundry: boolean;
-    roomSharing: boolean;
-    about: boolean;
-  };
+  enabledMenus: EnabledMenus;
 }
 
 const DEFAULT_SETTINGS: SiteSettings = {
   siteName: "InhaleStays",
   logoUrl: "",
-  enabledMenus: { bookings: true, hostel: false, laundry: false, roomSharing: true, about: true },
+  enabledMenus: {
+    bookings: true, hostel: false, laundry: false, roomSharing: true, about: true,
+    mess: true, complaints: true, attendance: true, support: true, laundryOrders: true,
+  },
 };
 
 export function Navigation() {
