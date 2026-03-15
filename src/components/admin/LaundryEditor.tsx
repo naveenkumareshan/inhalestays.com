@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Building2, Clock, ChevronDown, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Building2, Clock, ChevronDown, Save, Loader2, MapPin, MessageCircle } from 'lucide-react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,9 +42,12 @@ export function LaundryEditor({ onSave, onCancel, existingPartner, isAdmin = tru
     city: existingPartner?.city || '',
     state: existingPartner?.state || '',
     delivery_time_hours: existingPartner?.delivery_time_hours?.toString() || '48',
-    commission_percentage: existingPartner?.commission_percentage?.toString() || '10',
     operating_hours: existingPartner?.operating_hours || { start: '08:00', end: '20:00' },
     user_id: existingPartner?.user_id || '',
+    latitude: existingPartner?.latitude?.toString() || '',
+    longitude: existingPartner?.longitude?.toString() || '',
+    whatsapp_number: existingPartner?.whatsapp_number || '',
+    whatsapp_chat_enabled: existingPartner?.whatsapp_chat_enabled || false,
   });
 
   const [partners, setPartners] = useState<Array<{ id: string; name: string; email: string }>>([]);
@@ -51,6 +55,7 @@ export function LaundryEditor({ onSave, onCancel, existingPartner, isAdmin = tru
   const [openSection, setOpenSection] = useState<number | null>(1);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [capturingLocation, setCapturingLocation] = useState(false);
 
   useEffect(() => {
     const fetchPartners = async () => {
@@ -78,6 +83,30 @@ export function LaundryEditor({ onSave, onCancel, existingPartner, isAdmin = tru
     setValidationError(null);
   };
 
+  const handleCaptureLocation = () => {
+    if (!navigator.geolocation) {
+      toast({ title: 'Geolocation not supported', variant: 'destructive' });
+      return;
+    }
+    setCapturingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setForm(prev => ({
+          ...prev,
+          latitude: pos.coords.latitude.toFixed(6),
+          longitude: pos.coords.longitude.toFixed(6),
+        }));
+        setCapturingLocation(false);
+        toast({ title: 'Location captured' });
+      },
+      (err) => {
+        setCapturingLocation(false);
+        toast({ title: 'Location error', description: err.message, variant: 'destructive' });
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
   const handleSave = async () => {
     if (!form.business_name) { setValidationError('Business name is required'); return; }
     if (!form.contact_person) { setValidationError('Contact person is required'); return; }
@@ -97,8 +126,11 @@ export function LaundryEditor({ onSave, onCancel, existingPartner, isAdmin = tru
       city: form.city,
       state: form.state,
       delivery_time_hours: parseInt(form.delivery_time_hours) || 48,
-      commission_percentage: parseFloat(form.commission_percentage) || 10,
       operating_hours: form.operating_hours,
+      latitude: form.latitude ? parseFloat(form.latitude) : null,
+      longitude: form.longitude ? parseFloat(form.longitude) : null,
+      whatsapp_number: form.whatsapp_number || null,
+      whatsapp_chat_enabled: form.whatsapp_chat_enabled,
     };
 
     onSave(payload);
@@ -143,7 +175,6 @@ export function LaundryEditor({ onSave, onCancel, existingPartner, isAdmin = tru
                   <div><Label htmlFor="contact_person" className="text-sm">Contact Person *</Label><Input id="contact_person" name="contact_person" value={form.contact_person} onChange={handleInputChange} /></div>
                   <div><Label htmlFor="phone" className="text-sm">Phone</Label><Input id="phone" name="phone" value={form.phone} onChange={handleInputChange} /></div>
                   <div><Label htmlFor="email" className="text-sm">Email</Label><Input id="email" name="email" value={form.email} onChange={handleInputChange} /></div>
-                  <div><Label htmlFor="commission_percentage" className="text-sm">Commission %</Label><Input id="commission_percentage" name="commission_percentage" type="number" value={form.commission_percentage} onChange={handleInputChange} /></div>
                   {isAdmin && (
                     <div>
                       <Label className="text-sm">Partner / Owner</Label>
@@ -169,8 +200,8 @@ export function LaundryEditor({ onSave, onCancel, existingPartner, isAdmin = tru
               <CardHeader className="py-4 px-4 cursor-pointer group">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <SectionBadge number={2} icon={Clock} />
-                    <div><CardTitle className="text-base">Location & Service</CardTitle><CardDescription className="text-xs">Address, service area, delivery time, operating hours</CardDescription></div>
+                    <SectionBadge number={2} icon={MapPin} />
+                    <div><CardTitle className="text-base">Location & Service</CardTitle><CardDescription className="text-xs">Address, coordinates, service area, delivery time</CardDescription></div>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                 </div>
@@ -182,6 +213,14 @@ export function LaundryEditor({ onSave, onCancel, existingPartner, isAdmin = tru
                   <div className="md:col-span-2"><Label htmlFor="address" className="text-sm">Address</Label><Input id="address" name="address" value={form.address} onChange={handleInputChange} /></div>
                   <div><Label htmlFor="city" className="text-sm">City</Label><Input id="city" name="city" value={form.city} onChange={handleInputChange} /></div>
                   <div><Label htmlFor="state" className="text-sm">State</Label><Input id="state" name="state" value={form.state} onChange={handleInputChange} /></div>
+                  <div><Label htmlFor="latitude" className="text-sm">Latitude</Label><Input id="latitude" name="latitude" type="number" step="any" value={form.latitude} onChange={handleInputChange} placeholder="e.g., 17.385044" /></div>
+                  <div><Label htmlFor="longitude" className="text-sm">Longitude</Label><Input id="longitude" name="longitude" type="number" step="any" value={form.longitude} onChange={handleInputChange} placeholder="e.g., 78.486671" /></div>
+                  <div className="md:col-span-2">
+                    <Button type="button" variant="outline" size="sm" onClick={handleCaptureLocation} disabled={capturingLocation}>
+                      {capturingLocation ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <MapPin className="h-3 w-3 mr-1" />}
+                      Capture Current Location
+                    </Button>
+                  </div>
                   <div><Label htmlFor="service_area" className="text-sm">Service Area</Label><Input id="service_area" name="service_area" value={form.service_area} onChange={handleInputChange} placeholder="e.g., Campus Area" /></div>
                   <div><Label htmlFor="delivery_time_hours" className="text-sm">Delivery Time (hours)</Label><Input id="delivery_time_hours" name="delivery_time_hours" type="number" value={form.delivery_time_hours} onChange={handleInputChange} /></div>
                   <div>
@@ -191,6 +230,38 @@ export function LaundryEditor({ onSave, onCancel, existingPartner, isAdmin = tru
                   <div>
                     <Label className="text-sm">Operating End</Label>
                     <Input type="time" value={form.operating_hours?.end || '20:00'} onChange={e => setForm(prev => ({ ...prev, operating_hours: { ...prev.operating_hours, end: e.target.value } }))} />
+                  </div>
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
+        {/* Section 3: WhatsApp */}
+        <Collapsible open={openSection === 3} onOpenChange={(isOpen) => setOpenSection(isOpen ? 3 : null)}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="py-4 px-4 cursor-pointer group">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <SectionBadge number={3} icon={MessageCircle} />
+                    <div><CardTitle className="text-base">WhatsApp</CardTitle><CardDescription className="text-xs">Contact number and chat toggle</CardDescription></div>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="px-4 pb-4 pt-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="whatsapp_number" className="text-sm">WhatsApp Number</Label>
+                    <Input id="whatsapp_number" name="whatsapp_number" value={form.whatsapp_number} onChange={handleInputChange} placeholder="e.g., 919876543210" />
+                    <p className="text-[10px] text-muted-foreground mt-1">Include country code without + sign</p>
+                  </div>
+                  <div className="flex items-center gap-3 pt-5">
+                    <Switch checked={form.whatsapp_chat_enabled} onCheckedChange={v => setForm(prev => ({ ...prev, whatsapp_chat_enabled: v }))} />
+                    <Label className="text-sm">Enable WhatsApp Chat Button</Label>
                   </div>
                 </div>
               </CardContent>
