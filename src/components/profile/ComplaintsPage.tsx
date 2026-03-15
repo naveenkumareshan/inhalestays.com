@@ -54,7 +54,7 @@ const ComplaintsPage = () => {
     setCurrentUserId(user.id);
 
     const [complaintsRes, cabinBookingsRes, hostelBookingsRes, messSubsRes] = await Promise.all([
-      supabase.from('complaints').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('complaints').select('*, cabins:cabin_id(name), hostels:hostel_id(name), mess_partners:mess_id(name)').eq('user_id', user.id).order('created_at', { ascending: false }),
       bookingsService.getCurrentBookings(),
       hostelBookingService.getUserBookings(),
       getMyMessSubscriptions(user.id).catch(() => []),
