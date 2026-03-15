@@ -382,27 +382,27 @@ function App() {
               />
               <Route
                 path="/student/complaints"
-                element={<ProtectedRoute><StudentSuspense><ComplaintsPage /></StudentSuspense></ProtectedRoute>}
+                element={<ProtectedRoute><StudentSuspense><LaunchingSoonGuard moduleKey="complaints" moduleName="Complaints"><ComplaintsPage /></LaunchingSoonGuard></StudentSuspense></ProtectedRoute>}
               />
               <Route
                 path="/student/laundry-orders"
-                element={<ProtectedRoute><StudentSuspense><StudentLaundryOrders /></StudentSuspense></ProtectedRoute>}
+                element={<ProtectedRoute><StudentSuspense><LaunchingSoonGuard moduleKey="laundryOrders" moduleName="Laundry Orders"><StudentLaundryOrders /></LaunchingSoonGuard></StudentSuspense></ProtectedRoute>}
               />
               <Route
                 path="/student/support"
-                element={<ProtectedRoute><StudentSuspense><SupportPage /></StudentSuspense></ProtectedRoute>}
+                element={<ProtectedRoute><StudentSuspense><LaunchingSoonGuard moduleKey="support" moduleName="Support"><SupportPage /></LaunchingSoonGuard></StudentSuspense></ProtectedRoute>}
               />
               <Route
                 path="/student/scan-attendance"
-                element={<ProtectedRoute><StudentSuspense><ScanAttendance /></StudentSuspense></ProtectedRoute>}
+                element={<ProtectedRoute><StudentSuspense><LaunchingSoonGuard moduleKey="attendance" moduleName="Attendance"><ScanAttendance /></LaunchingSoonGuard></StudentSuspense></ProtectedRoute>}
               />
               <Route
                 path="/student/attendance-history"
-                element={<ProtectedRoute><StudentSuspense><AttendanceHistory /></StudentSuspense></ProtectedRoute>}
+                element={<ProtectedRoute><StudentSuspense><LaunchingSoonGuard moduleKey="attendance" moduleName="Attendance"><AttendanceHistory /></LaunchingSoonGuard></StudentSuspense></ProtectedRoute>}
               />
               <Route
                 path="/student/mess"
-                element={<ProtectedRoute><StudentSuspense><MessDashboard /></StudentSuspense></ProtectedRoute>}
+                element={<ProtectedRoute><StudentSuspense><LaunchingSoonGuard moduleKey="mess" moduleName="Mess / Food"><MessDashboard /></LaunchingSoonGuard></StudentSuspense></ProtectedRoute>}
               />
             </Route>
 
