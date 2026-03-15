@@ -71,13 +71,16 @@ const LaundryPartnerDashboard: React.FC<LaundryPartnerDashboardProps> = ({ autoC
       const p = await laundryCloudService.getMyPartnerRecord();
       setPartner(p);
       if (p) {
+        const opHours = (p.operating_hours && typeof p.operating_hours === 'object' && !Array.isArray(p.operating_hours))
+          ? { start: (p.operating_hours as any).start || '08:00', end: (p.operating_hours as any).end || '20:00' }
+          : { start: '08:00', end: '20:00' };
         setForm({
-          business_name: p.business_name || '', description: p.description || '',
+          business_name: p.business_name || '', description: (p as any).description || '',
           contact_person: p.contact_person || '', phone: p.phone || '', email: p.email || '',
-          service_area: p.service_area || '', address: p.address || '',
-          city: p.city || '', state: p.state || '',
-          delivery_time_hours: p.delivery_time_hours || 48,
-          operating_hours: p.operating_hours || { start: '08:00', end: '20:00' },
+          service_area: p.service_area || '', address: (p as any).address || '',
+          city: (p as any).city || '', state: (p as any).state || '',
+          delivery_time_hours: (p as any).delivery_time_hours || 48,
+          operating_hours: opHours,
         });
         await Promise.all([loadItems(p.id), loadSlots(p.id), loadOrders()]);
       }
