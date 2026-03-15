@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Headphones, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Headphones, ChevronRight, MessageCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -126,7 +126,17 @@ const SupportPage = () => {
       <div className="bg-card border-b px-3 py-3 flex items-center gap-3 sticky top-0 z-10">
         <button onClick={() => navigate(-1)} className="p-1"><ArrowLeft className="h-5 w-5" /></button>
         <h1 className="text-[15px] font-semibold">Customer Support</h1>
-        <Button size="sm" className="ml-auto h-8 text-[12px] rounded-xl gap-1" onClick={() => setShowForm(!showForm)}>
+        {adminWhatsapp && (
+          <button
+            onClick={() => window.open(`https://wa.me/${adminWhatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hello, I need support with my account.')}`, '_blank')}
+            className="ml-auto h-8 w-8 rounded-full flex items-center justify-center transition-transform hover:scale-105"
+            style={{ backgroundColor: '#25D366' }}
+            aria-label="Chat on WhatsApp"
+          >
+            <MessageCircle className="h-4 w-4 text-white" fill="#fff" />
+          </button>
+        )}
+        <Button size="sm" className={`${adminWhatsapp ? 'ml-2' : 'ml-auto'} h-8 text-[12px] rounded-xl gap-1`} onClick={() => setShowForm(!showForm)}>
           <Plus className="h-3.5 w-3.5" /> New Ticket
         </Button>
       </div>
