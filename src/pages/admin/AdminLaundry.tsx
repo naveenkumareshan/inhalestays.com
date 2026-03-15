@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from '@/hooks/use-toast';
 import { LaundryItem } from '@/components/admin/LaundryItem';
 import { LaundryEditor } from '@/components/admin/LaundryEditor';
-import { Plus, Shirt, Search, Loader2, Trash2, Pencil } from 'lucide-react';
+import { Plus, Shirt, Search, Loader2, Trash2, Pencil, MessageCircle } from 'lucide-react';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
