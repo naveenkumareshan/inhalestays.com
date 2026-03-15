@@ -7,7 +7,7 @@ import { laundryCloudService } from '@/api/laundryCloudService';
 import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AdminTablePagination } from '@/components/admin/AdminTablePagination';
-import { getSerialNumber } from '@/utils/serialUtils';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 const ORDER_STATUSES = ['pending', 'confirmed', 'pickup_scheduled', 'picked_up', 'washing', 'ready', 'out_for_delivery', 'delivered', 'cancelled'];
 
