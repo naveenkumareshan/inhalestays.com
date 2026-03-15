@@ -10,13 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Save, Loader2, Upload, X, Image as ImageIcon, Camera } from 'lucide-react';
 
-interface EnabledMenus {
-  bookings: boolean;
-  hostel: boolean;
-  laundry: boolean;
-  roomSharing: boolean;
-  about: boolean;
-}
+import { EnabledMenus } from '@/hooks/useEnabledMenus';
 
 const SETTINGS_KEYS = ['site_name', 'site_description', 'site_logo', 'site_tagline', 'enabled_menus', 'admin_whatsapp'];
 
