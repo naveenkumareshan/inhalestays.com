@@ -238,6 +238,35 @@ export default function MessDetail() {
   const handleGoBack = () => navigate(-1);
 
   if (loading) return <MessDetailSkeleton />;
+  // Success screen
+  if (bookingSuccess && selectedPackage) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-card rounded-2xl border border-border shadow-lg p-6 text-center space-y-4">
+          <div className="h-16 w-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
+            <CheckCircle className="h-8 w-8 text-emerald-500" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground">Subscription Confirmed!</h2>
+          <p className="text-sm text-muted-foreground">Your mess subscription has been activated.</p>
+          <div className="bg-muted/30 rounded-xl p-4 space-y-2 text-sm text-left">
+            <div className="flex justify-between"><span className="text-muted-foreground">Mess</span><span className="font-medium text-foreground">{mess?.name}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Package</span><span className="font-medium text-foreground">{selectedPackage.name}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Validity</span><span className="font-medium text-foreground">{format(checkInDate, 'dd MMM yyyy')} – {format(endDate, 'dd MMM yyyy')}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Amount Paid</span><span className="font-bold text-secondary">{formatCurrency(totalPrice)}</span></div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => navigate('/student/bookings')}>
+              View All Bookings
+            </Button>
+            <Button className="flex-1" onClick={() => navigate('/mess')}>
+              Browse Mess
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!mess) return null;
 
   const messImages = mess.images?.length ? mess.images : (mess.logo_image ? [mess.logo_image] : []);
