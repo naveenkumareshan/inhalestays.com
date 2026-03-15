@@ -76,6 +76,7 @@ const MySubscriptions = lazy(() => import("./pages/partner/MySubscriptions"));
 const AdminLaundry = lazy(() => import("./pages/admin/AdminLaundry"));
 const LaundryOrders = lazy(() => import("./pages/admin/LaundryOrders"));
 const LaundryOperations = lazy(() => import("./pages/admin/LaundryOperations"));
+const LaundryReceipts = lazy(() => import("./pages/admin/LaundryReceipts"));
 const AdminEmployees = lazy(() => import("./pages/admin/AdminEmployees"));
 const BookingActivityLog = lazy(() => import("./pages/admin/BookingActivityLog"));
 const MessManagement = lazy(() => import("./pages/admin/MessManagement"));
@@ -230,6 +231,7 @@ function App() {
               <Route path="laundry" element={<AdminLaundry />} />
               <Route path="laundry-orders" element={<LaundryOrders />} />
               <Route path="laundry-operations" element={<LaundryOperations />} />
+              <Route path="laundry-receipts" element={<LaundryReceipts />} />
               <Route path="admin-employees" element={<AdminEmployees />} />
               <Route path="booking-activity-log" element={<BookingActivityLog />} />
               <Route path="mess" element={<MessManagement />} />
@@ -292,6 +294,7 @@ function App() {
               <Route path="laundry" element={<AdminLaundry />} />
               <Route path="laundry-orders" element={<LaundryOrders />} />
               <Route path="laundry-operations" element={<LaundryOperations />} />
+              <Route path="laundry-receipts" element={<LaundryReceipts />} />
               <Route path="booking-activity-log" element={<BookingActivityLog />} />
               <Route path="mess" element={<MessManagement />} />
               <Route path="mess-bookings" element={<MessBookings />} />

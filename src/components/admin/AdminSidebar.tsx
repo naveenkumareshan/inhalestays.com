@@ -52,7 +52,8 @@ import {
   Shirt,
   Activity,
   UtensilsCrossed,
-  Clock
+  Clock,
+  Receipt
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight } from 'lucide-react';
@@ -337,6 +338,12 @@ export function AdminSidebar() {
         title: 'Laundry Operations',
         url: `${routePrefix}/laundry-operations`,
         icon: Activity,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      },
+      {
+        title: 'Laundry Receipts',
+        url: `${routePrefix}/laundry-receipts`,
+        icon: Receipt,
         roles: ['admin', 'vendor', 'vendor_employee'],
       },
     ];

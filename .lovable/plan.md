@@ -1,42 +1,71 @@
 
 
-## Analysis: Partner Laundry Sidebar Not Showing
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-### Investigation Results
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-I've thoroughly checked the database, RLS policies, and code. Here's what I found:
+## Changes
 
-**Data**: The test partner ("Fresh & Clean Laundry") exists with `user_id = b7223bac-ef5c-48aa-ba49-d530d15f6f8e`, `is_active = true`, `status = 'active'`, `is_student_visible = true`.
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-**RLS Policies on `laundry_partners`**: 
-- "Admins can manage all laundry partners" (ALL) — admin only
-- "Partners can view own record" (SELECT) — `auth.uid() = user_id`
-- "Partners can update own record" (UPDATE) — `auth.uid() = user_id`  
-- "Partners can manage own partner record" (ALL) — `is_partner_or_employee_of(user_id)`
-- "Students can view active laundry partners" (SELECT) — active + student_visible
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-**Sidebar Logic** (`AdminSidebar.tsx` line 322):
-```
-if (user?.role === 'admin' || (isPartner && propertyTypes.hasLaundry))
-```
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-**`usePartnerPropertyTypes` hook**: Queries `laundry_partners` where `user_id = vendorUserId`. For the test vendor, this should return the record.
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-### Root Cause
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-Everything is correctly configured. The sidebar **will** show the Laundry section when the test partner (`testpartner123@test.com`) logs in at `/partner/login`. The laundry section already appears for admin users (as you can see on `/admin/laundry`).
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-**To verify**: Log in as the test partner at `/partner/login` with the credentials for `testpartner123@test.com`. The Laundry sidebar group should appear with "Manage Laundry", "Laundry Orders", and "Laundry Operations" sub-items.
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-### Safety Enhancement (Recommended)
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-Add a `LaundryReceipts` sub-item to match the pattern used by Reading Rooms and Hostels, and also add the `laundry-receipts` route under `/partner/`:
+**Reviews section**: Shown below the booking flow (not in a tab)
 
-| File | Action |
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
 |------|--------|
-| `src/components/admin/AdminSidebar.tsx` | Add "Laundry Receipts" sub-item under Laundry section |
-| `src/App.tsx` | Add `laundry-receipts` route under both admin and partner route groups |
-| `src/pages/admin/AdminLaundry.tsx` | No change — already handles partner listing |
-
-If the partner truly cannot see the sidebar after logging in, the issue would be an authentication/session problem rather than a code bug. Please confirm by logging in as the test partner.
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 
