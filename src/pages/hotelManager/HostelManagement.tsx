@@ -37,9 +37,14 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [messLinksMap, setMessLinksMap] = useState<Record<string, { mess_id: string; mess_name: string; is_default: boolean }[]>>({});
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, authChecked } = useAuth();
 
-  useEffect(() => { fetchHostels(); }, []);
+  // Only fetch after auth is ready
+  useEffect(() => {
+    if (authChecked && user?.id) {
+      fetchHostels();
+    }
+  }, [authChecked, user?.id]);
 
   // Auto-create new when triggered from parent
   useEffect(() => {
@@ -68,8 +73,9 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
     }
   };
 
-  // Fetch linked mess partners via secure RPC after hostels are loaded
+  // Fetch linked mess partners via secure RPC after hostels are loaded AND auth is ready
   useEffect(() => {
+    if (!authChecked || !user?.id) return;
     if (hostels.length === 0) { setMessLinksMap({}); return; }
     const fetchLinks = async () => {
       const hostelIds = hostels.map((h: any) => h.id);
@@ -92,7 +98,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
       setMessLinksMap(map);
     };
     fetchLinks();
-  }, [hostels]);
+  }, [hostels, authChecked, user?.id]);
 
   const handleAddHostel = () => { setSelectedHostel(null); setShowEditor(true); };
   const handleEditHostel = (hostel: any) => { setSelectedHostel(hostel); setShowEditor(true); };

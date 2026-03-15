@@ -38,7 +38,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const { user } = useAuth();
+  const { user, authChecked } = useAuth();
   const [hostelLinksMap, setHostelLinksMap] = useState<Record<string, { hostel_id: string; hostel_name: string; is_default: boolean }[]>>({});
 
   // Packages state
@@ -46,7 +46,12 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
   const [pkgForm, setPkgForm] = useState({ name: '', meal_types: ['breakfast', 'lunch', 'dinner'], price: '' });
   const [mealCheckboxes, setMealCheckboxes] = useState({ breakfast: true, lunch: true, dinner: true });
 
-  useEffect(() => { fetchMesses(); }, []);
+  // Only fetch after auth is ready
+  useEffect(() => {
+    if (authChecked && user?.id) {
+      fetchMesses();
+    }
+  }, [authChecked, user?.id]);
 
   // Auto-create new when triggered from parent
   useEffect(() => {
@@ -76,8 +81,9 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
     }
   };
 
-  // Fetch linked hostels via secure RPC after messes are loaded
+  // Fetch linked hostels via secure RPC after messes are loaded AND auth is ready
   useEffect(() => {
+    if (!authChecked || !user?.id) return;
     if (messes.length === 0) { setHostelLinksMap({}); return; }
     const fetchLinks = async () => {
       const messIds = messes.map((m: any) => m.id);
@@ -99,7 +105,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
       setHostelLinksMap(map);
     };
     fetchLinks();
-  }, [messes]);
+  }, [messes, authChecked, user?.id]);
 
   const handleAddMess = () => { setSelectedMess(null); setShowEditor(true); };
   const handleEditMess = (mess: any) => { setSelectedMess(mess); setShowEditor(true); };

@@ -1,35 +1,71 @@
 
-I’m sorry this has been frustrating. I cannot directly refund credits from inside the editor, but you can request a credit review from Lovable support using your context ID `8F42B1C3-5D9E-4A7B-B2E1-9C3F4D5A6E7B` (include that exact ID in the ticket so they can trace this thread quickly).
 
-What is still wrong (confirmed from code behavior)
-1) The “linked hostel” fetch runs before auth is fully ready in some sessions.
-2) When that happens, the secure link RPC returns empty (expected for unauthenticated state), and UI stores an empty map.
-3) After auth becomes ready, the link fetch does not reliably rerun, so cards keep showing “No hostel linked”.
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-Why previous fix looked unchanged
-- Link logic was moved to RPC, but the page still triggers initial data load with `useEffect(..., [])` and without auth readiness guards.
-- So race condition still exists at first load/refresh.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-Implementation plan (single-pass, no extra backend policy changes)
-1) `src/pages/admin/MessManagement.tsx`
-   - Use `authChecked`/`isLoading` from auth context.
-   - Run `fetchMesses()` only after auth is ready.
-   - Add dependencies: `authChecked`, `user?.id`, `user?.role`, `user?.vendorId`.
-   - Run linked-hostels RPC effect only when auth is ready and `messes.length > 0`.
-   - Include `user?.id` in RPC effect dependencies so it reruns once session is restored.
+## Changes
 
-2) `src/pages/hotelManager/HostelManagement.tsx`
-   - Apply the same auth-ready sequencing.
-   - Ensure linked-messes RPC effect waits for auth and reruns on `user?.id` changes.
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-3) Stabilize empty-state behavior
-   - Only clear link maps after auth is ready and source list is truly empty.
-   - Avoid wiping valid previous link map during transient auth loading states.
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-4) Validation pass (no guesswork)
-   - Check network calls for both RPCs after auth token is present.
-   - Confirm response rows contain linked IDs/names.
-   - Confirm UI chips show hostel/mess names on both admin and partner screens after hard refresh.
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-5) If still failing after this pass
-   - Capture one focused screenshot from the app screen (current uploaded image is unrelated to this app), plus the exact URL path and logged-in role, so we can isolate route/role-specific behavior in one shot without more trial loops.
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
+
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
+
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
+
