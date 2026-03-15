@@ -2201,6 +2201,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          partner_id: string | null
           price: number
         }
         Insert: {
@@ -2211,6 +2212,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          partner_id?: string | null
           price?: number
         }
         Update: {
@@ -2221,9 +2223,18 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          partner_id?: string | null
           price?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "laundry_items_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "laundry_partners"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       laundry_order_items: {
         Row: {
@@ -2364,52 +2375,82 @@ export type Database = {
       }
       laundry_partners: {
         Row: {
+          address: string | null
           bank_details: Json | null
           business_name: string
+          city: string | null
           commission_percentage: number
           contact_person: string
           created_at: string
+          delivery_time_hours: number | null
+          description: string | null
           email: string
           id: string
+          images: string[] | null
           is_active: boolean
+          latitude: number | null
+          longitude: number | null
+          operating_hours: Json | null
           phone: string
           property_number: number | null
           serial_number: string | null
           service_area: string
+          service_radius_km: number | null
+          state: string | null
           status: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          address?: string | null
           bank_details?: Json | null
           business_name?: string
+          city?: string | null
           commission_percentage?: number
           contact_person?: string
           created_at?: string
+          delivery_time_hours?: number | null
+          description?: string | null
           email?: string
           id?: string
+          images?: string[] | null
           is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          operating_hours?: Json | null
           phone?: string
           property_number?: number | null
           serial_number?: string | null
           service_area?: string
+          service_radius_km?: number | null
+          state?: string | null
           status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          address?: string | null
           bank_details?: Json | null
           business_name?: string
+          city?: string | null
           commission_percentage?: number
           contact_person?: string
           created_at?: string
+          delivery_time_hours?: number | null
+          description?: string | null
           email?: string
           id?: string
+          images?: string[] | null
           is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          operating_hours?: Json | null
           phone?: string
           property_number?: number | null
           serial_number?: string | null
           service_area?: string
+          service_radius_km?: number | null
+          state?: string | null
           status?: string
           updated_at?: string
           user_id?: string
@@ -2423,6 +2464,7 @@ export type Database = {
           id: string
           is_active: boolean
           max_orders: number
+          partner_id: string | null
           slot_name: string
           start_time: string
         }
@@ -2432,6 +2474,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           max_orders?: number
+          partner_id?: string | null
           slot_name: string
           start_time: string
         }
@@ -2441,10 +2484,19 @@ export type Database = {
           id?: string
           is_active?: boolean
           max_orders?: number
+          partner_id?: string | null
           slot_name?: string
           start_time?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "laundry_pickup_slots_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "laundry_partners"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       laundry_receipts: {
         Row: {
