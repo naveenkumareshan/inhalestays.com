@@ -1,45 +1,71 @@
 
 
-## Fix: Mess Payment Flow — Add Razorpay Integration + Fix RLS
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-### Problems Identified
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-1. **RLS violation on `mess_receipts`**: Students have no INSERT policy, so `createMessReceipt()` fails.
-2. **No Razorpay integration for mess**: The current `handleSubscribe` directly sets `payment_status: 'completed'` and tries to insert a receipt client-side — unlike hostel/laundry/reading room which use the pending → Razorpay → verify pattern.
-3. **Edge function gaps**: `razorpay-create-order` routes mess to `bookings` (wrong table). `razorpay-verify-payment` has no `mess` handling at all.
+## Changes
 
-### Plan
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-#### 1. Database Migration
-- Add INSERT policy on `mess_receipts` for students (`user_id = auth.uid()`) — safety net, though the edge function (admin client) will handle receipt creation.
-- No other schema changes needed.
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-#### 2. Update `razorpay-create-order` Edge Function
-- Add `mess` routing: when `bookingType === 'mess'`, update `mess_subscriptions` table with `razorpay_order_id`.
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-#### 3. Update `razorpay-verify-payment` Edge Function  
-- Add `const isMess = bookingType === 'mess'` alongside `isHostel`/`isLaundry`.
-- Route to `mess_subscriptions` table for updates.
-- On successful verification: update subscription to `payment_status: 'completed'`, `status: 'active'`, and create a `mess_receipts` record (both test mode and real mode).
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-#### 4. Update `MessDetail.tsx` — Replace direct payment with Razorpay flow
-- Change `handleSubscribe` to:
-  1. Create subscription with `payment_status: 'pending'`, `status: 'pending'`.
-  2. Use `RazorpayCheckout` component (or inline the same pattern) to trigger payment.
-  3. On success → navigate to bookings page.
-  4. On dismiss → cancel the pending subscription.
-- Add success confirmation screen with validity dates (matching hostel/laundry pattern).
-- Replace the plain "Pay" button with `RazorpayCheckout` component.
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-#### 5. Add `razorpay_order_id` column to `mess_subscriptions`
-- Database migration to add `razorpay_order_id`, `razorpay_payment_id`, `razorpay_signature` columns (if not already present).
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-### Files Changed
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-| File | Action |
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
 |------|--------|
-| Database migration | Add `razorpay_order_id`, `razorpay_payment_id`, `razorpay_signature` to `mess_subscriptions`; add student INSERT policy on `mess_receipts` |
-| `supabase/functions/razorpay-create-order/index.ts` | Add `mess` → `mess_subscriptions` routing |
-| `supabase/functions/razorpay-verify-payment/index.ts` | Add full `mess` handling (update subscription + create receipt) |
-| `src/pages/MessDetail.tsx` | Replace direct payment with Razorpay flow using `RazorpayCheckout`; add success screen |
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

@@ -3063,6 +3063,9 @@ export type Database = {
           payment_proof_url: string | null
           payment_status: string
           price_paid: number
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          razorpay_signature: string | null
           serial_number: string | null
           source_type: string
           start_date: string
@@ -3089,6 +3092,9 @@ export type Database = {
           payment_proof_url?: string | null
           payment_status?: string
           price_paid?: number
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
           serial_number?: string | null
           source_type?: string
           start_date: string
@@ -3115,6 +3121,9 @@ export type Database = {
           payment_proof_url?: string | null
           payment_status?: string
           price_paid?: number
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
           serial_number?: string | null
           source_type?: string
           start_date?: string

@@ -52,7 +52,8 @@ Deno.serve(async (req) => {
 
     const isHostel = bookingType === "hostel";
     const isLaundry = bookingType === "laundry";
-    const tableName = isHostel ? "hostel_bookings" : isLaundry ? "laundry_orders" : "bookings";
+    const isMess = bookingType === "mess";
+    const tableName = isHostel ? "hostel_bookings" : isLaundry ? "laundry_orders" : isMess ? "mess_subscriptions" : "bookings";
 
     // Helper: insert receipt only if no duplicate exists
     async function insertReceiptIfNotExists(
@@ -183,6 +184,9 @@ Deno.serve(async (req) => {
       if (isHostel || isLaundry) {
         updateData.status = "confirmed";
       }
+      if (isMess) {
+        updateData.status = "active";
+      }
 
       // For hostel test mode, check advance
       if (isHostel) {
@@ -210,7 +214,7 @@ Deno.serve(async (req) => {
       }
 
       // Create receipt for reading room/cabin bookings in test mode
-      if (!isHostel && !isLaundry) {
+      if (!isHostel && !isLaundry && !isMess) {
         const { data: booking } = await adminClient
           .from("bookings")
           .select("cabin_id, seat_id, user_id, total_price")
@@ -287,6 +291,26 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Create mess receipt in test mode
+      if (isMess) {
+        const { data: sub } = await adminClient
+          .from("mess_subscriptions")
+          .select("user_id, mess_id, price_paid")
+          .eq("id", bookingId)
+          .single();
+
+        if (sub) {
+          await insertReceiptIfNotExists("mess_receipts", "subscription_id", bookingId, testTxnId, {
+            subscription_id: bookingId,
+            user_id: sub.user_id,
+            mess_id: sub.mess_id,
+            amount: sub.price_paid,
+            payment_method: "online",
+            transaction_id: testTxnId,
+          });
+        }
+      }
+
       return new Response(
         JSON.stringify({ success: true, testMode: true, message: "Test payment confirmed" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -339,6 +363,9 @@ Deno.serve(async (req) => {
     if (isHostel || isLaundry) {
       updateData.status = "confirmed";
     }
+    if (isMess) {
+      updateData.status = "active";
+    }
 
     // For hostel bookings with advance, check if it's advance_paid
     if (isHostel) {
@@ -354,7 +381,7 @@ Deno.serve(async (req) => {
     }
 
     // For reading room bookings, detect advance payment by comparing Razorpay order amount vs total_price
-    if (!isHostel && !isLaundry) {
+    if (!isHostel && !isLaundry && !isMess) {
       try {
         const RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
         const orderRes = await fetch(`https://api.razorpay.com/v1/orders/${razorpay_order_id}`, {
@@ -450,8 +477,28 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Create mess receipt on successful payment
+    if (isMess) {
+      const { data: sub } = await adminClient
+        .from("mess_subscriptions")
+        .select("user_id, mess_id, price_paid")
+        .eq("id", bookingId)
+        .single();
+
+      if (sub) {
+        await insertReceiptIfNotExists("mess_receipts", "subscription_id", bookingId, razorpay_payment_id, {
+          subscription_id: bookingId,
+          user_id: sub.user_id,
+          mess_id: sub.mess_id,
+          amount: sub.price_paid,
+          payment_method: "online",
+          transaction_id: razorpay_payment_id,
+        });
+      }
+    }
+
     // Create receipt for reading room/cabin bookings (with duplicate check)
-    if (!isHostel && !isLaundry) {
+    if (!isHostel && !isLaundry && !isMess) {
       const { data: booking } = await adminClient
         .from("bookings")
         .select("cabin_id, seat_id, user_id, total_price")

@@ -16,7 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   getMessPartnerById, getMessPartnerBySerialNumber,
   getMealTimings, getMessPackages, getWeeklyMenu,
-  createMessSubscription, createMessReceipt, getMyMessSubscriptions,
+  createMessSubscription, getMyMessSubscriptions,
 } from '@/api/messService';
 import { reviewsService } from '@/api/reviewsService';
 import { calculateBookingEndDate } from '@/utils/dateCalculations';
@@ -31,8 +31,9 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import { MessageCircle } from 'lucide-react';
 import { whatsappLeadService } from '@/api/whatsappLeadService';
 import { supabase } from '@/integrations/supabase/client';
+import { RazorpayCheckout } from '@/components/payment/RazorpayCheckout';
 import {
-  ArrowLeft, CalendarIcon, Clock, IndianRupee, Loader2,
+  ArrowLeft, CalendarIcon, CheckCircle, Clock, IndianRupee, Loader2,
   MapPin, Star, UtensilsCrossed, Users,
 } from 'lucide-react';
 
@@ -91,6 +92,8 @@ export default function MessDetail() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
+  const [pendingSubId, setPendingSubId] = useState<string | null>(null);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
 
   // Reviews
   const [userSubs, setUserSubs] = useState<any[]>([]);
@@ -195,7 +198,7 @@ export default function MessDetail() {
     });
   }, [messPackages]);
 
-  const handleSubscribe = async () => {
+  const handleCreatePendingSub = async () => {
     if (!user || !selectedPackage || !mess) return;
     if (!isAuthenticated) {
       navigate('/student/login', { state: { from: location.pathname } });
@@ -206,23 +209,64 @@ export default function MessDetail() {
       const sub = await createMessSubscription({
         user_id: user.id, mess_id: mess.id, package_id: selectedPackage.id,
         start_date: format(checkInDate, 'yyyy-MM-dd'), end_date: format(endDate, 'yyyy-MM-dd'),
-        price_paid: totalPrice, payment_status: 'completed', payment_method: 'cash', status: 'active',
+        price_paid: totalPrice, payment_status: 'pending', payment_method: 'online', status: 'pending',
       });
-      await createMessReceipt({
-        subscription_id: (sub as any).id, user_id: user.id, mess_id: mess.id,
-        amount: totalPrice, payment_method: 'cash', transaction_id: `MESS-${Date.now()}`,
-      });
-      toast({ title: 'Subscribed successfully!', description: `${selectedPackage.name} from ${format(checkInDate, 'dd MMM yyyy')}` });
-      navigate('/student/bookings');
+      setPendingSubId((sub as any).id);
+      return (sub as any).id;
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+      toast({ title: 'Error creating subscription', description: e.message, variant: 'destructive' });
+      setSubscribing(false);
+      return null;
     }
+  };
+
+  const handlePaymentSuccess = () => {
+    setBookingSuccess(true);
     setSubscribing(false);
+  };
+
+  const handlePaymentDismiss = async () => {
+    setSubscribing(false);
+    if (pendingSubId) {
+      try {
+        await supabase.from('mess_subscriptions' as any).update({ status: 'cancelled', payment_status: 'cancelled' }).eq('id', pendingSubId);
+      } catch {}
+      setPendingSubId(null);
+    }
   };
 
   const handleGoBack = () => navigate(-1);
 
   if (loading) return <MessDetailSkeleton />;
+  // Success screen
+  if (bookingSuccess && selectedPackage) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-card rounded-2xl border border-border shadow-lg p-6 text-center space-y-4">
+          <div className="h-16 w-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
+            <CheckCircle className="h-8 w-8 text-emerald-500" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground">Subscription Confirmed!</h2>
+          <p className="text-sm text-muted-foreground">Your mess subscription has been activated.</p>
+          <div className="bg-muted/30 rounded-xl p-4 space-y-2 text-sm text-left">
+            <div className="flex justify-between"><span className="text-muted-foreground">Mess</span><span className="font-medium text-foreground">{mess?.name}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Package</span><span className="font-medium text-foreground">{selectedPackage.name}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Validity</span><span className="font-medium text-foreground">{format(checkInDate, 'dd MMM yyyy')} – {format(endDate, 'dd MMM yyyy')}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Amount Paid</span><span className="font-bold text-secondary">{formatCurrency(totalPrice)}</span></div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => navigate('/student/bookings')}>
+              View All Bookings
+            </Button>
+            <Button className="flex-1" onClick={() => navigate('/mess')}>
+              Browse Mess
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!mess) return null;
 
   const messImages = mess.images?.length ? mess.images : (mess.logo_image ? [mess.logo_image] : []);
@@ -559,14 +603,35 @@ export default function MessDetail() {
                       </label>
                     </div>
 
-                    <Button
+                    <RazorpayCheckout
+                      amount={totalPrice}
+                      bookingId={pendingSubId || ''}
+                      bookingType="mess"
+                      endDate={endDate}
+                      bookingDuration={durationType}
+                      durationCount={durationCount}
+                      onSuccess={handlePaymentSuccess}
+                      onError={() => setSubscribing(false)}
+                      onDismiss={handlePaymentDismiss}
+                      buttonText={`Pay ${formatCurrency(totalPrice)}`}
+                      buttonDisabled={!agreedToTerms || subscribing}
                       className="w-full"
-                      onClick={handleSubscribe}
-                      disabled={!agreedToTerms || subscribing}
-                    >
-                      {subscribing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                      Pay {formatCurrency(totalPrice)}
-                    </Button>
+                      createOrder={async () => {
+                        const subId = pendingSubId || await handleCreatePendingSub();
+                        if (!subId) return null;
+                        const { razorpayService } = await import('@/api/razorpayService');
+                        const res = await razorpayService.createOrder({
+                          amount: totalPrice,
+                          currency: 'INR',
+                          bookingId: subId,
+                          bookingType: 'mess',
+                          bookingDuration: durationType,
+                          durationCount,
+                        });
+                        if (!res.success || !res.data) throw new Error(res.error?.message || 'Failed');
+                        return res.data;
+                      }}
+                    />
                   </div>
                 </div>
               </div>

@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
     );
 
     // Route to correct table based on bookingType
-    const tableName = bookingType === "hostel" ? "hostel_bookings" : bookingType === "laundry" ? "laundry_orders" : "bookings";
+    const tableName = bookingType === "hostel" ? "hostel_bookings" : bookingType === "laundry" ? "laundry_orders" : bookingType === "mess" ? "mess_subscriptions" : "bookings";
     await adminClient
       .from(tableName)
       .update({ razorpay_order_id: order.id })
