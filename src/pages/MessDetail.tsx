@@ -213,6 +213,7 @@ export default function MessDetail() {
         price_paid: totalPrice, payment_status: 'pending', payment_method: 'online', status: 'pending',
       });
       setPendingSubId((sub as any).id);
+      pendingSubIdRef.current = (sub as any).id;
       return (sub as any).id;
     } catch (e: any) {
       toast({ title: 'Error creating subscription', description: e.message, variant: 'destructive' });
