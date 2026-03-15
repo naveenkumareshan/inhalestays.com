@@ -189,6 +189,50 @@ const VendorApproval: React.FC = () => {
         map.set(h.created_by, existing);
       });
 
+      // Mess properties
+      const messPartners = messRes.data || [];
+      const messSubCounts = new Map<string, number>();
+      (messSubsRes.data || []).forEach((s: any) => {
+        if (s.mess_id) messSubCounts.set(s.mess_id, (messSubCounts.get(s.mess_id) || 0) + 1);
+      });
+
+      messPartners.forEach((m: any) => {
+        if (!m.user_id) return;
+        const prop: PropertyInfo = {
+          id: m.id, name: m.name, type: 'Mess',
+          city: m.location || '', state: '', capacity: 0,
+          is_active: m.is_active ?? false, is_approved: m.is_approved ?? false,
+          activeBookings: messSubCounts.get(m.id) || 0,
+          totalSeatsOrBeds: 0, occupiedSeatsOrBeds: 0,
+          whatsapp_chat_enabled: m.whatsapp_chat_enabled ?? false,
+        };
+        const existing = map.get(m.user_id) || [];
+        existing.push(prop);
+        map.set(m.user_id, existing);
+      });
+
+      // Laundry properties
+      const laundryPartners = laundryRes.data || [];
+      const laundryOrderCounts = new Map<string, number>();
+      (laundryOrdersRes.data || []).forEach((o: any) => {
+        if (o.partner_id) laundryOrderCounts.set(o.partner_id, (laundryOrderCounts.get(o.partner_id) || 0) + 1);
+      });
+
+      laundryPartners.forEach((l: any) => {
+        if (!l.user_id) return;
+        const prop: PropertyInfo = {
+          id: l.id, name: l.business_name, type: 'Laundry',
+          city: l.city || '', state: l.state || '', capacity: 0,
+          is_active: l.is_active ?? false, is_approved: l.is_approved ?? false,
+          activeBookings: laundryOrderCounts.get(l.id) || 0,
+          totalSeatsOrBeds: 0, occupiedSeatsOrBeds: 0,
+          whatsapp_chat_enabled: l.whatsapp_chat_enabled ?? false,
+        };
+        const existing = map.get(l.user_id) || [];
+        existing.push(prop);
+        map.set(l.user_id, existing);
+      });
+
       setPropertiesMap(map);
     } catch (err) {
       console.error('Error fetching properties:', err);
