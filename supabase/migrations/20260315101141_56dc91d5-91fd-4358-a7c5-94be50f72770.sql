@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Linked mess owner can view hostel name" ON public.hostels;
