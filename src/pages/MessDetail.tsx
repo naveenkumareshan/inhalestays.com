@@ -92,6 +92,8 @@ export default function MessDetail() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
+  const [pendingSubId, setPendingSubId] = useState<string | null>(null);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
 
   // Reviews
   const [userSubs, setUserSubs] = useState<any[]>([]);
