@@ -2371,6 +2371,13 @@ export type Database = {
             referencedRelation: "laundry_partners"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "laundry_orders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       laundry_partners: {
@@ -2473,7 +2480,15 @@ export type Database = {
           whatsapp_chat_enabled?: boolean
           whatsapp_number?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "laundry_partners_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       laundry_pickup_slots: {
         Row: {
@@ -2593,6 +2608,13 @@ export type Database = {
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "laundry_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "laundry_receipts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
