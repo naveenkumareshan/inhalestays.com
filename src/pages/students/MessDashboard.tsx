@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, UtensilsCrossed, CalendarDays, CheckCircle, XCircle, QrCode } from 'lucide-react';
+import { Loader2, UtensilsCrossed, CalendarDays, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getMyMessSubscriptions, getMyAttendance, updateMessSubscription } from '@/api/messService';
 import { formatCurrency } from '@/utils/currency';
@@ -11,17 +11,20 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 
 const MEAL_LABELS: Record<string, string> = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
-const STATUS_COLORS: Record<string, string> = { active: 'default', expired: 'secondary', cancelled: 'destructive', paused: 'outline' };
+const STATUS_COLORS: Record<string, string> = { active: 'default', expired: 'secondary', cancelled: 'destructive', paused: 'outline', pending: 'outline' };
 
 export default function MessDashboard() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const targetId = searchParams.get('id');
+
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [attendance, setAttendance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedSub, setSelectedSub] = useState<string | null>(null);
 
   // Pause form
   const [pauseStart, setPauseStart] = useState('');
@@ -36,20 +39,21 @@ export default function MessDashboard() {
     try {
       const subs = await getMyMessSubscriptions(user!.id);
       setSubscriptions(subs);
-      if (subs.length > 0) {
-        const activeId = subs.find((s: any) => s.status === 'active')?.id || subs[0].id;
-        setSelectedSub(activeId);
-        const att = await getMyAttendance(user!.id, activeId);
-        setAttendance(att);
-      }
     } catch {}
     setLoading(false);
   };
 
   const loadAttendanceForSub = async (subId: string) => {
-    setSelectedSub(subId);
-    setAttendance(await getMyAttendance(user!.id, subId));
+    const att = await getMyAttendance(user!.id, subId);
+    setAttendance(att);
   };
+
+  // Load attendance when target sub is available
+  useEffect(() => {
+    if (targetId && subscriptions.length > 0 && user?.id) {
+      loadAttendanceForSub(targetId);
+    }
+  }, [targetId, subscriptions.length]);
 
   const handlePause = async (subId: string) => {
     if (!pauseStart || !pauseEnd) return;
@@ -88,67 +92,69 @@ export default function MessDashboard() {
     );
   }
 
-  const activeSub = subscriptions.find(s => s.id === selectedSub);
+  // If a specific subscription ID is provided, show only that one
+  if (targetId) {
+    const sub = subscriptions.find(s => s.id === targetId);
+    if (!sub) {
+      return (
+        <div className="container max-w-lg mx-auto py-8 px-4 text-center space-y-4">
+          <h2 className="text-lg font-bold">Subscription not found</h2>
+          <Button variant="outline" onClick={() => navigate('/student/mess')}>View All Subscriptions</Button>
+        </div>
+      );
+    }
 
-  return (
-    <div className="container max-w-2xl mx-auto py-6 px-4 space-y-4">
-      <div className="flex items-center gap-2">
-        <UtensilsCrossed className="h-5 w-5 text-primary" />
-        <h1 className="text-xl font-bold">My Mess</h1>
-      </div>
+    return (
+      <div className="container max-w-2xl mx-auto py-6 px-4 space-y-4">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/student/bookings')} className="h-8 w-8 rounded-full">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-lg font-bold">Subscription Details</h1>
+        </div>
 
-      {/* Subscription cards */}
-      <div className="space-y-3">
-        {subscriptions.map(s => (
-          <Card
-            key={s.id}
-            className={`cursor-pointer transition-shadow ${s.id === selectedSub ? 'ring-2 ring-primary' : ''}`}
-            onClick={() => loadAttendanceForSub(s.id)}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="font-semibold">{s.mess_partners?.name}</p>
-                  <p className="text-sm text-muted-foreground">{s.mess_packages?.name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{s.start_date} → {s.end_date}</p>
-                </div>
-                <div className="text-right">
-                  <Badge variant={STATUS_COLORS[s.status] as any}>{s.status}</Badge>
-                  <p className="text-sm font-bold mt-1">{formatCurrency(s.price_paid)}</p>
-                </div>
+        {/* Subscription detail card */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="font-semibold text-foreground">{sub.mess_partners?.name}</p>
+                <p className="text-sm text-muted-foreground">{sub.mess_packages?.name}</p>
+                {sub.mess_packages?.meal_types && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Meals: {(sub.mess_packages.meal_types as string[]).map(m => MEAL_LABELS[m] || m).join(', ')}
+                  </p>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              <Badge variant={STATUS_COLORS[sub.status] as any}>{sub.status}</Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Start Date</p>
+                <p className="font-medium">{sub.start_date}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">End Date</p>
+                <p className="font-medium">{sub.end_date}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Amount Paid</p>
+                <p className="font-bold text-secondary">{formatCurrency(sub.price_paid)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Payment Status</p>
+                <p className="font-medium capitalize">{sub.payment_status}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-      {activeSub && (
-        <Tabs defaultValue="qr">
-          <TabsList className="grid grid-cols-3">
-            <TabsTrigger value="qr">My QR</TabsTrigger>
+        {/* Tabs: History & Pause */}
+        <Tabs defaultValue="history">
+          <TabsList className="grid grid-cols-2">
             <TabsTrigger value="history">Meal History</TabsTrigger>
             <TabsTrigger value="pause">Pause / Leave</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="qr" className="mt-3">
-            <Card>
-              <CardContent className="p-6 flex flex-col items-center space-y-4">
-                <QrCode className="h-6 w-6 text-primary" />
-                <p className="text-sm text-muted-foreground text-center">Scan the QR code at the mess entrance to mark your attendance.</p>
-                {activeSub.status === 'active' ? (
-                  <Link to="/student/scan-attendance">
-                    <Button className="gap-2"><QrCode className="h-4 w-4" /> Scan Attendance QR</Button>
-                  </Link>
-                ) : (
-                  <p className="text-sm text-destructive">Scanning is only available for active subscriptions.</p>
-                )}
-                <div className="text-center text-xs text-muted-foreground">
-                  <p className="font-medium">{activeSub.mess_partners?.name}</p>
-                  <p>{activeSub.mess_packages?.name}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="history" className="mt-3">
             {attendance.length === 0 ? (
@@ -176,9 +182,9 @@ export default function MessDashboard() {
           </TabsContent>
 
           <TabsContent value="pause" className="mt-3">
-            {activeSub.status !== 'active' ? (
+            {sub.status !== 'active' ? (
               <p className="text-sm text-muted-foreground">
-                {activeSub.status === 'paused' ? `Paused from ${activeSub.pause_start} to ${activeSub.pause_end}` : 'This subscription is not active.'}
+                {sub.status === 'paused' ? `Paused from ${sub.pause_start} to ${sub.pause_end}` : 'This subscription is not active.'}
               </p>
             ) : (
               <Card>
@@ -188,7 +194,7 @@ export default function MessDashboard() {
                     <div><Label>From</Label><Input type="date" value={pauseStart} onChange={e => setPauseStart(e.target.value)} min={format(new Date(), 'yyyy-MM-dd')} /></div>
                     <div><Label>To</Label><Input type="date" value={pauseEnd} onChange={e => setPauseEnd(e.target.value)} min={pauseStart || format(new Date(), 'yyyy-MM-dd')} /></div>
                   </div>
-                  <Button onClick={() => handlePause(activeSub.id)} disabled={!pauseStart || !pauseEnd || pausing}>
+                  <Button onClick={() => handlePause(sub.id)} disabled={!pauseStart || !pauseEnd || pausing}>
                     {pausing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Pause Subscription
                   </Button>
@@ -197,7 +203,41 @@ export default function MessDashboard() {
             )}
           </TabsContent>
         </Tabs>
-      )}
+      </div>
+    );
+  }
+
+  // Default: show all subscriptions list
+  return (
+    <div className="container max-w-2xl mx-auto py-6 px-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <UtensilsCrossed className="h-5 w-5 text-primary" />
+        <h1 className="text-xl font-bold">My Mess Subscriptions</h1>
+      </div>
+
+      <div className="space-y-3">
+        {subscriptions.map(s => (
+          <Card
+            key={s.id}
+            className="cursor-pointer transition-shadow hover:shadow-md"
+            onClick={() => navigate(`/student/mess?id=${s.id}`)}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-semibold">{s.mess_partners?.name}</p>
+                  <p className="text-sm text-muted-foreground">{s.mess_packages?.name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{s.start_date} → {s.end_date}</p>
+                </div>
+                <div className="text-right">
+                  <Badge variant={STATUS_COLORS[s.status] as any}>{s.status}</Badge>
+                  <p className="text-sm font-bold mt-1">{formatCurrency(s.price_paid)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }

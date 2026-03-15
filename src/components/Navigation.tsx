@@ -93,20 +93,20 @@ export function Navigation() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <nav className="container flex h-16 items-center">
+      <nav className="container flex h-[72px] items-center">
         {/* Desktop Navigation */}
         <div className="mr-4 hidden md:flex">
           <Link to="/" className="mr-8 flex items-center space-x-3">
             <img 
               src={logoSrc} 
               alt="Logo" 
-              className="h-10 w-auto"
+              className="h-12 w-auto"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = inhalestaysLogo;
               }}
             />
-            <span className="hidden font-bold text-lg text-foreground sm:inline-block">
+            <span className="hidden font-bold text-xl text-foreground sm:inline-block">
               {settings.siteName}
             </span>
           </Link>
@@ -117,7 +117,7 @@ export function Navigation() {
                 to={link.enabled ? link.href : '#'}
                 onClick={link.enabled ? undefined : (e) => e.preventDefault()}
                 className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-lg transition-colors relative",
+                  "px-4 py-2 text-base font-medium rounded-lg transition-colors relative",
                   !link.enabled && "opacity-60 cursor-default",
                   isActive(link) 
                     ? "bg-primary/10 text-primary" 
@@ -138,7 +138,7 @@ export function Navigation() {
                   ? "/admin/dashboard" 
                   : "/student/dashboard"}
                 className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                  "px-4 py-2 text-base font-medium rounded-lg transition-colors",
                   pathname.startsWith("/admin/") || pathname === "/student/dashboard"
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"

@@ -93,6 +93,7 @@ export default function MessDetail() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [pendingSubId, setPendingSubId] = useState<string | null>(null);
+  const pendingSubIdRef = useRef<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
   // Reviews
@@ -212,6 +213,7 @@ export default function MessDetail() {
         price_paid: totalPrice, payment_status: 'pending', payment_method: 'online', status: 'pending',
       });
       setPendingSubId((sub as any).id);
+      pendingSubIdRef.current = (sub as any).id;
       return (sub as any).id;
     } catch (e: any) {
       toast({ title: 'Error creating subscription', description: e.message, variant: 'destructive' });
@@ -227,11 +229,13 @@ export default function MessDetail() {
 
   const handlePaymentDismiss = async () => {
     setSubscribing(false);
-    if (pendingSubId) {
+    const idToCancel = pendingSubId || pendingSubIdRef.current;
+    if (idToCancel) {
       try {
-        await supabase.from('mess_subscriptions' as any).update({ status: 'cancelled', payment_status: 'cancelled' }).eq('id', pendingSubId);
+        await supabase.from('mess_subscriptions' as any).update({ status: 'cancelled', payment_status: 'cancelled' }).eq('id', idToCancel);
       } catch {}
       setPendingSubId(null);
+      pendingSubIdRef.current = null;
     }
   };
 
@@ -605,7 +609,7 @@ export default function MessDetail() {
 
                     <RazorpayCheckout
                       amount={totalPrice}
-                      bookingId={pendingSubId || ''}
+                      bookingId={pendingSubIdRef.current || pendingSubId || ''}
                       bookingType="mess"
                       endDate={endDate}
                       bookingDuration={durationType}
@@ -617,8 +621,10 @@ export default function MessDetail() {
                       buttonDisabled={!agreedToTerms || subscribing}
                       className="w-full"
                       createOrder={async () => {
-                        const subId = pendingSubId || await handleCreatePendingSub();
+                        const subId = pendingSubIdRef.current || pendingSubId || await handleCreatePendingSub();
                         if (!subId) return null;
+                        // Update the ref immediately for the verify handler
+                        pendingSubIdRef.current = subId;
                         const { razorpayService } = await import('@/api/razorpayService');
                         const res = await razorpayService.createOrder({
                           amount: totalPrice,

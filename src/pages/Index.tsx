@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   BookOpen, Hotel, Wifi, Shield, Clock, Coffee,
   Star, Users, ChevronRight, Leaf, CheckCircle,
-  ClipboardList, Shirt, BookMarked,
+  ClipboardList, Shirt, BookMarked, UtensilsCrossed,
 } from 'lucide-react';
 
 const WHY_FEATURES = [
@@ -92,9 +92,9 @@ const AuthenticatedHome: React.FC<{ user: any }> = ({ user }) => {
     : 0;
 
   const quickActions = [
-    { icon: BookOpen, label: 'Book Room', to: '/cabins', color: 'bg-primary/10 text-primary' },
+    { icon: BookOpen, label: 'Reading Rooms', to: '/cabins', color: 'bg-primary/10 text-primary' },
     { icon: Hotel, label: 'Hostels', to: '/hostels', color: 'bg-secondary/10 text-secondary' },
-    { icon: ClipboardList, label: 'My Bookings', to: '/student/bookings', color: 'bg-accent/30 text-primary' },
+    { icon: UtensilsCrossed, label: 'Mess', to: '/mess', color: 'bg-accent/30 text-primary' },
     { icon: Shirt, label: 'Laundry', to: '/laundry', color: 'bg-muted text-muted-foreground' },
   ];
 
