@@ -84,19 +84,49 @@ const SAMPLE_DATA: Record<string, object> = {
 async function handlePreview(req: Request): Promise<Response> {
   const previewCorsHeaders = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, content-type',
+    'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
   }
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: previewCorsHeaders })
   }
 
-  const apiKey = Deno.env.get('LOVABLE_API_KEY')
+  // Verify caller is an authenticated admin user
   const authHeader = req.headers.get('Authorization')
-
-  if (!apiKey || authHeader !== `Bearer ${apiKey}`) {
+  if (!authHeader?.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
+      headers: { ...previewCorsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
+  const supabaseAdmin = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: authHeader } } }
+  )
+
+  const { data, error: claimsError } = await supabaseAdmin.auth.getClaims(authHeader.replace('Bearer ', ''))
+  if (claimsError || !data?.claims?.sub) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...previewCorsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
+  // Check admin role
+  const serviceClient = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  )
+  const { data: isAdmin } = await serviceClient.rpc('has_role', {
+    _user_id: data.claims.sub,
+    _role: 'admin',
+  })
+
+  if (!isAdmin) {
+    return new Response(JSON.stringify({ error: 'Forbidden: admin role required' }), {
+      status: 403,
       headers: { ...previewCorsHeaders, 'Content-Type': 'application/json' },
     })
   }

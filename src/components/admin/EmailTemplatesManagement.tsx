@@ -77,14 +77,14 @@ const EmailTemplatesManagement = () => {
     setPreviewLoading(templateId);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const url = `https://${projectId}.supabase.co/functions/v1/auth-email-hook/preview`;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-email-hook/preview`;
 
       const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token || ''}`,
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({ type: templateId }),
       });
