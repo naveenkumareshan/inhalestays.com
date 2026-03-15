@@ -76,6 +76,7 @@ const MySubscriptions = lazy(() => import("./pages/partner/MySubscriptions"));
 const AdminLaundry = lazy(() => import("./pages/admin/AdminLaundry"));
 const LaundryOrders = lazy(() => import("./pages/admin/LaundryOrders"));
 const LaundryOperations = lazy(() => import("./pages/admin/LaundryOperations"));
+const LaundryReceipts = lazy(() => import("./pages/admin/LaundryReceipts"));
 const AdminEmployees = lazy(() => import("./pages/admin/AdminEmployees"));
 const BookingActivityLog = lazy(() => import("./pages/admin/BookingActivityLog"));
 const MessManagement = lazy(() => import("./pages/admin/MessManagement"));
