@@ -16,7 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   getMessPartnerById, getMessPartnerBySerialNumber,
   getMealTimings, getMessPackages, getWeeklyMenu,
-  createMessSubscription, createMessReceipt, getMyMessSubscriptions,
+  createMessSubscription, getMyMessSubscriptions,
 } from '@/api/messService';
 import { reviewsService } from '@/api/reviewsService';
 import { calculateBookingEndDate } from '@/utils/dateCalculations';
@@ -31,8 +31,9 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import { MessageCircle } from 'lucide-react';
 import { whatsappLeadService } from '@/api/whatsappLeadService';
 import { supabase } from '@/integrations/supabase/client';
+import { RazorpayCheckout } from '@/components/payment/RazorpayCheckout';
 import {
-  ArrowLeft, CalendarIcon, Clock, IndianRupee, Loader2,
+  ArrowLeft, CalendarIcon, CheckCircle, Clock, IndianRupee, Loader2,
   MapPin, Star, UtensilsCrossed, Users,
 } from 'lucide-react';
 

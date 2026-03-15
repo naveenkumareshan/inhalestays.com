@@ -477,8 +477,28 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Create mess receipt on successful payment
+    if (isMess) {
+      const { data: sub } = await adminClient
+        .from("mess_subscriptions")
+        .select("user_id, mess_id, price_paid")
+        .eq("id", bookingId)
+        .single();
+
+      if (sub) {
+        await insertReceiptIfNotExists("mess_receipts", "subscription_id", bookingId, razorpay_payment_id, {
+          subscription_id: bookingId,
+          user_id: sub.user_id,
+          mess_id: sub.mess_id,
+          amount: sub.price_paid,
+          payment_method: "online",
+          transaction_id: razorpay_payment_id,
+        });
+      }
+    }
+
     // Create receipt for reading room/cabin bookings (with duplicate check)
-    if (!isHostel && !isLaundry) {
+    if (!isHostel && !isLaundry && !isMess) {
       const { data: booking } = await adminClient
         .from("bookings")
         .select("cabin_id, seat_id, user_id, total_price")
