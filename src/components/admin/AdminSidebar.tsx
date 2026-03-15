@@ -475,7 +475,7 @@ export function AdminSidebar() {
         ],
       },
       {
-        title: 'Messaging',
+        title: 'Emails',
         icon: Mail,
         roles: ['admin'],
         subItems: [
