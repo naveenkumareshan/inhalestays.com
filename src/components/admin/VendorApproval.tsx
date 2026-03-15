@@ -425,7 +425,7 @@ const VendorApproval: React.FC = () => {
                     <Switch
                       checked={p.whatsapp_chat_enabled}
                       onCheckedChange={async (checked) => {
-                        const propType = p.type === 'Reading Room' ? 'cabin' : 'hostel';
+                        const propType = p.type === 'Reading Room' ? 'cabin' : p.type === 'Hostel' ? 'hostel' : p.type === 'Mess' ? 'mess' : 'laundry';
                         const ok = await whatsappLeadService.setPropertyWhatsappEnabled(propType as any, p.id, checked);
                         if (ok) {
                           setPropertiesMap(prev => {
