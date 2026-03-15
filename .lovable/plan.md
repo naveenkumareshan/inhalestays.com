@@ -1,58 +1,71 @@
 
-Goal: Make linked hostel names reliably visible in Manage Mess, without more trial-and-error, and verify link/subscription/attendance flows in one pass.
 
-What I found
-- The current UI query path is still fragile because it depends on multi-table RLS + embedded joins in the client (`hostel_mess_links -> hostels`) and silently falls back to “No hostel linked” when link fetch fails/filters out.
-- Even with the recent policy changes, this can still fail per-user/session context (owner vs employee vs admin), which is why you still see wrong output after refresh.
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-Implementation plan
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-1) Replace fragile client-side embedded join with server-side secure RPC
-- Add a backend function (security definer) that returns linked hostels for a list of mess IDs:
-  - input: `p_mess_ids uuid[]`
-  - output: `mess_id, hostel_id, hostel_name, is_default`
-  - access logic inside function:
-    - allow admin
-    - allow mess owner / active employee of mess owner
-- This removes dependency on client-side nested join behavior under RLS and returns a deterministic result.
+## Changes
 
-2) Add symmetrical RPC for hostel screen (consistency)
-- Add second function for linked messes by hostel IDs:
-  - input: `p_hostel_ids uuid[]`
-  - output: `hostel_id, mess_id, mess_name, is_default`
-- Keeps Hostel Management and Mess Management using the same reliable pattern.
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-3) Update Manage Mess UI to use RPC output
-- File: `src/pages/admin/MessManagement.tsx`
-- Keep existing cards and badges, but fetch links using RPC and map directly.
-- Add explicit error handling:
-  - if RPC fails, show a destructive toast and keep previous map (no false “No hostel linked” overwrite).
-- Ensure fetch waits for auth-ready user before initial load (`user?.id` guard), preventing edge cases from early empty fetches.
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-4) Update Hostel Management UI to use RPC output
-- File: `src/pages/hotelManager/HostelManagement.tsx`
-- Same pattern as above for deterministic linked mess display and robust error handling.
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-5) Keep security strict
-- No broad public-read policies.
-- No role in profile/users table changes.
-- Access remains controlled via authenticated user + server-side ownership checks.
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-Files to change
-- `supabase/migrations/<new>.sql`
-  - create `get_mess_linked_hostels(p_mess_ids uuid[])`
-  - create `get_hostel_linked_messes(p_hostel_ids uuid[])`
-  - grant execute to authenticated
-- `src/pages/admin/MessManagement.tsx`
-  - swap join query -> RPC call
-  - strengthen loading/error/update behavior
-- `src/pages/hotelManager/HostelManagement.tsx`
-  - swap join query -> RPC call
-  - strengthen loading/error/update behavior
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-Verification checklist (single pass)
-- As mess owner: linked hostel chip appears (not “No hostel linked”).
-- As hostel owner: linked mess chip appears.
-- As admin: both sides show links.
-- As employee of owner: visibility matches owner permissions.
-- Linked subscription + attendance screens still show source mapping correctly (hostel inclusive/addon/manual).
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
+
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
+

@@ -68,26 +68,24 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
     }
   };
 
-  // Fetch linked mess partners separately after hostels are loaded
+  // Fetch linked mess partners via secure RPC after hostels are loaded
   useEffect(() => {
     if (hostels.length === 0) { setMessLinksMap({}); return; }
     const fetchLinks = async () => {
       const hostelIds = hostels.map((h: any) => h.id);
-      const { data: links, error: linkErr } = await supabase
-        .from('hostel_mess_links' as any)
-        .select('hostel_id, mess_id, is_default, mess_partners!hostel_mess_links_mess_id_fkey(name)')
-        .in('hostel_id', hostelIds);
-      if (linkErr) {
-        console.error('Error fetching mess links:', linkErr);
+      const { data, error: rpcErr } = await supabase.rpc('get_hostel_linked_messes', { p_hostel_ids: hostelIds });
+      if (rpcErr) {
+        console.error('Error fetching mess links (RPC):', rpcErr);
+        toast({ title: 'Warning', description: 'Could not load linked messes', variant: 'destructive' });
         return;
       }
       const map: Record<string, { mess_id: string; mess_name: string; is_default: boolean }[]> = {};
-      (links || []).forEach((link: any) => {
+      (data || []).forEach((link: any) => {
         const hostelId = link.hostel_id;
         if (!map[hostelId]) map[hostelId] = [];
         map[hostelId].push({
           mess_id: link.mess_id,
-          mess_name: link.mess_partners?.name || 'Unknown',
+          mess_name: link.mess_name || 'Unknown',
           is_default: link.is_default,
         });
       });

@@ -4785,6 +4785,24 @@ export type Database = {
         }[]
       }
       get_dashboard_stats: { Args: never; Returns: Json }
+      get_hostel_linked_messes: {
+        Args: { p_hostel_ids: string[] }
+        Returns: {
+          hostel_id: string
+          is_default: boolean
+          mess_id: string
+          mess_name: string
+        }[]
+      }
+      get_mess_linked_hostels: {
+        Args: { p_mess_ids: string[] }
+        Returns: {
+          hostel_id: string
+          hostel_name: string
+          is_default: boolean
+          mess_id: string
+        }[]
+      }
       get_partner_dashboard_stats: {
         Args: { p_user_id: string }
         Returns: Json
