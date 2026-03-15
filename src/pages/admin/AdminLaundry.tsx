@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AdminTablePagination } from '@/components/admin/AdminTablePagination';
 import { laundryCloudService } from '@/api/laundryCloudService';
 import { supabase } from '@/integrations/supabase/client';
+import { WhatsAppPropertyDialog } from '@/components/admin/WhatsAppPropertyDialog';
 
 const DEFAULT_PAGE_SIZE = 9;
 
