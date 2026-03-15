@@ -9,7 +9,7 @@ import { bookingsService } from '@/api/bookingsService';
 import { hostelBookingService } from '@/api/hostelBookingService';
 import { getMyMessSubscriptions } from '@/api/messService';
 import { format } from 'date-fns';
-import { Calendar, Building, BookOpen, Plus, CreditCard, CheckCircle, Hotel, UtensilsCrossed } from 'lucide-react';
+import { Calendar, Building, BookOpen, CreditCard, CheckCircle, Hotel, UtensilsCrossed, Shirt, LayoutGrid } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -43,6 +43,16 @@ interface Booking {
   bookingStatus: string;
 }
 
+type TypeFilter = 'all' | 'cabin' | 'hostel' | 'mess' | 'laundry';
+
+const FILTER_OPTIONS: { value: TypeFilter; label: string; icon: React.ReactNode }[] = [
+  { value: 'all', label: 'All', icon: <LayoutGrid className="h-3.5 w-3.5" /> },
+  { value: 'cabin', label: 'Reading Room', icon: <BookOpen className="h-3.5 w-3.5" /> },
+  { value: 'hostel', label: 'Hostel', icon: <Hotel className="h-3.5 w-3.5" /> },
+  { value: 'mess', label: 'Mess', icon: <UtensilsCrossed className="h-3.5 w-3.5" /> },
+  { value: 'laundry', label: 'Laundry', icon: <Shirt className="h-3.5 w-3.5" /> },
+];
+
 const StudentBookings = () => {
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
@@ -51,6 +61,7 @@ const StudentBookings = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [duesMap, setDuesMap] = useState<Map<string, number>>(new Map());
   const [firstDueInfo, setFirstDueInfo] = useState<DueInfo | null>(null);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -64,7 +75,6 @@ const StudentBookings = () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) return;
 
-      // Fetch both reading room and hostel dues in parallel
       const [cabinDuesRes, hostelDuesRes] = await Promise.all([
         supabase
           .from('dues')
@@ -99,11 +109,16 @@ const StudentBookings = () => {
       setIsLoading(true);
 
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      const [currentRes, historyRes, hostelBookingsRes, messSubscriptions] = await Promise.all([
+      const [currentRes, historyRes, hostelBookingsRes, messSubscriptions, laundryOrdersRes] = await Promise.all([
         bookingsService.getCurrentBookings(),
         bookingsService.getBookingHistory(),
         hostelBookingService.getUserBookings(),
         authUser ? getMyMessSubscriptions(authUser.id) : [],
+        authUser ? supabase
+          .from('laundry_orders')
+          .select('*, laundry_partners:partner_id(name, logo_image, business_name)')
+          .eq('user_id', authUser.id)
+          .order('created_at', { ascending: false }) : { data: [] },
       ]);
 
       const allCurrentRaw = currentRes.success ? currentRes.data : [];
@@ -117,7 +132,6 @@ const StudentBookings = () => {
         }
       });
 
-      // Fetch seat info for all relevant cabin+seat_number combos
       const seatMap = new Map<string, { id: string; price: number; number: number }>();
       if (seatLookupKeys.size > 0) {
         const cabinIds = [...new Set([...seatLookupKeys].map(k => k.split('|')[0]))];
@@ -160,7 +174,6 @@ const StudentBookings = () => {
         };
       };
 
-      // Map hostel bookings
       const mapHostelBooking = (hb: any) => ({
         id: hb.id,
         bookingId: hb.serial_number || hb.id?.substring(0, 8),
@@ -187,9 +200,6 @@ const StudentBookings = () => {
         transferredHistory: null,
       });
 
-      const hostelBookings = (hostelBookingsRes || []).map(mapHostelBooking);
-
-      // Map mess subscriptions
       const mapMessSubscription = (sub: any) => ({
         id: sub.id,
         bookingId: sub.serial_number || sub.id?.substring(0, 8),
@@ -218,12 +228,39 @@ const StudentBookings = () => {
         messPackageName: sub.mess_packages?.name,
       });
 
+      const mapLaundryOrder = (order: any) => ({
+        id: order.id,
+        bookingId: order.serial_number || order.id?.substring(0, 8),
+        startDate: order.pickup_date || order.created_at?.split('T')[0],
+        endDate: order.delivery_date || order.pickup_date || order.created_at?.split('T')[0],
+        status: order.payment_status,
+        createdAt: order.created_at,
+        totalPrice: Number(order.total_amount) || 0,
+        originalPrice: Number(order.total_amount) || 0,
+        appliedCoupon: undefined,
+        seatPrice: Number(order.total_amount) || 0,
+        cabinId: order.partner_id,
+        paymentStatus: order.payment_status || 'pending',
+        bookingType: 'laundry' as const,
+        itemName: order.laundry_partners?.business_name || order.laundry_partners?.name || 'Laundry',
+        itemNumber: 0,
+        itemImage: order.laundry_partners?.logo_image,
+        bookingStatus: order.status,
+        location: '',
+        cabinAddress: '',
+        lockerPrice: 0,
+        keyDeposit: undefined,
+        cabinCode: order.partner_id || '',
+        transferredHistory: null,
+      });
+
+      const hostelBookings = (hostelBookingsRes || []).map(mapHostelBooking);
       const messBookings = (messSubscriptions || []).map(mapMessSubscription);
+      const laundryOrders = ((laundryOrdersRes as any)?.data || []).map(mapLaundryOrder);
 
       const today = new Date().toISOString().split('T')[0];
       const ONE_HOUR = 60 * 60 * 1000;
 
-      // Filter out stale pending bookings (>1 hour old)
       const isNotStalePending = (b: any) => {
         if (b.paymentStatus === 'pending' && b.createdAt) {
           const age = Date.now() - new Date(b.createdAt).getTime();
@@ -232,7 +269,6 @@ const StudentBookings = () => {
         return true;
       };
 
-      // Merge cabin current + hostel current + mess current
       const mappedCurrent = allCurrentRaw.map(mapBooking);
       const hostelCurrent = hostelBookings.filter((b: any) =>
         b.endDate >= today && !['failed', 'cancelled'].includes(b.bookingStatus)
@@ -240,13 +276,16 @@ const StudentBookings = () => {
       const messCurrent = messBookings.filter((b: any) =>
         b.endDate >= today && !['cancelled', 'paused'].includes(b.bookingStatus)
       );
-      const allCurrent = [...mappedCurrent, ...hostelCurrent, ...messCurrent]
+      const laundryCurrent = laundryOrders.filter((b: any) =>
+        !['delivered', 'cancelled'].includes(b.bookingStatus)
+      );
+
+      const allCurrent = [...mappedCurrent, ...hostelCurrent, ...messCurrent, ...laundryCurrent]
         .filter(isNotStalePending)
         .map((b: any) => ({ ...b, dueAmount: duesMap.get(b.id) || 0 }))
         .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setCurrentBookings(allCurrent);
 
-      // Merge cabin past + hostel past + mess past
       const allHistory = allHistoryRaw.map(mapBooking);
       const hostelPast = hostelBookings.filter((b: any) =>
         b.endDate < today || ['failed', 'cancelled'].includes(b.bookingStatus)
@@ -254,11 +293,16 @@ const StudentBookings = () => {
       const messPast = messBookings.filter((b: any) =>
         b.endDate < today || ['cancelled', 'paused'].includes(b.bookingStatus)
       );
-      const allPast = [...allHistory, ...hostelPast, ...messPast]
+      const laundryPast = laundryOrders.filter((b: any) =>
+        ['delivered', 'cancelled'].includes(b.bookingStatus)
+      );
+
+      const allPast = [...allHistory, ...hostelPast, ...messPast, ...laundryPast]
         .map((b: any) => ({ ...b, dueAmount: duesMap.get(b.id) || 0 }))
         .filter((b: Booking) =>
           (b.endDate < today && !['pending'].includes(b.paymentStatus)) ||
-          ['failed', 'cancelled'].includes(b.paymentStatus)
+          ['failed', 'cancelled'].includes(b.paymentStatus) ||
+          b.bookingType === 'laundry'
         )
         .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setPastBookings(allPast);
@@ -275,6 +319,14 @@ const StudentBookings = () => {
 
   const totalDueAmount = firstDueInfo ? Number(firstDueInfo.due_amount) - Number(firstDueInfo.paid_amount) : 0;
   const dueDate = firstDueInfo?.due_date ? format(new Date(firstDueInfo.due_date), 'dd MMM') : null;
+
+  const filteredCurrent = typeFilter === 'all'
+    ? currentBookings
+    : currentBookings.filter(b => b.bookingType === typeFilter);
+
+  const filteredPast = typeFilter === 'all'
+    ? pastBookings
+    : pastBookings.filter(b => b.bookingType === typeFilter);
 
   return (
     <div className="min-h-screen bg-background">
@@ -333,31 +385,22 @@ const StudentBookings = () => {
 
       {/* Content */}
       <div className="max-w-lg mx-auto px-3 -mt-3">
-        <div className="flex gap-2 mb-4">
-          <Button
-            onClick={() => navigate('/cabins')}
-            className="flex-1 rounded-2xl py-3 shadow-sm bg-card text-primary border border-primary/20 hover:bg-primary/5 flex items-center gap-1.5 text-[12px]"
-            variant="outline"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Reading Room
-          </Button>
-          <Button
-            onClick={() => navigate('/hostels')}
-            className="flex-1 rounded-2xl py-3 shadow-sm bg-card text-primary border border-primary/20 hover:bg-primary/5 flex items-center gap-1.5 text-[12px]"
-            variant="outline"
-          >
-            <Hotel className="w-3.5 h-3.5" />
-            Hostel
-          </Button>
-          <Button
-            onClick={() => navigate('/mess')}
-            className="flex-1 rounded-2xl py-3 shadow-sm bg-card text-primary border border-primary/20 hover:bg-primary/5 flex items-center gap-1.5 text-[12px]"
-            variant="outline"
-          >
-            <UtensilsCrossed className="w-3.5 h-3.5" />
-            Mess
-          </Button>
+        {/* Filter pills */}
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide">
+          {FILTER_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setTypeFilter(opt.value)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl text-[12px] font-medium whitespace-nowrap border transition-colors ${
+                typeFilter === opt.value
+                  ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                  : 'bg-card text-muted-foreground border-border hover:bg-accent/50'
+              }`}
+            >
+              {opt.icon}
+              {opt.label}
+            </button>
+          ))}
         </div>
 
         <h2 className="text-[15px] font-semibold text-foreground mb-3">My Bookings</h2>
@@ -375,10 +418,10 @@ const StudentBookings = () => {
           </TabsList>
 
           <TabsContent value="current" className="mt-0">
-            <BookingsList bookings={currentBookings} isLoading={isLoading} onBookingCancelled={fetchBookings} />
+            <BookingsList bookings={filteredCurrent} isLoading={isLoading} onBookingCancelled={fetchBookings} />
           </TabsContent>
           <TabsContent value="past" className="mt-0">
-            <BookingsList bookings={pastBookings} isLoading={isLoading} />
+            <BookingsList bookings={filteredPast} isLoading={isLoading} />
           </TabsContent>
         </Tabs>
       </div>
