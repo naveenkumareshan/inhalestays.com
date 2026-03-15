@@ -1,26 +1,71 @@
 
 
-## Fix Email Template Preview - 401 Unauthorized
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-### Root Cause
-The preview endpoint in `auth-email-hook` checks `LOVABLE_API_KEY` against the `Authorization` header, but the client sends the **user's session JWT token**. These don't match, so it returns 401.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-### Fix
+## Changes
 
-**Option A (simplest):** Change the client to use `supabase.functions.invoke()` instead of raw `fetch`. This automatically sends the anon key and auth headers correctly. Then update the edge function's preview handler to verify the caller is an authenticated admin user via their JWT, instead of checking against `LOVABLE_API_KEY`.
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-### Changes
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-**1. `src/components/admin/EmailTemplatesManagement.tsx`**
-- Replace raw `fetch` call with `supabase.functions.invoke('auth-email-hook', { body: { type: templateId } })` — but this won't hit the `/preview` subpath. So instead, keep `fetch` but use the anon key + user JWT properly.
-- Actually the simplest: just call with anon key in `apikey` header and user JWT in `Authorization`.
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-**2. `supabase/functions/auth-email-hook/index.ts`**
-- Update `handlePreview` to verify the user is authenticated and has admin role (using `getClaims` + `has_role` check) instead of checking `LOVABLE_API_KEY`.
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-**3. Redeploy** the `auth-email-hook` edge function after changes.
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-### Files
-- `supabase/functions/auth-email-hook/index.ts` — Change preview auth from API key to JWT + admin role check
-- `src/components/admin/EmailTemplatesManagement.tsx` — Add `apikey` header to the fetch call
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
+
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 
